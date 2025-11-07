@@ -5,9 +5,10 @@ import { supabase } from '../../lib/supabaseClient';
 interface NewTransactionFormProps {
     onClose: () => void;
     onSuccess: () => void;
+    shopId: number; // Adicionado shopId
 }
 
-const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSuccess }) => {
+const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSuccess, shopId }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +22,7 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
             amount: parseFloat(formData.get('amount') as string),
             type: formData.get('type') as 'income' | 'expense',
             transaction_date: new Date().toISOString(),
+            shop_id: shopId, // Adicionado shop_id
         };
 
         const { error: dbError } = await supabase.from('transactions').insert([transactionData]);

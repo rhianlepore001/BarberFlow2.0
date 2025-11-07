@@ -7,9 +7,10 @@ interface NewAppointmentFormProps {
     onClose: () => void;
     onSuccess: () => void;
     appointment?: Appointment | null;
+    shopId: number; // Adicionado shopId
 }
 
-const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSuccess, appointment }) => {
+const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSuccess, appointment, shopId }) => {
     const isEditing = !!appointment;
     const [clients, setClients] = useState<(Pick<Client, 'id' | 'name' | 'image_url'>)[]>([]);
     const [services, setServices] = useState<Service[]>([]);
@@ -19,6 +20,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
 
     useEffect(() => {
         const fetchData = async () => {
+            // RLS agora garante que apenas dados do shopId do usuário sejam retornados
             const [clientsRes, servicesRes, teamRes] = await Promise.all([
                 supabase.from('clients').select('id, name, image_url'),
                 supabase.from('services').select('id, name, duration_minutes'),
@@ -58,6 +60,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
             client_id: parseInt(clientId),
             service_id: service.id,
             duration_minutes: service.duration_minutes, 
+            shop_id: shopId, // Adicionado shop_id
         };
 
         const { error: dbError } = isEditing
@@ -77,6 +80,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
         if (!appointment) return;
         setIsSaving(true);
         setError(null);
+        // RLS garante que apenas o proprietário do shop possa deletar
         const { error: dbError } = await supabase.from('appointments').delete().eq('id', appointment.id);
         if (dbError) {
             console.error("Error deleting appointment:", dbError);

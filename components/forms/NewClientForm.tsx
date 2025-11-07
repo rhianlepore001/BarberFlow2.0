@@ -5,9 +5,10 @@ import { supabase } from '../../lib/supabaseClient';
 interface NewClientFormProps {
     onClose: () => void;
     onSuccess: () => void;
+    shopId: number; // Adicionado shopId
 }
 
-const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess }) => {
+const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopId }) => {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [isSaving, setIsSaving] = useState(false);
@@ -25,7 +26,8 @@ const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess }) => 
                 name,
                 phone,
                 last_visit: new Date().toISOString(),
-                image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=random` 
+                image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=random`,
+                shop_id: shopId, // Adicionado shop_id
             }]);
 
         if (insertError) {

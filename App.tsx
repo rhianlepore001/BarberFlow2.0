@@ -57,7 +57,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             let shopName = "Barbearia";
             let name = session.user.email?.split('@')[0] || "Usuário";
             let imageUrl = "";
-            let shopId = memberData?.shop_id;
+            let shopId: number | null = null;
 
             if (memberError) {
                 console.error("Error fetching user profile from DB (will fallback):", memberError.message);
@@ -94,10 +94,17 @@ const App: React.FC<AppProps> = ({ session }) => {
                 }
             }
 
-            const finalUser: User = { name, imageUrl, shopName };
+            if (!shopId) {
+                // Se o shopId ainda for nulo, algo deu errado no signup.
+                // Não podemos carregar o app sem um shopId válido.
+                console.error("FATAL: User does not have an associated shop ID.");
+                // Poderíamos forçar o logout aqui, mas por enquanto, vamos apenas retornar null.
+                setUser(null);
+                return;
+            }
+
+            const finalUser: User = { name, imageUrl, shopName, shopId };
             setUser(finalUser);
-            
-            // Removida a checagem de setupShop, pois o OAuth foi removido.
         };
         fetchUserProfile();
     }, [session, dataVersion]);
@@ -157,23 +164,25 @@ const App: React.FC<AppProps> = ({ session }) => {
     };
     
     const getModalContent = () => {
+        if (!user) return null;
+        
         switch (modalContent) {
             case 'newAppointment':
-                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} />;
+                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'editAppointment':
-                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} />;
+                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} shopId={user.shopId} />;
              case 'newClient':
-                return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} />;
+                return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'newTransaction':
-                return <NewTransactionForm onClose={closeModal} onSuccess={handleSuccess} />;
+                return <NewTransactionForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'newTeamMember':
-                return <NewTeamMemberForm onClose={closeModal} onSuccess={handleSuccess} />;
+                return <NewTeamMemberForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'newService':
-                return <NewServiceForm onClose={closeModal} onSuccess={handleSuccess} />;
+                return <NewServiceForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'editProfile':
-                return <EditProfileForm user={user!} session={session} onClose={closeModal} onSuccess={handleSuccess} />;
+                return <EditProfileForm user={user} session={session} onClose={closeModal} onSuccess={handleSuccess} />;
             case 'editHours':
-                return <EditWorkingHoursForm onClose={closeModal} onSuccess={handleSuccess} />;
+                return <EditWorkingHoursForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'editTeamMember':
                 return <EditTeamMemberForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
             default:

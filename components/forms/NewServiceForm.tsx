@@ -5,9 +5,10 @@ import { supabase } from '../../lib/supabaseClient';
 interface NewServiceFormProps {
     onClose: () => void;
     onSuccess: () => void;
+    shopId: number; // Adicionado shopId
 }
 
-const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess }) => {
+const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, shopId }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -20,6 +21,7 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess }) =
             name: formData.get('service-name') as string,
             price: parseFloat(formData.get('price') as string),
             duration_minutes: parseInt(formData.get('duration') as string),
+            shop_id: shopId, // Adicionado shop_id
         };
 
         const { error: insertError } = await supabase.from('services').insert([serviceData]);

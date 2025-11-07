@@ -5,9 +5,10 @@ import { supabase } from '../../lib/supabaseClient';
 interface NewTeamMemberFormProps {
     onClose: () => void;
     onSuccess: () => void;
+    shopId: number; // Adicionado shopId
 }
 
-const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSuccess }) => {
+const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSuccess, shopId }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +21,8 @@ const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSucces
         const memberData = {
             name,
             role: formData.get('role') as string,
-            image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=random`
+            image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=random`,
+            shop_id: shopId, // Adicionado shop_id
         };
 
         const { error: dbError } = await supabase.from('team_members').insert([memberData]);

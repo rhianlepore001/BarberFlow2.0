@@ -44,11 +44,13 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
+            
+            // RLS garante que todas as buscas abaixo retornem apenas dados do shop do usuário
             const [teamRes, servicesRes, transactionsRes, settingsRes] = await Promise.all([
                 supabase.from('team_members').select('*'),
                 supabase.from('services').select('*'),
                 supabase.from('transactions').select('amount, barber_id, type, transaction_date'),
-                supabase.from('shop_settings').select('*').single()
+                supabase.from('shop_settings').select('*').limit(1).single() // RLS filtra pelo shop_id
             ]);
 
             if (teamRes.error) console.error("Error fetching team members:", teamRes.error.message);
@@ -90,6 +92,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     
     const handleDeleteMember = async (memberId: number) => {
         if (window.confirm('Tem certeza que deseja remover este membro da equipe? Essa ação não pode ser desfeita.')) {
+            // RLS garante que apenas membros do shop possam deletar
             const { error } = await supabase.from('team_members').delete().eq('id', memberId);
             if (error) {
                 console.error('Error deleting team member:', error);

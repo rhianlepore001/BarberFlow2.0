@@ -1,7 +1,8 @@
 export interface User {
   name: string;
   imageUrl: string;
-  shopName: string; // Novo campo
+  shopName: string;
+  shopId: number; // Adicionado shopId
 }
 
 export type View = 'inicio' | 'agenda' | 'clientes' | 'caixa' | 'gestao' | 'analise';
