@@ -13,47 +13,85 @@ const itemVariants = {
     visible: { opacity: 1, scale: 1 },
 };
 
-// Helper function to get the date for a specific day index (0=Mon, 5=Sat)
-const getDateForDayIndex = (dayIndex: number): { dayLabel: string, dateLabel: string } => {
-    const today = new Date();
-    const todayDayIndex = (today.getDay() + 6) % 7; // 0=Seg, 6=Dom
-    
-    const date = new Date(today);
-    const diff = dayIndex - todayDayIndex;
-    date.setDate(today.getDate() + diff);
+// Helper function to get the start of the week (Monday) for a given date
+const getStartOfWeek = (date: Date): Date => {
+    const d = new Date(date);
+    const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+};
+
+// Helper function to get the date for a specific day index (0=Mon, 5=Sat) based on a reference date
+const getDateForDayIndex = (dayIndex: number, referenceDate: Date): { dayLabel: string, dateLabel: string, fullDate: Date } => {
+    const date = new Date(referenceDate);
+    date.setDate(referenceDate.getDate() + dayIndex);
 
     const dayLabels = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"];
     
     return {
         dayLabel: dayLabels[dayIndex],
-        dateLabel: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        dateLabel: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        fullDate: date
     };
 };
 
-const DaySelector: React.FC<{ selectedDay: number; setSelectedDay: (day: number) => void }> = ({ selectedDay, setSelectedDay }) => {
+interface DaySelectorProps {
+    selectedDay: number;
+    setSelectedDay: (day: number) => void;
+    weekOffset: number;
+    setWeekOffset: (offset: number) => void;
+    startOfWeek: Date;
+}
+
+const DaySelector: React.FC<DaySelectorProps> = ({ selectedDay, setSelectedDay, weekOffset, setWeekOffset, startOfWeek }) => {
     // 0=Seg, 5=Sab
     const days = [0, 1, 2, 3, 4, 5]; // Indices for Mon to Sat
+    
+    const currentMonthYear = startOfWeek.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
     return (
-        <div className="flex justify-between items-center bg-card-dark p-1 rounded-xl">
-            {days.map((dayIndex) => {
-                const { dayLabel, dateLabel } = getDateForDayIndex(dayIndex);
-                return (
-                    <button 
-                        key={dayIndex}
-                        onClick={() => setSelectedDay(dayIndex)}
-                        className={`relative w-full flex flex-col items-center text-sm font-bold py-2 rounded-lg transition-colors ${selectedDay === dayIndex ? 'text-background-dark' : 'text-text-secondary-dark'}`}
-                    >
-                        {selectedDay === dayIndex && (
-                            <motion.div
-                                layoutId="day-selector-active"
-                                className="absolute inset-0 bg-primary rounded-lg z-0"
-                            />
-                        )}
-                        <span className="relative z-10 text-xs">{dayLabel}</span>
-                        <span className="relative z-10 text-sm font-extrabold">{dateLabel}</span>
-                    </button>
-                );
-            })}
+        <div className="space-y-3">
+            <div className="flex items-center justify-between px-2">
+                <button 
+                    onClick={() => setWeekOffset(weekOffset - 1)}
+                    className="p-2 text-text-secondary-dark hover:text-white transition-colors"
+                    aria-label="Semana Anterior"
+                >
+                    <span className="material-symbols-outlined">chevron_left</span>
+                </button>
+                <h3 className="text-lg font-bold text-white capitalize">{currentMonthYear}</h3>
+                <button 
+                    onClick={() => setWeekOffset(weekOffset + 1)}
+                    className="p-2 text-text-secondary-dark hover:text-white transition-colors"
+                    aria-label="Próxima Semana"
+                >
+                    <span className="material-symbols-outlined">chevron_right</span>
+                </button>
+            </div>
+            
+            <div className="flex justify-between items-center bg-card-dark p-1 rounded-xl">
+                {days.map((dayIndex) => {
+                    const { dayLabel, dateLabel } = getDateForDayIndex(dayIndex, startOfWeek);
+                    return (
+                        <button 
+                            key={dayIndex}
+                            onClick={() => setSelectedDay(dayIndex)}
+                            className={`relative w-full flex flex-col items-center text-sm font-bold py-2 rounded-lg transition-colors ${selectedDay === dayIndex ? 'text-background-dark' : 'text-text-secondary-dark'}`}
+                        >
+                            {selectedDay === dayIndex && (
+                                <motion.div
+                                    layoutId="day-selector-active"
+                                    className="absolute inset-0 bg-primary rounded-lg z-0"
+                                />
+                            )}
+                            <span className="relative z-10 text-xs">{dayLabel}</span>
+                            <span className="relative z-10 text-sm font-extrabold">{dateLabel}</span>
+                        </button>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -140,15 +178,21 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
     const today = new Date();
     // 0=Seg, 5=Sab. Se for Dom(0) ou Sab(6), ajusta para Seg(0)
     const currentDayOfWeek = (today.getDay() + 6) % 7; 
-    // Limita a seleção de dias de 0 (Segunda) a 5 (Sábado)
     const initialDay = currentDayOfWeek > 5 ? 0 : currentDayOfWeek;
+    
     const [selectedDay, setSelectedDay] = useState(initialDay);
+    const [weekOffset, setWeekOffset] = useState(0); // 0 = current week
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [loading, setLoading] = useState(true);
     
-    // dayMap não é mais necessário aqui, pois usamos getDateForDayIndex
+    // Calculate the start of the currently selected week (Monday)
+    const startOfSelectedWeek = useMemo(() => {
+        const date = new Date();
+        date.setDate(date.getDate() + weekOffset * 7);
+        return getStartOfWeek(date);
+    }, [weekOffset]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -163,17 +207,19 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
             }
             setTeamMembers(teamMembersData);
 
-            // 2. Fetch Appointments (for the next 7 days to cover the selector)
-            const startOfToday = new Date();
-            startOfToday.setHours(0, 0, 0, 0);
-            const endOfNextWeek = new Date(startOfToday);
-            endOfNextWeek.setDate(startOfToday.getDate() + 7);
+            // 2. Fetch Appointments for the selected week (Mon to Sat)
+            const startOfWeekISO = startOfSelectedWeek.toISOString();
+            
+            const endOfWeek = new Date(startOfSelectedWeek);
+            endOfWeek.setDate(startOfSelectedWeek.getDate() + 6); // Sunday
+            endOfWeek.setHours(23, 59, 59, 999);
+            const endOfWeekISO = endOfWeek.toISOString();
 
             const { data: appointmentsData, error: appointmentsError } = await supabase
                 .from('appointments')
                 .select('*, clients(id, name, image_url), services(id, name), team_members(id, name)')
-                .gte('start_time', startOfToday.toISOString())
-                .lte('start_time', endOfNextWeek.toISOString())
+                .gte('start_time', startOfWeekISO)
+                .lte('start_time', endOfWeekISO)
                 .order('start_time');
 
             if (appointmentsError) console.error(appointmentsError);
@@ -191,7 +237,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
             setLoading(false);
         };
         fetchData();
-    }, [dataVersion]);
+    }, [dataVersion, startOfSelectedWeek]); // Recarrega quando a semana muda
     
     // Scroll to current time on load/day change
     useEffect(() => {
@@ -200,20 +246,24 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
             const minutesFromStart = currentMinutes - START_HOUR * 60;
             const scrollTop = (minutesFromStart * MINUTE_HEIGHT) - scrollContainerRef.current.offsetHeight / 3;
-            scrollContainerRef.current.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' });
+            
+            // Only scroll to current time if viewing the current day of the current week
+            const isCurrentDay = selectedDay === currentDayOfWeek && weekOffset === 0;
+            if (isCurrentDay) {
+                scrollContainerRef.current.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' });
+            } else {
+                 // Scroll to the top of the working hours if viewing another day/week
+                 scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         }
-    }, [selectedDay, loading]);
+    }, [selectedDay, loading, weekOffset]);
 
     const timeMarkers = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
 
     const appointmentsByBarber = useMemo(() => {
-        const selectedDate = new Date();
-        const todayDayIndex = (selectedDate.getDay() + 6) % 7; // 0=Seg, 6=Dom
-        
-        // Adjust selectedDate to the start of the selected day
-        const diff = selectedDay - todayDayIndex;
-        selectedDate.setDate(selectedDate.getDate() + diff);
-        const selectedDateStr = selectedDate.toISOString().split('T')[0];
+        // Calculate the date string for the selected day within the selected week
+        const selectedDayDate = getDateForDayIndex(selectedDay, startOfSelectedWeek).fullDate;
+        const selectedDateStr = selectedDayDate.toISOString().split('T')[0];
 
         const filteredAppointments = appointments.filter(a => {
             const apptDateStr = a.startTime.split('T')[0];
@@ -226,9 +276,9 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
         }, {} as Record<number, Appointment[]>);
 
         return grouped;
-    }, [selectedDay, appointments, teamMembers]);
+    }, [selectedDay, appointments, teamMembers, startOfSelectedWeek]);
 
-    const isToday = selectedDay === currentDayOfWeek;
+    const isToday = selectedDay === currentDayOfWeek && weekOffset === 0;
 
     if (loading) {
         return <div className="text-center p-10">Carregando agenda...</div>;
@@ -246,7 +296,13 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
             className="flex flex-col h-full"
         >
             <motion.div variants={itemVariants} className="my-4 px-4">
-                <DaySelector selectedDay={selectedDay} setSelectedDay={setSelectedDay} />
+                <DaySelector 
+                    selectedDay={selectedDay} 
+                    setSelectedDay={setSelectedDay} 
+                    weekOffset={weekOffset}
+                    setWeekOffset={setWeekOffset}
+                    startOfWeek={startOfSelectedWeek}
+                />
             </motion.div>
             
             {/* Header da Agenda (Barbeiros) */}
