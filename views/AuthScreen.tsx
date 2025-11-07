@@ -27,8 +27,9 @@ const AuthScreen: React.FC = () => {
                 return;
             }
             
-            // Passamos o nome da barbearia e o nome do usuário nos metadados
-            const { error } = await supabase.auth.signUp({ 
+            // Tenta cadastrar o usuário. Se a confirmação de e-mail estiver DESLIGADA no Supabase,
+            // o usuário será logado automaticamente.
+            const { data, error } = await supabase.auth.signUp({ 
                 email, 
                 password,
                 options: {
@@ -39,12 +40,19 @@ const AuthScreen: React.FC = () => {
                     }
                 }
             });
+            
+            if (error) {
+                setError(error.message);
+            } else if (data.user && data.session === null) {
+                // Isso acontece se a confirmação de e-mail estiver LIGADA no Supabase.
+                setError("Confirmação de e-mail necessária. Verifique sua caixa de entrada.");
+            }
+            
+        } else {
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
                 setError(error.message);
             }
-        } else {
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) setError(error.message);
         }
         setLoading(false);
     };
