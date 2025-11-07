@@ -13,26 +13,47 @@ const itemVariants = {
     visible: { opacity: 1, scale: 1 },
 };
 
+// Helper function to get the date for a specific day index (0=Mon, 5=Sat)
+const getDateForDayIndex = (dayIndex: number): { dayLabel: string, dateLabel: string } => {
+    const today = new Date();
+    const todayDayIndex = (today.getDay() + 6) % 7; // 0=Seg, 6=Dom
+    
+    const date = new Date(today);
+    const diff = dayIndex - todayDayIndex;
+    date.setDate(today.getDate() + diff);
+
+    const dayLabels = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"];
+    
+    return {
+        dayLabel: dayLabels[dayIndex],
+        dateLabel: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+    };
+};
+
 const DaySelector: React.FC<{ selectedDay: number; setSelectedDay: (day: number) => void }> = ({ selectedDay, setSelectedDay }) => {
     // 0=Seg, 5=Sab
-    const days = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB"]; 
+    const days = [0, 1, 2, 3, 4, 5]; // Indices for Mon to Sat
     return (
-        <div className="flex justify-between items-center bg-card-dark p-1 rounded-full">
-            {days.map((day, index) => (
-                <button 
-                    key={day}
-                    onClick={() => setSelectedDay(index)}
-                    className={`relative w-full text-sm font-bold py-2 rounded-full transition-colors ${selectedDay === index ? 'text-background-dark' : 'text-text-secondary-dark'}`}
-                >
-                    {selectedDay === index && (
-                        <motion.div
-                            layoutId="day-selector-active"
-                            className="absolute inset-0 bg-primary rounded-full z-0"
-                        />
-                    )}
-                    <span className="relative z-10">{day}</span>
-                </button>
-            ))}
+        <div className="flex justify-between items-center bg-card-dark p-1 rounded-xl">
+            {days.map((dayIndex) => {
+                const { dayLabel, dateLabel } = getDateForDayIndex(dayIndex);
+                return (
+                    <button 
+                        key={dayIndex}
+                        onClick={() => setSelectedDay(dayIndex)}
+                        className={`relative w-full flex flex-col items-center text-sm font-bold py-2 rounded-lg transition-colors ${selectedDay === dayIndex ? 'text-background-dark' : 'text-text-secondary-dark'}`}
+                    >
+                        {selectedDay === dayIndex && (
+                            <motion.div
+                                layoutId="day-selector-active"
+                                className="absolute inset-0 bg-primary rounded-lg z-0"
+                            />
+                        )}
+                        <span className="relative z-10 text-xs">{dayLabel}</span>
+                        <span className="relative z-10 text-sm font-extrabold">{dateLabel}</span>
+                    </button>
+                );
+            })}
         </div>
     );
 }
@@ -119,13 +140,15 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
     const today = new Date();
     // 0=Seg, 5=Sab. Se for Dom(0) ou Sab(6), ajusta para Seg(0)
     const currentDayOfWeek = (today.getDay() + 6) % 7; 
-    const [selectedDay, setSelectedDay] = useState(currentDayOfWeek > 5 ? 0 : currentDayOfWeek);
+    // Limita a seleção de dias de 0 (Segunda) a 5 (Sábado)
+    const initialDay = currentDayOfWeek > 5 ? 0 : currentDayOfWeek;
+    const [selectedDay, setSelectedDay] = useState(initialDay);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [loading, setLoading] = useState(true);
     
-    const dayMap = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+    // dayMap não é mais necessário aqui, pois usamos getDateForDayIndex
 
     useEffect(() => {
         const fetchData = async () => {
