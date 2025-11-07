@@ -24,8 +24,9 @@ import NewServiceForm from './components/forms/NewServiceForm';
 import EditProfileForm from './components/forms/EditProfileForm';
 import EditWorkingHoursForm from './components/forms/EditWorkingHoursForm';
 import EditTeamMemberForm from './components/forms/EditTeamMemberForm';
+import SetupShopForm from './components/forms/SetupShopForm'; // Novo componente para usuários OAuth
 
-type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember';
+type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'setupShop';
 
 interface AppProps {
     session: Session;
@@ -46,40 +47,60 @@ const App: React.FC<AppProps> = ({ session }) => {
         const fetchUserProfile = async () => {
             if (!session.user) return;
 
-            const { data, error } = await supabase
+            // 1. Fetch team member data (which includes shop_id)
+            const { data: memberData, error: memberError } = await supabase
                 .from('team_members')
-                .select('name, image_url')
+                .select('name, image_url, shop_id')
                 .eq('auth_user_id', session.user.id)
                 .limit(1)
                 .single();
 
-            if (error) {
-                console.error("Error fetching user profile from DB (will fallback):", error.message);
+            let shopName = "Barbearia";
+            let name = session.user.email?.split('@')[0] || "Usuário";
+            let imageUrl = "";
+            let shopId = memberData?.shop_id;
+
+            if (memberError) {
+                console.error("Error fetching user profile from DB (will fallback):", memberError.message);
             }
 
-            if (data) {
-                const imageUrlWithCacheBust = data.image_url ? `${data.image_url.split('?')[0]}?t=${new Date().getTime()}` : '';
-                setUser({
-                    name: data.name,
-                    imageUrl: imageUrlWithCacheBust,
-                });
+            if (memberData) {
+                name = memberData.name;
+                const imageUrlWithCacheBust = memberData.image_url ? `${memberData.image_url.split('?')[0]}?t=${new Date().getTime()}` : '';
+                imageUrl = imageUrlWithCacheBust;
+                shopId = memberData.shop_id;
             } else {
-                 if (!error) {
-                    console.warn("User profile not found in 'team_members' table. Using fallback from auth metadata.");
-                }
+                 // Fallback for users who signed up via OAuth without custom metadata
                 const metadataName = session.user.user_metadata?.name;
                 const metadataImageUrl = session.user.user_metadata?.image_url;
 
-                if (metadataName) {
-                    const imageUrlWithCacheBust = metadataImageUrl ? `${metadataImageUrl.split('?')[0]}?t=${new Date().getTime()}` : '';
-                    setUser({
-                        name: metadataName,
-                        imageUrl: imageUrlWithCacheBust,
-                    });
-                } else {
-                    const fallbackName = session.user.email?.split('@')[0] || "Usuário";
-                    setUser({ name: fallbackName, imageUrl: "" });
+                if (metadataName) name = metadataName;
+                if (metadataImageUrl) imageUrl = `${metadataImageUrl.split('?')[0]}?t=${new Date().getTime()}`;
+            }
+            
+            // 2. Fetch shop name if shopId exists
+            if (shopId) {
+                const { data: shopData, error: shopError } = await supabase
+                    .from('shops')
+                    .select('name')
+                    .eq('id', shopId)
+                    .limit(1)
+                    .single();
+                
+                if (shopError) {
+                    console.error("Error fetching shop name:", shopError.message);
                 }
+                if (shopData) {
+                    shopName = shopData.name;
+                }
+            }
+
+            const finalUser: User = { name, imageUrl, shopName };
+            setUser(finalUser);
+            
+            // 3. Check if shop setup is required (e.g., OAuth user without shop_id)
+            if (!shopId && session.user.app_metadata.provider !== 'email') {
+                openModal('setupShop');
             }
         };
         fetchUserProfile();
@@ -159,6 +180,8 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return <EditWorkingHoursForm onClose={closeModal} onSuccess={handleSuccess} />;
             case 'editTeamMember':
                 return <EditTeamMemberForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
+            case 'setupShop':
+                return <SetupShopForm session={session} onClose={closeModal} onSuccess={handleSuccess} />;
             default:
                 return null;
         }

@@ -19,6 +19,7 @@ const AuthScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [name, setName] = useState('');
+    const [shopName, setShopName] = useState(''); // Novo estado para o nome da barbearia
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
@@ -28,15 +29,15 @@ const AuthScreen: React.FC = () => {
         setError(null);
 
         if (mode === 'signup') {
-            // A inserção na tabela team_members será feita por um trigger no Supabase.
-            // Apenas precisamos passar o nome do usuário nos metadados do cadastro.
+            // Passamos o nome da barbearia e o nome do usuário nos metadados
             const { error } = await supabase.auth.signUp({ 
                 email, 
                 password,
                 options: {
                     data: {
                         name: name,
-                        image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=random`
+                        shop_name: shopName, // Novo metadado
+                        image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=E5A00D&color=101012`
                     }
                 }
             });
@@ -51,7 +52,14 @@ const AuthScreen: React.FC = () => {
     };
     
     const handleGoogleLogin = async () => {
-        await supabase.auth.signInWithOAuth({ provider: 'google' });
+        // Para o Google OAuth, o usuário precisará completar o cadastro da barbearia após o primeiro login,
+        // pois o Google não fornece o nome da barbearia.
+        await supabase.auth.signInWithOAuth({ 
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin, // Redireciona para a raiz após o login
+            }
+        });
     };
 
     const formVariants = {
@@ -99,7 +107,10 @@ const AuthScreen: React.FC = () => {
                         className="space-y-4"
                     >
                         {mode === 'signup' && (
-                            <AuthInput icon="person" type="text" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} required />
+                            <>
+                                <AuthInput icon="store" type="text" placeholder="Nome da Barbearia" value={shopName} onChange={e => setShopName(e.target.value)} required />
+                                <AuthInput icon="person" type="text" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} required />
+                            </>
                         )}
                         <AuthInput icon="mail" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
                         <AuthInput icon="lock" type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required />
