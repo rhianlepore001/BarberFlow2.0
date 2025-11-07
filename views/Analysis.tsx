@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
@@ -72,6 +70,43 @@ interface AnalysisProps {
     dataVersion: number;
 }
 
+// Helper function to calculate date ranges
+const getDateRanges = (period: Period) => {
+    const now = new Date();
+    let startDate: Date, previousStartDate: Date, endDate: Date, previousEndDate: Date;
+
+    if (period === 'week') {
+        const currentDay = new Date(now);
+        const dayOfWeek = currentDay.getDay() === 0 ? 6 : currentDay.getDay() - 1; // 0=Mon, 6=Sun
+        startDate = new Date(currentDay);
+        startDate.setDate(currentDay.getDate() - dayOfWeek);
+        startDate.setHours(0, 0, 0, 0);
+
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+
+        previousStartDate = new Date(startDate);
+        previousStartDate.setDate(startDate.getDate() - 7);
+        previousEndDate = new Date(startDate);
+        previousEndDate.setDate(startDate.getDate() - 1);
+        previousEndDate.setHours(23, 59, 59, 999);
+
+    } else if (period === 'month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        previousStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        previousEndDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    } else { // year
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+        previousStartDate = new Date(now.getFullYear() - 1, 0, 1);
+        previousEndDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+    }
+    
+    return { startDate, endDate, previousStartDate, previousEndDate };
+};
+
 const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
     const [period, setPeriod] = useState<Period>('month');
     const [data, setData] = useState<PeriodData | null>(null);
@@ -82,42 +117,13 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             setLoading(true);
             setData(null);
 
-            const now = new Date();
-            let startDate: Date, previousStartDate: Date, endDate: Date, previousEndDate: Date;
-
-            if (period === 'week') {
-                const currentDay = new Date(now);
-                const dayOfWeek = currentDay.getDay() === 0 ? 6 : currentDay.getDay() - 1; // 0=Mon, 6=Sun
-                startDate = new Date(currentDay);
-                startDate.setDate(currentDay.getDate() - dayOfWeek);
-                startDate.setHours(0, 0, 0, 0);
-
-                endDate = new Date(startDate);
-                endDate.setDate(startDate.getDate() + 6);
-                endDate.setHours(23, 59, 59, 999);
-
-                previousStartDate = new Date(startDate);
-                previousStartDate.setDate(startDate.getDate() - 7);
-                previousEndDate = new Date(startDate);
-                previousEndDate.setDate(startDate.getDate() - 1);
-                previousEndDate.setHours(23, 59, 59, 999);
-
-            } else if (period === 'month') {
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-                previousStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                previousEndDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-            } else { // year
-                startDate = new Date(now.getFullYear(), 0, 1);
-                endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-                previousStartDate = new Date(now.getFullYear() - 1, 0, 1);
-                previousEndDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
-            }
+            const { startDate, endDate, previousStartDate, previousEndDate } = getDateRanges(period);
             
+            // Fetch all relevant data covering both current and previous periods
             const [transactionsRes, clientsRes, appointmentsRes] = await Promise.all([
                  supabase.from('transactions').select('amount, type, transaction_date, client_id').gte('transaction_date', previousStartDate.toISOString()).lte('transaction_date', endDate.toISOString()),
                  supabase.from('clients').select('id, name, created_at'),
-                 supabase.from('appointments').select('service, start_time').gte('start_time', startDate.toISOString()).lte('start_time', endDate.toISOString())
+                 supabase.from('appointments').select('services(name), start_time').gte('start_time', startDate.toISOString()).lte('start_time', endDate.toISOString())
             ]);
 
             const reqError = transactionsRes.error || clientsRes.error || appointmentsRes.error;
@@ -127,42 +133,65 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
                 return;
             }
             
-            // FIX: Add explicit types for data from Supabase to prevent incorrect type inference (e.g., 'unknown')
-            const allTransactions: {amount: number; type: 'income' | 'expense'; transaction_date: string; client_id: number | null}[] = transactionsRes.data || [];
-            const allClients: {id: number; name: string; created_at: string}[] = clientsRes.data || [];
-            const currentAppointments: {service: string | null; start_time: string}[] = appointmentsRes.data || [];
+            // Define types for fetched data
+            type TransactionData = {amount: number; type: 'income' | 'expense'; transaction_date: string; client_id: number | null};
+            type ClientData = {id: number; name: string; created_at: string};
+            type AppointmentData = {services: {name: string} | null; start_time: string};
 
-            const currentPeriodTransactions = allTransactions.filter(t => new Date(t.transaction_date) >= startDate && t.type === 'income');
-            const previousPeriodTransactions = allTransactions.filter(t => new Date(t.transaction_date) >= previousStartDate && new Date(t.transaction_date) <= previousEndDate && t.type === 'income');
+            const allTransactions: TransactionData[] = transactionsRes.data || [];
+            const allClients: ClientData[] = clientsRes.data || [];
+            const currentAppointments: AppointmentData[] = appointmentsRes.data || [];
 
-            const totalRevenue = currentPeriodTransactions.reduce((acc, t) => acc + t.amount, 0);
-            const previousTotalRevenue = previousPeriodTransactions.reduce((acc, t) => acc + t.amount, 0);
-            const avgTicket = totalRevenue / (currentPeriodTransactions.length || 1);
+            // --- 1. Filter Transactions for Current and Previous Periods (Income only) ---
+            const currentPeriodIncome = allTransactions.filter(t => new Date(t.transaction_date) >= startDate && t.type === 'income');
+            const previousPeriodIncome = allTransactions.filter(t => new Date(t.transaction_date) >= previousStartDate && new Date(t.transaction_date) <= previousEndDate && t.type === 'income');
+
+            // --- 2. Calculate Revenue and Avg Ticket ---
+            const totalRevenue = currentPeriodIncome.reduce((acc, t) => acc + t.amount, 0);
+            const previousTotalRevenue = previousPeriodIncome.reduce((acc, t) => acc + t.amount, 0);
+            const avgTicket = totalRevenue / (currentPeriodIncome.length || 1);
+
+            // --- 3. Calculate New Clients ---
             const newClients = allClients.filter(c => new Date(c.created_at) >= startDate).length;
 
-            const revenueTrend = Array(period === 'year' ? 12 : (period === 'month' ? 4 : 7)).fill(0);
-            currentPeriodTransactions.forEach(t => {
+            // --- 4. Calculate Revenue Trend ---
+            let trendLength: number;
+            let getTrendIndex: (date: Date) => number;
+            
+            if (period === 'week') {
+                trendLength = 7;
+                getTrendIndex = (date) => (date.getDay() + 6) % 7; // 0=Mon, 6=Sun
+            } else if (period === 'month') {
+                trendLength = 4; // 4 weeks
+                getTrendIndex = (date) => Math.floor((date.getDate() - 1) / 7);
+            } else { // year
+                trendLength = 12;
+                getTrendIndex = (date) => date.getMonth();
+            }
+
+            const revenueTrend = Array(trendLength).fill(0);
+            currentPeriodIncome.forEach(t => {
                 const date = new Date(t.transaction_date);
-                if (period === 'week') {
-                    const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1; // Monday is 0
-                    revenueTrend[dayIndex] += t.amount;
+                const index = getTrendIndex(date);
+                if (index >= 0 && index < trendLength) {
+                    revenueTrend[index] += t.amount;
                 }
-                if (period === 'month') revenueTrend[Math.floor((date.getDate() - 1) / 7)] += t.amount;
-                if (period === 'year') revenueTrend[date.getMonth()] += t.amount;
             });
             
+            // --- 5. Top Services ---
             const serviceCounts: Record<string, number> = {};
             currentAppointments.forEach(a => {
-                if (a.service) {
-                    serviceCounts[a.service] = (serviceCounts[a.service] || 0) + 1;
+                if (a.services?.name) {
+                    serviceCounts[a.services.name] = (serviceCounts[a.services.name] || 0) + 1;
                 }
             });
 
             const topServices = Object.entries(serviceCounts).sort((a,b) => b[1] - a[1]).slice(0,3).map(([name, value]) => ({name, value: `${value}x`}));
 
+            // --- 6. Top Clients (Spending) ---
             const clientMap = new Map(allClients.map(c => [c.id, c.name]));
-            const clientSpending: Record<string, {name: string, total: number}> = {};
-            currentPeriodTransactions.forEach(t => {
+            const clientSpending: Record<number, {name: string, total: number}> = {};
+            currentPeriodIncome.forEach(t => {
                  if (t.client_id) {
                      const clientName = clientMap.get(t.client_id);
                      if (clientName) {
@@ -181,7 +210,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
                 previousTotalRevenue,
                 avgTicket,
                 newClients,
-                retentionRate: 78, // Placeholder
+                retentionRate: 78, // Placeholder - requires more complex logic
                 revenueTrend,
                 topServices,
                 topClients
@@ -196,7 +225,15 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
         return <div className="text-center p-10">Analisando dados...</div>;
     }
 
-    const revenueChange = data.previousTotalRevenue > 0 ? ((data.totalRevenue - data.previousTotalRevenue) / data.previousTotalRevenue) * 100 : (data.totalRevenue > 0 ? 100 : 0);
+    // Calculate percentage change safely
+    const revenueChange = data.previousTotalRevenue > 0 
+        ? ((data.totalRevenue - data.previousTotalRevenue) / data.previousTotalRevenue) * 100 
+        : (data.totalRevenue > 0 ? 100 : 0);
+    
+    // Placeholder for Avg Ticket Change (needs previous period avg ticket calculation)
+    const avgTicketChange = 5.2; 
+    const newClientsChange = -3.1;
+    const retentionChange = 2.5;
 
     return (
         <motion.div
@@ -211,9 +248,9 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
 
             <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
                 <KPICard label="Faturamento" value={formatCurrency(data.totalRevenue)} percentageChange={revenueChange} />
-                <KPICard label="Ticket Médio" value={formatCurrency(data.avgTicket)} percentageChange={5.2} /> 
-                <KPICard label="Novos Clientes" value={`${data.newClients}`} percentageChange={-3.1} />
-                <KPICard label="Taxa de Retenção" value={`${data.retentionRate}%`} percentageChange={2.5} />
+                <KPICard label="Ticket Médio" value={formatCurrency(data.avgTicket)} percentageChange={avgTicketChange} /> 
+                <KPICard label="Novos Clientes" value={`${data.newClients}`} percentageChange={newClientsChange} />
+                <KPICard label="Taxa de Retenção" value={`${data.retentionRate}%`} percentageChange={retentionChange} />
             </motion.div>
 
             <motion.div variants={itemVariants}>
