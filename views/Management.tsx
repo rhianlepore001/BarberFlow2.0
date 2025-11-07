@@ -6,7 +6,7 @@ import FinancialSettlement from '../components/FinancialSettlement';
 
 interface ManagementProps {
     user: User;
-    openModal: (content: 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember', data?: any) => void;
+    openModal: (content: 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission', data?: any) => void;
     dataVersion: number;
     refreshData: () => void;
 }
@@ -47,14 +47,22 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             
             // RLS garante que todas as buscas abaixo retornem apenas dados do shop do usuário
             const [teamRes, servicesRes, transactionsRes, settingsRes] = await Promise.all([
-                supabase.from('team_members').select('*'),
+                supabase.from('team_members').select('*, commission_rate'), // Inclui commission_rate
                 supabase.from('services').select('*'),
                 supabase.from('transactions').select('amount, barber_id, type, transaction_date'),
                 supabase.from('shop_settings').select('*').limit(1).single() // RLS filtra pelo shop_id
             ]);
 
+            let fetchedTeam: TeamMember[] = [];
             if (teamRes.error) console.error("Error fetching team members:", teamRes.error.message);
-            else setTeam(teamRes.data.map((t: any) => ({...t, imageUrl: t.image_url})));
+            else {
+                fetchedTeam = teamRes.data.map((t: any) => ({
+                    ...t, 
+                    imageUrl: t.image_url,
+                    commissionRate: t.commission_rate || 0.5 // Garante um valor padrão
+                }));
+                setTeam(fetchedTeam);
+            }
 
             if (servicesRes.error) console.error("Error fetching services:", servicesRes.error.message);
             else setServices(servicesRes.data);
@@ -77,11 +85,16 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                         barberRevenues[t.barber_id] = (barberRevenues[t.barber_id] || 0) + t.amount;
                     });
                 
-                const barberFinancials: BarberFinancials[] = Object.keys(barberRevenues).map(barberId => ({
-                    barberId: parseInt(barberId),
-                    monthRevenue: barberRevenues[parseInt(barberId)],
-                    commissionRate: 0.5 // Assuming a static commission for now
-                }));
+                const barberFinancials: BarberFinancials[] = Object.keys(barberRevenues).map(barberIdStr => {
+                    const barberId = parseInt(barberIdStr);
+                    const member = fetchedTeam.find(t => t.id === barberId);
+                    
+                    return {
+                        barberId: barberId,
+                        monthRevenue: barberRevenues[barberId],
+                        commissionRate: member?.commissionRate || 0.5 // Usa a taxa real ou fallback
+                    };
+                });
                 setFinancials(barberFinancials);
             }
 
@@ -185,7 +198,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                             <img src={member.imageUrl} alt={member.name} className="w-10 h-10 rounded-full object-cover" />
                             <div className="flex-grow">
                                 <p className="font-semibold text-white">{member.name}</p>
-                                <p className="text-sm text-text-secondary-dark">{member.role}</p>
+                                <p className="text-sm text-text-secondary-dark">{member.role} ({Math.round(member.commissionRate * 100)}%)</p>
                             </div>
                             <div className="relative">
                                 <button
@@ -201,8 +214,18 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: -10, scale: 0.95 }}
                                             transition={{ duration: 0.15, ease: 'easeOut' }}
-                                            className="absolute top-full right-0 mt-1 w-32 bg-background-dark rounded-lg shadow-lg border border-white/10 z-20"
+                                            className="absolute top-full right-0 mt-1 w-40 bg-background-dark rounded-lg shadow-lg border border-white/10 z-20"
                                         >
+                                            <button
+                                                onClick={() => {
+                                                    openModal('editCommission', member);
+                                                    setActiveMenu(null);
+                                                }}
+                                                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
+                                            >
+                                                <span className="material-symbols-outlined text-base">percent</span>
+                                                Editar Comissão
+                                            </button>
                                             <button
                                                 onClick={() => {
                                                     openModal('editTeamMember', member);
@@ -211,7 +234,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                                 className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
                                             >
                                                 <span className="material-symbols-outlined text-base">edit</span>
-                                                Editar
+                                                Editar Perfil
                                             </button>
                                             <button
                                                 onClick={() => {

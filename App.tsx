@@ -24,8 +24,9 @@ import NewServiceForm from './components/forms/NewServiceForm';
 import EditProfileForm from './components/forms/EditProfileForm';
 import EditWorkingHoursForm from './components/forms/EditWorkingHoursForm';
 import EditTeamMemberForm from './components/forms/EditTeamMemberForm';
+import EditCommissionForm from './components/forms/EditCommissionForm';
 
-type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember';
+type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission';
 
 interface AppProps {
     session: Session;
@@ -130,6 +131,8 @@ const App: React.FC<AppProps> = ({ session }) => {
         
         if (content === 'editTeamMember' && data) {
             setEditingMember(data as TeamMember);
+        } else if (content === 'editCommission' && data) {
+            setEditingMember(data as TeamMember);
         } else if (content === 'editProfile' && user) {
             // No need to pass data, component will get it from props
         }
@@ -199,6 +202,8 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return <EditWorkingHoursForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'editTeamMember':
                 return <EditTeamMemberForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
+            case 'editCommission':
+                return <EditCommissionForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
             default:
                 return null;
         }

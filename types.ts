@@ -36,6 +36,7 @@ export interface TeamMember {
     name: string;
     role: string;
     image_url: string; // Corresponde ao BD
+    commissionRate: number; // Taxa de comissão (0.0 a 1.0)
 }
 
 // O tipo Appointment agora reflete os dados obtidos com JOINs do Supabase.
