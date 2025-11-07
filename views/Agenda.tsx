@@ -14,7 +14,8 @@ const itemVariants = {
 };
 
 const DaySelector: React.FC<{ selectedDay: number; setSelectedDay: (day: number) => void }> = ({ selectedDay, setSelectedDay }) => {
-    const days = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
+    // 0=Seg, 5=Sab
+    const days = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB"]; 
     return (
         <div className="flex justify-between items-center bg-card-dark p-1 rounded-full">
             {days.map((day, index) => (
@@ -38,9 +39,10 @@ const DaySelector: React.FC<{ selectedDay: number; setSelectedDay: (day: number)
 
 const START_HOUR = 8;
 const END_HOUR = 20;
-const HOUR_HEIGHT = 80; // pixels per hour
+const MINUTE_HEIGHT = 1.5; // pixels per minute (90px per hour)
+const HOUR_HEIGHT = MINUTE_HEIGHT * 60; // 90 pixels per hour
 
-const CurrentTimeIndicator: React.FC = () => {
+const CurrentTimeIndicator: React.FC<{ scrollContainerRef: React.RefObject<HTMLDivElement> }> = ({ scrollContainerRef }) => {
     const [top, setTop] = useState(0);
 
     useEffect(() => {
@@ -48,7 +50,7 @@ const CurrentTimeIndicator: React.FC = () => {
             const now = new Date();
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
             const minutesFromStart = currentMinutes - START_HOUR * 60;
-            const newTop = (minutesFromStart / 60) * HOUR_HEIGHT;
+            const newTop = minutesFromStart * MINUTE_HEIGHT;
             setTop(newTop);
         };
 
@@ -57,25 +59,56 @@ const CurrentTimeIndicator: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // Check if the indicator is within the visible time range
     if (top < 0 || top > (END_HOUR - START_HOUR) * HOUR_HEIGHT) return null;
 
     return (
-        <div className="absolute w-full" style={{ top: `${top}px` }}>
-            <div className="relative h-px bg-primary">
-                <div className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full bg-primary" />
+        <div className="absolute w-full z-20 pointer-events-none" style={{ top: `${top}px` }}>
+            <div className="relative h-px bg-red-500">
+                <div className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full bg-red-500" />
             </div>
         </div>
     );
 };
 
-interface ProcessedAppointment extends Appointment {
-    top: number;
-    height: number;
-    width: number;
-    left: number;
-    startMinutes: number;
-    endMinutes: number;
+interface AppointmentCardProps {
+    appointment: Appointment;
+    onClick: (appointment: Appointment) => void;
 }
+
+const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick }) => {
+    const clientName = appointment.clients?.name || 'Cliente';
+    const serviceName = appointment.services?.name || 'Serviço';
+    const displayTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
+    const startMinutes = new Date(appointment.startTime).getHours() * 60 + new Date(appointment.startTime).getMinutes();
+    const top = (startMinutes - START_HOUR * 60) * MINUTE_HEIGHT;
+    const height = appointment.duration_minutes * MINUTE_HEIGHT - 2;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            layout
+            onClick={() => onClick(appointment)}
+            className="absolute w-[98%] p-2 rounded-lg flex flex-col justify-start overflow-hidden bg-primary/10 backdrop-blur-sm border border-primary/30 cursor-pointer hover:bg-primary/20 transition-colors z-10"
+            style={{
+                top: `${top}px`,
+                height: `${height}px`,
+                left: '1%',
+            }}
+        >
+            <p className="font-bold text-white text-sm leading-tight truncate">{clientName}</p>
+            {height > 25 && (
+                <p className="text-xs text-text-secondary-dark truncate">{serviceName}</p>
+            )}
+            {height > 40 && (
+                <p className="text-xs font-semibold text-primary mt-1">{displayTime}</p>
+            )}
+        </motion.div>
+    );
+};
 
 interface AgendaProps {
     onAppointmentSelect: (appointment: Appointment) => void;
@@ -84,95 +117,103 @@ interface AgendaProps {
 
 const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => {
     const today = new Date();
-    const currentDayOfWeek = (today.getDay() + 6) % 7;
+    // 0=Seg, 5=Sab. Se for Dom(0) ou Sab(6), ajusta para Seg(0)
+    const currentDayOfWeek = (today.getDay() + 6) % 7; 
     const [selectedDay, setSelectedDay] = useState(currentDayOfWeek > 5 ? 0 : currentDayOfWeek);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const [appointments, setAppointments] = useState<(Appointment & { dayOfWeek: number })[]>([]);
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [loading, setLoading] = useState(true);
     
+    const dayMap = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const [appointmentsRes, teamMembersRes] = await Promise.all([
-                supabase.from('appointments').select('*, clients(id, name, image_url), services(id, name), team_members(id, name)').order('start_time'),
-                supabase.from('team_members').select('*')
-            ]);
-
-            if (appointmentsRes.error) console.error(appointmentsRes.error);
-            else {
-                const fetchedAppointments = appointmentsRes.data as unknown as Appointment[];
-                setAppointments(fetchedAppointments.map((a: any) => {
-                    const date = new Date(a.start_time);
-                    return {
-                        ...a,
-                        barberId: a.barber_id,
-                        clientId: a.client_id,
-                        serviceId: a.service_id,
-                        startTime: a.start_time,
-                        dayOfWeek: (date.getDay() + 6) % 7,
-                    }
-                }));
+            
+            // 1. Fetch Team Members
+            const { data: teamMembersData, error: teamMembersError } = await supabase.from('team_members').select('id, name');
+            if (teamMembersError) {
+                console.error(teamMembersError);
+                setLoading(false);
+                return;
             }
+            setTeamMembers(teamMembersData);
 
-            if (teamMembersRes.error) console.error(teamMembersRes.error);
-            else setTeamMembers(teamMembersRes.data);
+            // 2. Fetch Appointments (for the next 7 days to cover the selector)
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            const endOfNextWeek = new Date(startOfToday);
+            endOfNextWeek.setDate(startOfToday.getDate() + 7);
+
+            const { data: appointmentsData, error: appointmentsError } = await supabase
+                .from('appointments')
+                .select('*, clients(id, name, image_url), services(id, name), team_members(id, name)')
+                .gte('start_time', startOfToday.toISOString())
+                .lte('start_time', endOfNextWeek.toISOString())
+                .order('start_time');
+
+            if (appointmentsError) console.error(appointmentsError);
+            else {
+                const fetchedAppointments = appointmentsData as unknown as Appointment[];
+                setAppointments(fetchedAppointments.map((a: any) => ({
+                    ...a,
+                    barberId: a.barber_id,
+                    clientId: a.client_id,
+                    serviceId: a.service_id,
+                    startTime: a.start_time,
+                })));
+            }
 
             setLoading(false);
         };
         fetchData();
     }, [dataVersion]);
     
+    // Scroll to current time on load/day change
     useEffect(() => {
         if (scrollContainerRef.current && !loading) {
             const now = new Date();
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
             const minutesFromStart = currentMinutes - START_HOUR * 60;
-            const scrollTop = (minutesFromStart / 60) * HOUR_HEIGHT - scrollContainerRef.current.offsetHeight / 3;
+            const scrollTop = (minutesFromStart * MINUTE_HEIGHT) - scrollContainerRef.current.offsetHeight / 3;
             scrollContainerRef.current.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' });
         }
     }, [selectedDay, loading]);
 
     const timeMarkers = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
 
-    const processedAppointments = useMemo((): ProcessedAppointment[] => {
-        const todaysAppointments = appointments
-            .filter(a => a.dayOfWeek === selectedDay)
-            .map(a => {
-                const date = new Date(a.startTime);
-                const startMinutes = date.getHours() * 60 + date.getMinutes();
-                return {
-                    ...a,
-                    startMinutes: startMinutes,
-                    endMinutes: startMinutes + a.duration_minutes,
-                }
-            })
-            .sort((a, b) => a.startMinutes - b.startMinutes);
+    const appointmentsByBarber = useMemo(() => {
+        const selectedDate = new Date();
+        const todayDayIndex = (selectedDate.getDay() + 6) % 7; // 0=Seg, 6=Dom
         
-        const layout: ProcessedAppointment[] = [];
-        
-        for (const appt of todaysAppointments) {
-            const top = ((appt.startMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-            const height = (appt.duration_minutes / 60) * HOUR_HEIGHT - 2;
+        // Adjust selectedDate to the start of the selected day
+        const diff = selectedDay - todayDayIndex;
+        selectedDate.setDate(selectedDate.getDate() + diff);
+        const selectedDateStr = selectedDate.toISOString().split('T')[0];
 
-            const overlapping = layout.filter(p => (appt.startMinutes < p.endMinutes) && (appt.endMinutes > p.startMinutes));
-            const columns: boolean[] = [];
-            overlapping.forEach(o => { if (columns[o.left]) columns[o.left] = true; });
-            let col = 0;
-            while (columns[col]) col++;
-            layout.push({ ...appt, top, height, width: 1, left: col });
-        }
-        
-        const finalLayout = layout.map((appt, _, all) => {
-            const overlappingGroup = all.filter(other => (appt.startMinutes < other.endMinutes) && (appt.endMinutes > other.startMinutes));
-            const maxColumns = Math.max(...overlappingGroup.map(o => o.left)) + 1;
-            const newWidth = 100 / maxColumns;
-            const newLeft = appt.left * newWidth;
-            return {...appt, width: newWidth, left: newLeft};
+        const filteredAppointments = appointments.filter(a => {
+            const apptDateStr = a.startTime.split('T')[0];
+            return apptDateStr === selectedDateStr;
         });
 
-        return finalLayout;
-    }, [selectedDay, appointments]);
+        const grouped = teamMembers.reduce((acc, member) => {
+            acc[member.id] = filteredAppointments.filter(a => a.barberId === member.id);
+            return acc;
+        }, {} as Record<number, Appointment[]>);
+
+        return grouped;
+    }, [selectedDay, appointments, teamMembers]);
+
+    const isToday = selectedDay === currentDayOfWeek;
+
+    if (loading) {
+        return <div className="text-center p-10">Carregando agenda...</div>;
+    }
+    
+    if (teamMembers.length === 0) {
+        return <div className="text-center p-10 text-text-secondary-dark">Adicione membros à equipe na tela de Gestão para visualizar a agenda.</div>;
+    }
 
     return (
         <motion.div
@@ -185,68 +226,53 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
                 <DaySelector selectedDay={selectedDay} setSelectedDay={setSelectedDay} />
             </motion.div>
             
+            {/* Header da Agenda (Barbeiros) */}
+            <motion.div variants={itemVariants} className="sticky top-20 z-10 bg-background-dark/90 backdrop-blur-sm border-b border-card-dark pt-2 pb-2">
+                <div className="flex ml-14">
+                    {teamMembers.map(member => (
+                        <div key={member.id} className="flex-1 text-center px-1">
+                            <p className="text-xs font-bold text-white truncate">{member.name.split(' ')[0]}</p>
+                        </div>
+                    ))}
+                </div>
+            </motion.div>
+
             <div 
                 ref={scrollContainerRef}
-                className="flex-grow overflow-y-auto pr-4 [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="flex-grow overflow-y-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-                 {loading ? <div className="text-center p-10">Carregando agenda...</div> : (
-                <div className="relative" style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}>
+                <div className="relative ml-14" style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}>
+                    
+                    {/* Time Grid Lines */}
                     {timeMarkers.map(hour => (
                         <div key={hour} className="relative" style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px`, height: `${HOUR_HEIGHT}px` }}>
-                             <div className="absolute -left-1 w-14 text-right pr-2">
+                             <div className="absolute -left-14 w-14 text-right pr-2 -translate-y-1/2">
                                 <span className="text-xs text-text-secondary-dark">{`${hour.toString().padStart(2, '0')}:00`}</span>
                              </div>
-                             <div className="h-px bg-white/10 ml-14"></div>
+                             <div className="h-px bg-white/10"></div>
                         </div>
                     ))}
                     
-                    {selectedDay === currentDayOfWeek && <CurrentTimeIndicator />}
+                    {/* Current Time Indicator */}
+                    {isToday && <CurrentTimeIndicator scrollContainerRef={scrollContainerRef} />}
 
-                    <div className="absolute top-0 left-14 right-0 h-full">
-                        <AnimatePresence>
-                        {processedAppointments.map((appointment) => {
-                             const barber = teamMembers.find(b => b.id === appointment.barberId);
-                             const displayTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                             return (
-                                 <motion.div
-                                    key={appointment.id}
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.8 }}
-                                    layout
-                                    onClick={() => onAppointmentSelect(appointment)}
-                                    className="absolute p-1 rounded-lg flex flex-col justify-center overflow-hidden bg-card-dark/80 backdrop-blur-md border border-white/10 cursor-pointer hover:border-primary transition-colors"
-                                    style={{
-                                        top: `${appointment.top}px`,
-                                        height: `${appointment.height}px`,
-                                        width: `calc(${appointment.width}% - 4px)`,
-                                        left: `calc(${appointment.left}% + 2px)`,
-                                    }}
-                                >
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                        {appointment.height >= 55 && appointment.clients?.image_url && (
-                                            <img src={appointment.clients.image_url} alt={appointment.clients.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0"/>
-                                        )}
-                                        <p className="font-bold text-white text-xs leading-tight truncate">{appointment.clients?.name || 'Cliente'}</p>
-                                    </div>
-                                    
-                                    {appointment.height > 25 && (
-                                        <div className="mt-0.5 text-[11px] leading-tight overflow-hidden">
-                                             <p className="text-text-secondary-dark truncate">{appointment.services?.name || 'Serviço'}</p>
-                                             {appointment.height > 35 && (
-                                                <p className="font-semibold text-primary truncate">
-                                                    {displayTime} • {barber?.name.split(' ')[0]}
-                                                </p>
-                                             )}
-                                        </div>
-                                    )}
-                                </motion.div>
-                            )
-                         })}
-                         </AnimatePresence>
+                    {/* Appointment Columns */}
+                    <div className="absolute inset-0 flex">
+                        {teamMembers.map(member => (
+                            <div key={member.id} className="flex-1 relative border-l border-white/5">
+                                <AnimatePresence>
+                                    {appointmentsByBarber[member.id]?.map((appointment) => (
+                                        <AppointmentCard 
+                                            key={appointment.id} 
+                                            appointment={appointment} 
+                                            onClick={onAppointmentSelect}
+                                        />
+                                    ))}
+                                </AnimatePresence>
+                            </div>
+                        ))}
                     </div>
                 </div>
-                 )}
             </div>
         </motion.div>
     );
