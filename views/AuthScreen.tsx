@@ -1,18 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
+import AuthInput from '../components/AuthInput';
 
 type AuthMode = 'login' | 'signup';
-
-const AuthInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { icon: string }> = ({ icon, ...props }) => (
-    <div className="relative">
-        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">{icon}</span>
-        <input
-            {...props}
-            className="w-full bg-background-dark border-2 border-card-dark rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 focus:ring-primary focus:border-primary transition-all"
-        />
-    </div>
-);
 
 const AuthScreen: React.FC = () => {
     const [mode, setMode] = useState<AuthMode>('login');
@@ -58,8 +49,6 @@ const AuthScreen: React.FC = () => {
         setLoading(false);
     };
     
-    // Removemos a função handleGoogleLogin
-
     const formVariants = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0 },
@@ -124,9 +113,6 @@ const AuthScreen: React.FC = () => {
                         </button>
                     </motion.form>
                 </AnimatePresence>
-
-                {/* Removemos a seção "OU Continuar com Google" */}
-
             </motion.div>
         </div>
     );
