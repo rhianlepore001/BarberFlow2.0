@@ -25,8 +25,9 @@ import EditProfileForm from './components/forms/EditProfileForm';
 import EditWorkingHoursForm from './components/forms/EditWorkingHoursForm';
 import EditTeamMemberForm from './components/forms/EditTeamMemberForm';
 import EditCommissionForm from './components/forms/EditCommissionForm';
+import AppointmentDetailsModal from './components/AppointmentDetailsModal'; // Novo Import
 
-type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission';
+type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails'; // Novo Tipo
 
 interface AppProps {
     session: Session;
@@ -156,7 +157,8 @@ const App: React.FC<AppProps> = ({ session }) => {
     
     const handleAppointmentSelect = (appointment: Appointment) => {
         setEditingAppointment(appointment);
-        setModalContent('editAppointment');
+        // Mudamos para o novo modal de detalhes/baixa
+        setModalContent('appointmentDetails'); 
         setIsModalOpen(true);
     };
 
@@ -187,7 +189,11 @@ const App: React.FC<AppProps> = ({ session }) => {
             case 'newAppointment':
                 return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'editAppointment':
+                // Mantemos o editAppointment caso o usuário queira apenas mudar o horário/barbeiro
                 return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} shopId={user.shopId} />;
+            case 'appointmentDetails': // Novo caso
+                if (!editingAppointment) return null;
+                return <AppointmentDetailsModal appointment={editingAppointment} onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
              case 'newClient':
                 return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'newTransaction':
