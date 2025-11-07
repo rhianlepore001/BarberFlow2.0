@@ -24,9 +24,8 @@ import NewServiceForm from './components/forms/NewServiceForm';
 import EditProfileForm from './components/forms/EditProfileForm';
 import EditWorkingHoursForm from './components/forms/EditWorkingHoursForm';
 import EditTeamMemberForm from './components/forms/EditTeamMemberForm';
-import SetupShopForm from './components/forms/SetupShopForm'; // Novo componente para usuários OAuth
 
-type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'setupShop';
+type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember';
 
 interface AppProps {
     session: Session;
@@ -98,10 +97,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             const finalUser: User = { name, imageUrl, shopName };
             setUser(finalUser);
             
-            // 3. Check if shop setup is required (e.g., OAuth user without shop_id)
-            if (!shopId && session.user.app_metadata.provider !== 'email') {
-                openModal('setupShop');
-            }
+            // Removida a checagem de setupShop, pois o OAuth foi removido.
         };
         fetchUserProfile();
     }, [session, dataVersion]);
@@ -180,8 +176,6 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return <EditWorkingHoursForm onClose={closeModal} onSuccess={handleSuccess} />;
             case 'editTeamMember':
                 return <EditTeamMemberForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
-            case 'setupShop':
-                return <SetupShopForm session={session} onClose={closeModal} onSuccess={handleSuccess} />;
             default:
                 return null;
         }
