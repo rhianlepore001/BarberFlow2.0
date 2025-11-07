@@ -43,6 +43,10 @@ const App: React.FC<AppProps> = ({ session }) => {
 
     const refreshData = () => setDataVersion(v => v + 1);
 
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+    };
+
     useEffect(() => {
         const MAX_ATTEMPTS = 5;
         
@@ -105,7 +109,8 @@ const App: React.FC<AppProps> = ({ session }) => {
                     setTimeout(fetchUserProfile, 1000);
                 } else {
                     console.error("FATAL: User does not have an associated shop ID after multiple attempts. Forcing logout.");
-                    await handleLogout();
+                    // Se falhar após MAX_ATTEMPTS, forçamos o logout para voltar à tela de AuthScreen
+                    await handleLogout(); 
                     setUser(null);
                 }
                 return;
@@ -116,17 +121,13 @@ const App: React.FC<AppProps> = ({ session }) => {
             setProfileLoadAttempts(0); // Reset attempts on success
         };
         
-        // Only run if attempts are 0 (initial load or successful retry)
-        if (profileLoadAttempts === 0) {
-            fetchUserProfile();
-        }
+        // Inicia a busca ou repetição
+        fetchUserProfile();
     }, [session, dataVersion, profileLoadAttempts]);
     
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-    };
-
     const openModal = (content: ModalContentType, data: any = null) => {
+        if (!user) return; // Previne abertura de modal se o usuário não estiver carregado
+        
         if (content === 'editTeamMember' && data) {
             setEditingMember(data as TeamMember);
         } else if (content === 'editProfile' && user) {
