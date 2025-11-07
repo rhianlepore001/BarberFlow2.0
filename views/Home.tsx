@@ -124,8 +124,8 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion }) => {
             className="pb-6"
         >
             <motion.div variants={itemVariants} className="px-4 pb-4 pt-4">
-                <h2 className="text-3xl font-extrabold tracking-tight text-white">Olá, {user.name}!</h2>
-                <p className="text-base text-text-secondary-dark">Aqui está o resumo do seu dia.</p>
+                <h2 className="text-3xl font-extrabold tracking-tight text-white">{user.shopName}</h2>
+                <p className="text-base text-text-secondary-dark">Bem-vindo(a) ao seu painel de gestão. Foco total nos resultados de hoje!</p>
             </motion.div>
 
             <motion.div variants={itemVariants} className="px-4 pb-3">
