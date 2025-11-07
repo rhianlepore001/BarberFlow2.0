@@ -23,6 +23,7 @@ const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSucces
             role: formData.get('role') as string,
             image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=random`,
             shop_id: shopId, // Adicionado shop_id
+            // commission_rate será 0.5 por padrão do BD
         };
 
         const { error: dbError } = await supabase.from('team_members').insert([memberData]);
