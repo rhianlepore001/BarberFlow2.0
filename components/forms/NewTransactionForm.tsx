@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
+import type { TeamMember } from '../../types';
 
 interface NewTransactionFormProps {
     onClose: () => void;
@@ -11,18 +12,45 @@ interface NewTransactionFormProps {
 const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSuccess, shopId }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [transactionType, setTransactionType] = useState<'income' | 'expense'>('income');
+    const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+    const [loadingMembers, setLoadingMembers] = useState(true);
+
+    useEffect(() => {
+        const fetchTeamMembers = async () => {
+            const { data, error } = await supabase.from('team_members').select('id, name');
+            if (error) {
+                console.error("Error fetching team members:", error);
+            } else {
+                setTeamMembers(data as TeamMember[]);
+            }
+            setLoadingMembers(false);
+        };
+        fetchTeamMembers();
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSaving(true);
         setError(null);
         const formData = new FormData(e.currentTarget);
+        
+        const type = formData.get('type') as 'income' | 'expense';
+        const barberId = type === 'income' ? (formData.get('barber') as string) : null;
+        
+        if (type === 'income' && !barberId) {
+            setError("Selecione um barbeiro para registrar a entrada.");
+            setIsSaving(false);
+            return;
+        }
+
         const transactionData = {
             description: formData.get('description') as string,
             amount: parseFloat(formData.get('amount') as string),
-            type: formData.get('type') as 'income' | 'expense',
+            type: type,
             transaction_date: new Date().toISOString(),
-            shop_id: shopId, // Adicionado shop_id
+            shop_id: shopId,
+            barber_id: barberId ? parseInt(barberId) : null, // Adiciona o ID do barbeiro
         };
 
         const { error: dbError } = await supabase.from('transactions').insert([transactionData]);
@@ -56,12 +84,39 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
                     </div>
                     <div className="w-1/3">
                         <label htmlFor="type" className="block text-sm font-medium text-text-secondary-dark mb-1">Tipo</label>
-                        <select id="type" name="type" className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary h-[44px]">
+                        <select 
+                            id="type" 
+                            name="type" 
+                            value={transactionType}
+                            onChange={(e) => setTransactionType(e.target.value as 'income' | 'expense')}
+                            className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary h-[44px]"
+                        >
                             <option value="income">Entrada</option>
                             <option value="expense">Saída</option>
                         </select>
                     </div>
                 </div>
+                
+                {transactionType === 'income' && (
+                    <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <label htmlFor="barber" className="block text-sm font-medium text-text-secondary-dark mb-1">Barbeiro Responsável</label>
+                        <select 
+                            id="barber" 
+                            name="barber" 
+                            required={transactionType === 'income'}
+                            disabled={loadingMembers}
+                            className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary disabled:opacity-50"
+                        >
+                            <option value="" disabled>Selecione o profissional</option>
+                            {teamMembers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                    </motion.div>
+                )}
 
                 {error && <p className="text-red-400 text-xs text-center pt-1">{error}</p>}
 
