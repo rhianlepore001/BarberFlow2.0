@@ -16,7 +16,8 @@ export interface Stat {
 export interface Client {
   id: number;
   name: string;
-  lastVisit: string;
+  lastVisit: string; // Display value (e.g., "Há 3 dias")
+  lastVisitRaw: string | null; // Raw DB value (ISO string)
   image_url: string; // Corresponde ao BD
   totalSpent?: number;
   phone?: string;

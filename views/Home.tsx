@@ -26,6 +26,16 @@ const itemVariants = {
     visible: { opacity: 1, y: 0 },
 };
 
+// Helper function to get the start of the current calendar week (Monday)
+const getStartOfWeek = (date: Date): Date => {
+    const d = new Date(date);
+    const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+};
+
 const Home: React.FC<HomeProps> = ({ user, dataVersion }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -44,6 +54,9 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion }) => {
             const today = new Date();
             const todayStrStart = today.toISOString().split('T')[0] + 'T00:00:00.000Z';
             const todayStrEnd = today.toISOString().split('T')[0] + 'T23:59:59.999Z';
+            
+            // Calculate start of the current week for chart filtering
+            const startOfWeek = getStartOfWeek(today);
 
             const [appointmentsRes, teamMembersRes, transactionsRes] = await Promise.all([
                 supabase
@@ -54,7 +67,8 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion }) => {
                     .order('start_time')
                     .limit(5),
                 supabase.from('team_members').select('*'),
-                supabase.from('transactions').select('amount, transaction_date, type')
+                // Fetch transactions only from the start of the current week
+                supabase.from('transactions').select('amount, transaction_date, type').gte('transaction_date', startOfWeek.toISOString())
             ]);
             
             // Team Members
@@ -85,13 +99,14 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion }) => {
             if (transactionsRes.error) {
                 console.error("Error fetching transactions:", transactionsRes.error);
             } else {
+                // Initialize weekly flow for 7 days (Mon-Sun)
                 const weeklyFlow: CashFlowDay[] = Array(7).fill(null).map((_, i) => ({ day: ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'][i], revenue: 0, isCurrent: false }));
                 let dailyRevenue = 0;
 
                 transactionsRes.data.forEach((t: any) => {
                     const tDate = new Date(t.transaction_date);
                     if (t.type === 'income') {
-                         // Weekly flow
+                         // Weekly flow: (tDate.getDay() + 6) % 7 maps Sun(0) to 6, Mon(1) to 0, etc.
                         const dayIndex = (tDate.getDay() + 6) % 7;
                         weeklyFlow[dayIndex].revenue += t.amount;
                         // Daily revenue

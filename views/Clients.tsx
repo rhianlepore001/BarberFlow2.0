@@ -76,7 +76,16 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
 
     const getClientStatus = (client: Client): 'vip' | 'at_risk' | null => {
         if ((client.totalSpent ?? 0) >= 1000) return 'vip';
-        if (client.lastVisit.includes('mês') || client.lastVisit.includes('meses')) return 'at_risk';
+        
+        if (client.lastVisitRaw) {
+            const lastVisitDate = new Date(client.lastVisitRaw);
+            const now = new Date();
+            const diffTime = now.getTime() - lastVisitDate.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            // Client is 'at_risk' if last visit was more than 30 days ago
+            if (diffDays > 30) return 'at_risk';
+        }
         return null;
     }
 
@@ -91,7 +100,8 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
                     id: c.id,
                     name: c.name,
                     imageUrl: c.image_url,
-                    lastVisit: getRelativeDate(c.last_visit),
+                    lastVisitRaw: c.last_visit, // Store raw date
+                    lastVisit: getRelativeDate(c.last_visit), // Calculate display date
                     totalSpent: c.total_spent,
                 })));
             }
@@ -102,13 +112,21 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
 
     const filteredClients = useMemo(() => {
         let intermediateClients = clients;
+        const now = new Date();
 
         switch (activeFilter) {
             case 'vips':
                 intermediateClients = clients.filter(c => getClientStatus(c) === 'vip');
                 break;
             case 'recent':
-                intermediateClients = clients.filter(c => c.lastVisit.includes('Hoje') || c.lastVisit.includes('dia'));
+                intermediateClients = clients.filter(c => {
+                    if (!c.lastVisitRaw) return false;
+                    const lastVisitDate = new Date(c.lastVisitRaw);
+                    const diffTime = now.getTime() - lastVisitDate.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    // Recent: visited in the last 7 days
+                    return diffDays <= 7;
+                });
                 break;
             case 'at_risk':
                 intermediateClients = clients.filter(c => getClientStatus(c) === 'at_risk');
@@ -133,7 +151,7 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
                         placeholder="Buscar cliente..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-card-dark border-none rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 focus:ring-primary"
+                        className="w-full bg-card-dark border-none rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 focus:ring-primary focus:border-primary"
                     />
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">
                         search

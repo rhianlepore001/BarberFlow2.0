@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
@@ -26,6 +25,16 @@ const itemVariants = {
     visible: { opacity: 1, y: 0 },
 };
 
+// Helper function to get the start of the current calendar week (Monday)
+const getStartOfWeek = (date: Date): Date => {
+    const d = new Date(date);
+    const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     const [stats, setStats] = useState<Stat[]>([]);
     const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -40,10 +49,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             const todayStrStart = today.toISOString().split('T')[0] + 'T00:00:00.000Z';
             const todayStrEnd = today.toISOString().split('T')[0] + 'T23:59:59.999Z';
             
+            // Calculate start of the current week for chart filtering
+            const startOfWeek = getStartOfWeek(today);
+
             const [appointmentsRes, teamMembersRes, transactionsRes, clientsRes] = await Promise.all([
                 supabase.from('appointments').select('*').gte('start_time', todayStrStart).lte('start_time', todayStrEnd).order('start_time').limit(5),
                 supabase.from('team_members').select('*'),
-                supabase.from('transactions').select('amount, transaction_date, type'),
+                // Fetch transactions only from the start of the current week
+                supabase.from('transactions').select('amount, transaction_date, type').gte('transaction_date', startOfWeek.toISOString()),
                 supabase.from('clients').select('created_at').gte('created_at', todayStrStart)
             ]);
             
@@ -80,8 +93,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                     const tDate = new Date(t.transaction_date);
                     if (t.type === 'income') {
                         const dayIndex = (tDate.getDay() + 6) % 7;
-                        // This logic is imperfect as it adds revenue from past weeks to the current week's chart.
-                        // However, it matches the implementation in Home.tsx for consistency.
+                        // Now only processes transactions from the current week
                         weeklyFlow[dayIndex].revenue += t.amount;
                         if (tDate.toDateString() === today.toDateString()) {
                             dailyRevenue += t.amount;

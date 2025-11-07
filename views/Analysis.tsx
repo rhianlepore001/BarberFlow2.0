@@ -107,9 +107,15 @@ const getDateRanges = (period: Period) => {
     return { startDate, endDate, previousStartDate, previousEndDate };
 };
 
+// Interface para armazenar todos os dados calculados, incluindo os do período anterior
+interface FullAnalysisData extends PeriodData {
+    previousAvgTicket: number;
+    previousNewClients: number;
+}
+
 const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
     const [period, setPeriod] = useState<Period>('month');
-    const [data, setData] = useState<PeriodData | null>(null);
+    const [data, setData] = useState<FullAnalysisData | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -121,8 +127,10 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             
             // Fetch all relevant data covering both current and previous periods
             const [transactionsRes, clientsRes, appointmentsRes] = await Promise.all([
+                 // Fetch transactions from previous start date to current end date
                  supabase.from('transactions').select('amount, type, transaction_date, client_id').gte('transaction_date', previousStartDate.toISOString()).lte('transaction_date', endDate.toISOString()),
-                 supabase.from('clients').select('id, name, created_at'),
+                 // Fetch clients created from previous start date to current end date
+                 supabase.from('clients').select('id, name, created_at').gte('created_at', previousStartDate.toISOString()).lte('created_at', endDate.toISOString()),
                  supabase.from('appointments').select('services(name), start_time').gte('start_time', startDate.toISOString()).lte('start_time', endDate.toISOString())
             ]);
 
@@ -149,10 +157,16 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             // --- 2. Calculate Revenue and Avg Ticket ---
             const totalRevenue = currentPeriodIncome.reduce((acc, t) => acc + t.amount, 0);
             const previousTotalRevenue = previousPeriodIncome.reduce((acc, t) => acc + t.amount, 0);
-            const avgTicket = totalRevenue / (currentPeriodIncome.length || 1);
+            
+            const currentTransactionCount = currentPeriodIncome.length;
+            const previousTransactionCount = previousPeriodIncome.length;
+            
+            const avgTicket = currentTransactionCount > 0 ? totalRevenue / currentTransactionCount : 0;
+            const previousAvgTicket = previousTransactionCount > 0 ? previousTotalRevenue / previousTransactionCount : 0;
 
             // --- 3. Calculate New Clients ---
-            const newClients = allClients.filter(c => new Date(c.created_at) >= startDate).length;
+            const newClients = allClients.filter(c => new Date(c.created_at) >= startDate && new Date(c.created_at) <= endDate).length;
+            const previousNewClients = allClients.filter(c => new Date(c.created_at) >= previousStartDate && new Date(c.created_at) <= previousEndDate).length;
 
             // --- 4. Calculate Revenue Trend ---
             let trendLength: number;
@@ -213,7 +227,9 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
                 retentionRate: 78, // Placeholder - requires more complex logic
                 revenueTrend,
                 topServices,
-                topClients
+                topClients,
+                previousAvgTicket,
+                previousNewClients
             });
             setLoading(false);
         };
@@ -226,14 +242,16 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
     }
 
     // Calculate percentage change safely
-    const revenueChange = data.previousTotalRevenue > 0 
-        ? ((data.totalRevenue - data.previousTotalRevenue) / data.previousTotalRevenue) * 100 
-        : (data.totalRevenue > 0 ? 100 : 0);
-    
-    // Placeholder for Avg Ticket Change (needs previous period avg ticket calculation)
-    const avgTicketChange = 5.2; 
-    const newClientsChange = -3.1;
-    const retentionChange = 2.5;
+    const calculateChange = (current: number, previous: number) => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return ((current - previous) / previous) * 100;
+    }
+
+    const revenueChange = calculateChange(data.totalRevenue, data.previousTotalRevenue);
+    const avgTicketChange = calculateChange(data.avgTicket, data.previousAvgTicket);
+    const newClientsChange = calculateChange(data.newClients, data.previousNewClients);
+    // Retention rate remains placeholder for now
+    const retentionChange = 2.5; 
 
     return (
         <motion.div
