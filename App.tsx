@@ -39,10 +39,13 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
     const [user, setUser] = useState<User | null>(null);
     const [dataVersion, setDataVersion] = useState(0);
+    const [profileLoadAttempts, setProfileLoadAttempts] = useState(0);
 
     const refreshData = () => setDataVersion(v => v + 1);
 
     useEffect(() => {
+        const MAX_ATTEMPTS = 5;
+        
         const fetchUserProfile = async () => {
             if (!session.user) return;
 
@@ -95,19 +98,29 @@ const App: React.FC<AppProps> = ({ session }) => {
             }
 
             if (!shopId) {
-                // Se o shopId ainda for nulo, algo deu errado no signup.
-                // Não podemos carregar o app sem um shopId válido.
-                console.error("FATAL: User does not have an associated shop ID.");
-                // Poderíamos forçar o logout aqui, mas por enquanto, vamos apenas retornar null.
-                setUser(null);
+                // Se o shopId ainda for nulo, tentamos novamente se não excedeu o limite
+                if (profileLoadAttempts < MAX_ATTEMPTS) {
+                    console.warn(`Shop ID not found. Retrying in 1 second... (Attempt ${profileLoadAttempts + 1}/${MAX_ATTEMPTS})`);
+                    setProfileLoadAttempts(prev => prev + 1);
+                    setTimeout(fetchUserProfile, 1000);
+                } else {
+                    console.error("FATAL: User does not have an associated shop ID after multiple attempts. Forcing logout.");
+                    await handleLogout();
+                    setUser(null);
+                }
                 return;
             }
 
             const finalUser: User = { name, imageUrl, shopName, shopId };
             setUser(finalUser);
+            setProfileLoadAttempts(0); // Reset attempts on success
         };
-        fetchUserProfile();
-    }, [session, dataVersion]);
+        
+        // Only run if attempts are 0 (initial load or successful retry)
+        if (profileLoadAttempts === 0) {
+            fetchUserProfile();
+        }
+    }, [session, dataVersion, profileLoadAttempts]);
     
     const handleLogout = async () => {
         await supabase.auth.signOut();
