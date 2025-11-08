@@ -4,13 +4,14 @@ import { supabase } from '../lib/supabaseClient';
 import AppointmentsSection from '../components/AppointmentsSection';
 import CashFlowChart from '../components/CashFlowChart';
 import FinancialSummary from '../components/FinancialSummary';
+import WeekSelector from '../components/WeekSelector'; // Novo Import
 import type { User, Appointment, CashFlowDay, TeamMember, View } from '../types';
 
 interface HomeProps {
     user: User;
     dataVersion: number;
-    setActiveView: (view: View) => void; // Nova propriedade
-    openModal: (content: 'editDailyGoal') => void; // Nova propriedade
+    setActiveView: (view: View) => void;
+    openModal: (content: 'editDailyGoal') => void;
 }
 
 const containerVariants = {
@@ -38,17 +39,26 @@ const getStartOfWeek = (date: Date): Date => {
     return d;
 };
 
+// Helper function to get the start of the week based on offset
+const getStartOfWeekByOffset = (offset: number): Date => {
+    const today = new Date();
+    const date = new Date(today);
+    date.setDate(today.getDate() + offset * 7);
+    return getStartOfWeek(date);
+};
+
 const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [cashFlowData, setCashFlowData] = useState<CashFlowDay[]>([]);
     const [financials, setFinancials] = useState({
         dailyRevenue: 0,
-        dailyGoal: 500, // Default fallback
+        dailyGoal: 500,
         completedAppointments: 0,
         totalAppointments: 0,
     });
     const [loading, setLoading] = useState(true);
+    const [weekOffset, setWeekOffset] = useState(0); // 0 = Current week, -1 = Last week
 
     useEffect(() => {
         const fetchData = async () => {
@@ -57,10 +67,17 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
             const todayStrStart = today.toISOString().split('T')[0] + 'T00:00:00.000Z';
             const todayStrEnd = today.toISOString().split('T')[0] + 'T23:59:59.999Z';
             
-            // Calculate start of the current week for chart filtering
-            const startOfWeek = getStartOfWeek(today);
+            // Calculate start of the current week for daily stats (always today's week)
+            const startOfCurrentWeek = getStartOfWeek(today);
+            
+            // Calculate start of the selected week for cash flow chart
+            const startOfSelectedWeek = getStartOfWeekByOffset(weekOffset);
+            const endOfSelectedWeek = new Date(startOfSelectedWeek);
+            endOfSelectedWeek.setDate(startOfSelectedWeek.getDate() + 6);
+            endOfSelectedWeek.setHours(23, 59, 59, 999);
 
             const [appointmentsRes, teamMembersRes, transactionsRes, settingsRes] = await Promise.all([
+                // Appointments for TODAY (always)
                 supabase
                     .from('appointments')
                     .select('*, clients(id, name, image_url), services(id, name), team_members(id, name)')
@@ -69,8 +86,8 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                     .order('start_time')
                     .limit(5),
                 supabase.from('team_members').select('*'),
-                // Fetch transactions only from the start of the current week
-                supabase.from('transactions').select('amount, transaction_date, type').gte('transaction_date', startOfWeek.toISOString()),
+                // Fetch transactions for the SELECTED week
+                supabase.from('transactions').select('amount, transaction_date, type').gte('transaction_date', startOfSelectedWeek.toISOString()).lte('transaction_date', endOfSelectedWeek.toISOString()),
                 supabase.from('shop_settings').select('daily_goal').eq('shop_id', user.shopId).limit(1).single()
             ]);
             
@@ -86,16 +103,15 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                 console.error("Error fetching shop settings:", settingsRes.error);
             }
 
-            // Appointments and Financials
+            // Appointments and Financials (Today's stats)
             if (appointmentsRes.error) console.error("Error fetching appointments:", appointmentsRes.error);
             else {
                 const now = new Date();
-                // O tipo já é compatível com a resposta do Supabase com JOINs
                 const fetchedAppointments = appointmentsRes.data as unknown as Appointment[];
 
                 setAppointments(fetchedAppointments.map(a => ({
                     ...a,
-                    barberId: (a as any).barber_id, // alias
+                    barberId: (a as any).barber_id,
                     startTime: (a as any).start_time,
                 })));
 
@@ -107,41 +123,65 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                 }));
             }
             
-            // Cash Flow and Financials
+            // Cash Flow (Selected Week)
             if (transactionsRes.error) {
                 console.error("Error fetching transactions:", transactionsRes.error);
             } else {
                 // Initialize weekly flow for 7 days (Mon-Sun)
                 const weeklyFlow: CashFlowDay[] = Array(7).fill(null).map((_, i) => ({ day: ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'][i], revenue: 0, isCurrent: false }));
-                let dailyRevenue = 0;
+                let dailyRevenue = 0; // This should only calculate today's revenue from the current week's transactions
 
                 transactionsRes.data.forEach((t: any) => {
                     const tDate = new Date(t.transaction_date);
                     if (t.type === 'income') {
                          // Weekly flow: (tDate.getDay() + 6) % 7 maps Sun(0) to 6, Mon(1) to 0, etc.
                         const dayIndex = (tDate.getDay() + 6) % 7;
-                        weeklyFlow[dayIndex].revenue += t.amount;
-                        // Daily revenue
-                        if (tDate.toDateString() === today.toDateString()) {
+                        
+                        // Only update the weekly flow if the transaction falls within the selected week
+                        if (tDate >= startOfSelectedWeek && tDate <= endOfSelectedWeek) {
+                            weeklyFlow[dayIndex].revenue += t.amount;
+                        }
+                        
+                        // Daily revenue calculation must only use transactions from TODAY
+                        if (weekOffset === 0 && tDate.toDateString() === today.toDateString()) {
                             dailyRevenue += t.amount;
                         }
                     }
                 });
-                const currentDayIndex = (today.getDay() + 6) % 7;
-                weeklyFlow[currentDayIndex].isCurrent = true;
+                
+                // Mark current day only if viewing the current week
+                if (weekOffset === 0) {
+                    const currentDayIndex = (today.getDay() + 6) % 7;
+                    weeklyFlow[currentDayIndex].isCurrent = true;
+                }
+                
                 setCashFlowData(weeklyFlow);
-                setFinancials(prev => ({...prev, dailyRevenue, dailyGoal}));
+                // Update daily revenue only if viewing the current week, otherwise keep the previous state or recalculate based on current week's transactions
+                if (weekOffset === 0) {
+                    setFinancials(prev => ({...prev, dailyRevenue, dailyGoal}));
+                } else {
+                    // If viewing past/future week, dailyRevenue is irrelevant for the summary card, but we update the goal
+                    setFinancials(prev => ({...prev, dailyGoal}));
+                }
             }
 
             setLoading(false);
         };
 
         fetchData();
-    }, [dataVersion, user.shopId]);
+    }, [dataVersion, user.shopId, weekOffset]); // Recarrega quando weekOffset muda
 
     if (loading) {
         return <div className="text-center p-10">Carregando...</div>;
     }
+    
+    const startOfSelectedWeek = getStartOfWeekByOffset(weekOffset);
+    const endOfSelectedWeek = new Date(startOfSelectedWeek);
+    endOfSelectedWeek.setDate(startOfSelectedWeek.getDate() + 6);
+    
+    const weekLabel = weekOffset === 0 
+        ? 'Esta Semana' 
+        : `${startOfSelectedWeek.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - ${endOfSelectedWeek.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
 
     return (
         <motion.div
@@ -162,7 +202,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                     completedAppointments={financials.completedAppointments}
                     totalAppointments={financials.totalAppointments}
                     nextAppointmentName={appointments[0]?.clients?.name || null}
-                    onEditGoalClick={() => openModal('editDailyGoal')} // Adiciona a ação de edição
+                    onEditGoalClick={() => openModal('editDailyGoal')}
                 />
             </motion.div>
 
@@ -171,6 +211,18 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                     appointments={appointments} 
                     teamMembers={teamMembers} 
                     onViewAllClick={() => setActiveView('agenda')}
+                />
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="px-4 pb-3 pt-6">
+                <h3 className="text-xl font-bold tracking-tight text-white">Fluxo de Caixa</h3>
+            </motion.div>
+            
+            <motion.div variants={itemVariants} className="px-4">
+                <WeekSelector 
+                    weekOffset={weekOffset} 
+                    setWeekOffset={setWeekOffset} 
+                    currentWeekLabel={weekLabel}
                 />
             </motion.div>
 

@@ -28,7 +28,7 @@ const Bar: React.FC<BarProps> = ({ day, maxRevenue }) => {
 
 interface CashFlowChartProps {
     data: CashFlowDay[];
-    onDetailsClick: () => void; // Nova propriedade
+    onDetailsClick: () => void;
 }
 
 const CashFlowChart: React.FC<CashFlowChartProps> = ({ data, onDetailsClick }) => {
@@ -36,25 +36,22 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data, onDetailsClick }) =
     const maxRevenue = Math.max(...data.map(day => day.revenue), 1);
 
     return (
-        <section>
-            <div className="flex items-center justify-between px-4 pb-3 pt-6">
-                <h3 className="text-xl font-bold tracking-tight text-white">Fluxo de Caixa da Semana</h3>
-                <button onClick={onDetailsClick} className="text-sm font-semibold text-primary hover:text-yellow-400 transition-colors">Detalhes</button>
-            </div>
-            <div className="px-4">
-                <div className="rounded-xl bg-card-dark p-4">
-                     <div>
-                        <p className="text-sm font-medium text-text-secondary-dark">Faturamento Total da Semana</p>
+        <div className="px-4">
+            <div className="rounded-xl bg-card-dark p-4">
+                 <div className="flex items-center justify-between pb-3">
+                    <div>
+                        <p className="text-sm font-medium text-text-secondary-dark">Faturamento Total</p>
                         <p className="text-2xl font-extrabold text-white">R$ {totalRevenue.toFixed(2).replace('.', ',')}</p>
                     </div>
-                    <div className="mt-4 flex h-40 w-full items-end justify-between gap-2">
-                        {data.map((day, index) => (
-                            <Bar key={index} day={day} maxRevenue={maxRevenue} />
-                        ))}
-                    </div>
+                    <button onClick={onDetailsClick} className="text-sm font-semibold text-primary hover:text-yellow-400 transition-colors">Detalhes</button>
+                </div>
+                <div className="mt-4 flex h-40 w-full items-end justify-between gap-2">
+                    {data.map((day, index) => (
+                        <Bar key={index} day={day} maxRevenue={maxRevenue} />
+                    ))}
                 </div>
             </div>
-        </section>
+        </div>
     );
 };
 
