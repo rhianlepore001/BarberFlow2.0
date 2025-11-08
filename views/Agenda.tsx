@@ -137,12 +137,17 @@ interface AppointmentCardProps {
 
 const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick }) => {
     const clientName = appointment.clients?.name || 'Cliente';
-    const serviceNames = appointment.services_json?.map(s => s.name).join(', ') || 'Serviço';
+    const services = appointment.services_json || [];
+    const serviceNames = services.map(s => s.name).join(', ');
     const displayTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
     const startMinutes = new Date(appointment.startTime).getHours() * 60 + new Date(appointment.startTime).getMinutes();
     const top = (startMinutes - START_HOUR * 60) * MINUTE_HEIGHT;
     const height = appointment.duration_minutes * MINUTE_HEIGHT - 2;
+    
+    // Determina se há espaço suficiente para exibir detalhes
+    const hasSpaceForDetails = height > 40;
+    const hasSpaceForDuration = height > 60;
 
     return (
         <motion.div
@@ -151,7 +156,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick 
             exit={{ opacity: 0, scale: 0.9 }}
             layout
             onClick={() => onClick(appointment)}
-            className="absolute w-[98%] p-2 rounded-lg flex flex-col justify-start overflow-hidden bg-primary/10 backdrop-blur-sm border border-primary/30 cursor-pointer hover:bg-primary/20 transition-colors z-10"
+            className="absolute w-[98%] p-2 rounded-lg flex flex-col justify-start overflow-hidden bg-card-dark border-l-4 border-primary shadow-md cursor-pointer hover:bg-card-dark/80 transition-colors z-10"
             style={{
                 top: `${top}px`,
                 height: `${height}px`,
@@ -159,11 +164,18 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick 
             }}
         >
             <p className="font-bold text-white text-sm leading-tight truncate">{clientName}</p>
-            {height > 25 && (
-                <p className="text-xs text-text-secondary-dark truncate">{serviceNames}</p>
+            
+            {hasSpaceForDetails && (
+                <p className="text-xs text-text-secondary-dark leading-snug line-clamp-2">
+                    {serviceNames}
+                </p>
             )}
-            {height > 40 && (
-                <p className="text-xs font-semibold text-primary mt-1">{displayTime}</p>
+            
+            {hasSpaceForDuration && (
+                <div className="mt-auto flex items-center gap-1 text-xs font-semibold text-primary">
+                    <span className="material-symbols-outlined text-sm">schedule</span>
+                    <span>{displayTime} ({appointment.duration_minutes} min)</span>
+                </div>
             )}
         </motion.div>
     );
