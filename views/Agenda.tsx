@@ -96,19 +96,17 @@ const DaySelector: React.FC<DaySelectorProps> = ({ selectedDay, setSelectedDay, 
     );
 }
 
-const START_HOUR = 8;
-const END_HOUR = 20;
 const MINUTE_HEIGHT = 1.5; // pixels per minute (90px per hour)
 const HOUR_HEIGHT = MINUTE_HEIGHT * 60; // 90 pixels per hour
 
-const CurrentTimeIndicator: React.FC<{ scrollContainerRef: React.RefObject<HTMLDivElement> }> = ({ scrollContainerRef }) => {
+const CurrentTimeIndicator: React.FC<{ scrollContainerRef: React.RefObject<HTMLDivElement>, startHour: number, endHour: number }> = ({ scrollContainerRef, startHour, endHour }) => {
     const [top, setTop] = useState(0);
 
     useEffect(() => {
         const updatePosition = () => {
             const now = new Date();
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
-            const minutesFromStart = currentMinutes - START_HOUR * 60;
+            const minutesFromStart = currentMinutes - startHour * 60;
             const newTop = minutesFromStart * MINUTE_HEIGHT;
             setTop(newTop);
         };
@@ -116,10 +114,10 @@ const CurrentTimeIndicator: React.FC<{ scrollContainerRef: React.RefObject<HTMLD
         updatePosition();
         const interval = setInterval(updatePosition, 60000);
         return () => clearInterval(interval);
-    }, []);
+    }, [startHour]);
 
     // Check if the indicator is within the visible time range
-    if (top < 0 || top > (END_HOUR - START_HOUR) * HOUR_HEIGHT) return null;
+    if (top < 0 || top > (endHour - startHour) * HOUR_HEIGHT) return null;
 
     return (
         <div className="absolute w-full z-20 pointer-events-none" style={{ top: `${top}px` }}>
@@ -133,16 +131,17 @@ const CurrentTimeIndicator: React.FC<{ scrollContainerRef: React.RefObject<HTMLD
 interface AppointmentCardProps {
     appointment: Appointment;
     onClick: (appointment: Appointment) => void;
+    startHour: number;
 }
 
-const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick }) => {
+const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick, startHour }) => {
     const clientName = appointment.clients?.name || 'Cliente';
     const services = appointment.services_json || [];
     const serviceNames = services.map(s => s.name).join(', ');
     const displayTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
     const startMinutes = new Date(appointment.startTime).getHours() * 60 + new Date(appointment.startTime).getMinutes();
-    const top = (startMinutes - START_HOUR * 60) * MINUTE_HEIGHT;
+    const top = (startMinutes - startHour * 60) * MINUTE_HEIGHT;
     const height = appointment.duration_minutes * MINUTE_HEIGHT - 2;
     
     // Determina se há espaço suficiente para exibir detalhes
@@ -165,19 +164,18 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick 
         >
             <p className="font-bold text-white text-sm leading-tight truncate">{clientName}</p>
             
-            {/* Removido o nome do barbeiro daqui */}
-            
             {hasSpaceForDetails && (
                 <p className="text-xs text-text-secondary-dark leading-snug line-clamp-2 mt-1">
                     {serviceNames}
                 </p>
             )}
             
-            {/* Mantido o destaque em laranja para o horário */}
-            <div className="mt-auto flex items-center gap-1 text-xs font-semibold text-primary">
-                <span className="material-symbols-outlined text-sm">schedule</span>
-                <span>{displayTime} ({appointment.duration_minutes} min)</span>
-            </div>
+            {hasSpaceForDuration && (
+                <div className="mt-auto flex items-center gap-1 text-xs font-semibold text-primary">
+                    <span className="material-symbols-outlined text-sm">schedule</span>
+                    <span>{displayTime} ({appointment.duration_minutes} min)</span>
+                </div>
+            )}
         </motion.div>
     );
 };
@@ -200,6 +198,10 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [loading, setLoading] = useState(true);
     
+    // Horários de funcionamento dinâmicos
+    const [startHour, setStartHour] = useState(8);
+    const [endHour, setEndHour] = useState(20);
+
     // Calculate the start of the currently selected week (Monday)
     const startOfSelectedWeek = useMemo(() => {
         const date = new Date();
@@ -211,7 +213,25 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
         const fetchData = async () => {
             setLoading(true);
             
-            // 1. Fetch Team Members
+            // 1. Fetch Shop Settings for working hours
+            const { data: settingsData, error: settingsError } = await supabase
+                .from('shop_settings')
+                .select('start_time, end_time')
+                .limit(1)
+                .single();
+            
+            if (settingsError && settingsError.code !== 'PGRST116') {
+                console.error("Error fetching shop settings:", settingsError);
+            } else if (settingsData) {
+                // Converte strings de tempo (ex: "09:00:00") para horas inteiras
+                const newStartHour = settingsData.start_time ? parseInt(settingsData.start_time.split(':')[0]) : 8;
+                const newEndHour = settingsData.end_time ? parseInt(settingsData.end_time.split(':')[0]) : 20;
+                
+                setStartHour(newStartHour);
+                setEndHour(newEndHour);
+            }
+
+            // 2. Fetch Team Members
             const { data: teamMembersData, error: teamMembersError } = await supabase.from('team_members').select('id, name');
             if (teamMembersError) {
                 console.error(teamMembersError);
@@ -220,7 +240,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
             }
             setTeamMembers(teamMembersData);
 
-            // 2. Fetch Appointments for the selected week (Mon to Sun)
+            // 3. Fetch Appointments for the selected week (Mon to Sun)
             const startOfWeekISO = startOfSelectedWeek.toISOString();
             
             const endOfWeek = new Date(startOfSelectedWeek);
@@ -228,7 +248,6 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
             endOfWeek.setHours(23, 59, 59, 999);
             const endOfWeekISO = endOfWeek.toISOString();
 
-            // Busca services_json em vez de services(name)
             const { data: appointmentsData, error: appointmentsError } = await supabase
                 .from('appointments')
                 .select('*, clients(id, name, image_url), team_members(id, name)')
@@ -251,14 +270,14 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
             setLoading(false);
         };
         fetchData();
-    }, [dataVersion, startOfSelectedWeek]); // Recarrega quando a semana muda
+    }, [dataVersion, startOfSelectedWeek]); // Recarrega quando a semana muda ou dados mudam
     
     // Scroll to current time on load/day change
     useEffect(() => {
         if (scrollContainerRef.current && !loading) {
             const now = new Date();
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
-            const minutesFromStart = currentMinutes - START_HOUR * 60;
+            const minutesFromStart = currentMinutes - startHour * 60;
             const scrollTop = (minutesFromStart * MINUTE_HEIGHT) - scrollContainerRef.current.offsetHeight / 3;
             
             // Only scroll to current time if viewing the current day of the current week
@@ -270,9 +289,18 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
                  scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
-    }, [selectedDay, loading, weekOffset]);
+    }, [selectedDay, loading, weekOffset, startHour]);
 
-    const timeMarkers = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+    // Gera os marcadores de tempo com base nos horários dinâmicos
+    const timeMarkers = useMemo(() => {
+        const markers = [];
+        for (let hour = startHour; hour <= endHour; hour++) {
+            markers.push(hour);
+        }
+        return markers;
+    }, [startHour, endHour]);
+    
+    const totalHeight = (endHour - startHour) * HOUR_HEIGHT;
 
     const appointmentsByBarber = useMemo(() => {
         // Calculate the date string for the selected day within the selected week
@@ -334,11 +362,11 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
                 ref={scrollContainerRef}
                 className="flex-grow overflow-y-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-                <div className="relative ml-14" style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}>
+                <div className="relative ml-14" style={{ height: `${totalHeight}px` }}>
                     
                     {/* Time Grid Lines */}
                     {timeMarkers.map(hour => (
-                        <div key={hour} className="relative" style={{ top: `${(hour - START_HOUR) * HOUR_HEIGHT}px`, height: `${HOUR_HEIGHT}px` }}>
+                        <div key={hour} className="relative" style={{ top: `${(hour - startHour) * HOUR_HEIGHT}px`, height: `${HOUR_HEIGHT}px` }}>
                              <div className="absolute -left-14 w-14 text-right pr-2 -translate-y-1/2">
                                 <span className="text-xs text-text-secondary-dark">{`${hour.toString().padStart(2, '0')}:00`}</span>
                              </div>
@@ -347,7 +375,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
                     ))}
                     
                     {/* Current Time Indicator */}
-                    {isToday && <CurrentTimeIndicator scrollContainerRef={scrollContainerRef} />}
+                    {isToday && <CurrentTimeIndicator scrollContainerRef={scrollContainerRef} startHour={startHour} endHour={endHour} />}
 
                     {/* Appointment Columns */}
                     <div className="absolute inset-0 flex">
@@ -359,6 +387,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
                                             key={appointment.id} 
                                             appointment={appointment} 
                                             onClick={onAppointmentSelect}
+                                            startHour={startHour}
                                         />
                                     ))}
                                 </AnimatePresence>
