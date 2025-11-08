@@ -28,9 +28,10 @@ const Bar: React.FC<BarProps> = ({ day, maxRevenue }) => {
 
 interface CashFlowChartProps {
     data: CashFlowDay[];
+    onDetailsClick: () => void; // Nova propriedade
 }
 
-const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
+const CashFlowChart: React.FC<CashFlowChartProps> = ({ data, onDetailsClick }) => {
     const totalRevenue = data.reduce((acc, day) => acc + day.revenue, 0);
     const maxRevenue = Math.max(...data.map(day => day.revenue), 1);
 
@@ -38,7 +39,7 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
         <section>
             <div className="flex items-center justify-between px-4 pb-3 pt-6">
                 <h3 className="text-xl font-bold tracking-tight text-white">Fluxo de Caixa da Semana</h3>
-                <a className="text-sm font-semibold text-primary" href="#">Detalhes</a>
+                <button onClick={onDetailsClick} className="text-sm font-semibold text-primary hover:text-yellow-400 transition-colors">Detalhes</button>
             </div>
             <div className="px-4">
                 <div className="rounded-xl bg-card-dark p-4">

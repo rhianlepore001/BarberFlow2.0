@@ -4,11 +4,12 @@ import { supabase } from '../lib/supabaseClient';
 import AppointmentsSection from '../components/AppointmentsSection';
 import CashFlowChart from '../components/CashFlowChart';
 import FinancialSummary from '../components/FinancialSummary';
-import type { User, Appointment, CashFlowDay, TeamMember } from '../types';
+import type { User, Appointment, CashFlowDay, TeamMember, View } from '../types';
 
 interface HomeProps {
     user: User;
     dataVersion: number;
+    setActiveView: (view: View) => void; // Nova propriedade
 }
 
 const containerVariants = {
@@ -36,7 +37,7 @@ const getStartOfWeek = (date: Date): Date => {
     return d;
 };
 
-const Home: React.FC<HomeProps> = ({ user, dataVersion }) => {
+const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [cashFlowData, setCashFlowData] = useState<CashFlowDay[]>([]);
@@ -158,7 +159,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion }) => {
             </motion.div>
 
             <motion.div variants={itemVariants}>
-                <CashFlowChart data={cashFlowData} />
+                <CashFlowChart data={cashFlowData} onDetailsClick={() => setActiveView('caixa')} />
             </motion.div>
         </motion.div>
     );

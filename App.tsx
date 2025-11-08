@@ -166,7 +166,7 @@ const App: React.FC<AppProps> = ({ session }) => {
         if (!user) return null;
         switch (activeView) {
             case 'inicio':
-                return <Home user={user} dataVersion={dataVersion} />;
+                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} />;
             case 'agenda':
                 return <Agenda onAppointmentSelect={handleAppointmentSelect} dataVersion={dataVersion} />;
             case 'clientes':
@@ -178,7 +178,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             case 'analise':
                 return <Analysis dataVersion={dataVersion} />;
             default:
-                return <Home user={user} dataVersion={dataVersion} />;
+                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} />;
         }
     };
     
