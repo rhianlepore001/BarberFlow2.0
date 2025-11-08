@@ -44,6 +44,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [dataVersion, setDataVersion] = useState(0);
     const [profileLoadAttempts, setProfileLoadAttempts] = useState(0);
     const [dailyGoal, setDailyGoal] = useState(500);
+    const [isInitialLoading, setIsInitialLoading] = useState(true); // Novo estado para carregamento inicial
 
     const refreshData = () => setDataVersion(v => v + 1);
 
@@ -55,7 +56,10 @@ const App: React.FC<AppProps> = ({ session }) => {
         const MAX_ATTEMPTS = 5;
         
         const fetchUserProfile = async () => {
-            if (!session.user) return;
+            if (!session.user) {
+                setIsInitialLoading(false);
+                return;
+            }
 
             // 1. Fetch team member data (which includes shop_id)
             const { data: memberData, error: memberError } = await supabase
@@ -71,7 +75,10 @@ const App: React.FC<AppProps> = ({ session }) => {
             let shopId: number | null = null;
 
             if (memberError) {
-                console.error("Error fetching user profile from DB (will fallback):", memberError.message);
+                // PGRST116: No rows found (pode ser um novo usuário que o trigger ainda não processou)
+                if (memberError.code !== 'PGRST116') {
+                    console.error("Error fetching user profile from DB:", memberError.message);
+                }
             }
 
             if (memberData) {
@@ -88,32 +95,19 @@ const App: React.FC<AppProps> = ({ session }) => {
                 if (metadataImageUrl) imageUrl = `${metadataImageUrl.split('?')[0]}?t=${new Date().getTime()}`;
             }
             
-            // 2. Fetch shop name if shopId exists
+            // 2. Fetch shop name and Daily Goal if shopId exists
             if (shopId) {
-                const { data: shopData, error: shopError } = await supabase
-                    .from('shops')
-                    .select('name')
-                    .eq('id', shopId)
-                    .limit(1)
-                    .single();
+                const [shopRes, settingsRes] = await Promise.all([
+                    supabase.from('shops').select('name').eq('id', shopId).limit(1).single(),
+                    supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
+                ]);
                 
-                if (shopError) {
-                    console.error("Error fetching shop name:", shopError.message);
-                }
-                if (shopData) {
-                    shopName = shopData.name;
+                if (shopRes.data) {
+                    shopName = shopRes.data.name;
                 }
                 
-                // 3. Fetch Daily Goal
-                const { data: settingsData } = await supabase
-                    .from('shop_settings')
-                    .select('daily_goal')
-                    .eq('shop_id', shopId)
-                    .limit(1)
-                    .single();
-                
-                if (settingsData && settingsData.daily_goal !== null) {
-                    setDailyGoal(settingsData.daily_goal);
+                if (settingsRes.data && settingsRes.data.daily_goal !== null) {
+                    setDailyGoal(settingsRes.data.daily_goal);
                 } else {
                     setDailyGoal(500); // Default fallback
                 }
@@ -130,6 +124,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                     // Se falhar após MAX_ATTEMPTS, forçamos o logout para voltar à tela de AuthScreen
                     await handleLogout(); 
                     setUser(null);
+                    setIsInitialLoading(false);
                 }
                 return;
             }
@@ -137,6 +132,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             const finalUser: User = { name, imageUrl, shopName, shopId };
             setUser(finalUser);
             setProfileLoadAttempts(0); // Reset attempts on success
+            setIsInitialLoading(false);
         };
         
         // Inicia a busca ou repetição
@@ -267,10 +263,20 @@ const App: React.FC<AppProps> = ({ session }) => {
 
     const isFabVisible = ['agenda', 'clientes', 'caixa'].includes(activeView);
 
-    if (!user) {
+    if (isInitialLoading) {
         return (
             <div className="flex justify-center items-center h-screen bg-background-dark text-white">
                 <p>Carregando painel...</p>
+            </div>
+        );
+    }
+    
+    // Se não estiver carregando e o usuário for nulo (falha no login/perfil), AuthGate deve redirecionar.
+    // Se o AuthGate falhar, o usuário será redirecionado para AuthScreen.
+    if (!user) {
+        return (
+            <div className="flex justify-center items-center h-screen bg-background-dark text-white">
+                <p>Erro ao carregar perfil. Tentando novamente...</p>
             </div>
         );
     }
