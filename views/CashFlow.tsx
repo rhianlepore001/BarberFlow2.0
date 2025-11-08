@@ -63,11 +63,20 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion }) => {
     useEffect(() => {
         const fetchTransactions = async () => {
             setLoading(true);
-            const { data, error } = await supabase.from('transactions').select('*').order('transaction_date', { ascending: false });
+            // Faz JOIN com team_members para obter o nome do barbeiro
+            const { data, error } = await supabase
+                .from('transactions')
+                .select('*, team_members(name)')
+                .order('transaction_date', { ascending: false });
+                
             if (error) {
                 console.error("Error fetching transactions:", error);
             } else {
-                setTransactions(data.map((t: any) => ({...t, date: new Date(t.transaction_date).toLocaleDateString('pt-BR')})));
+                setTransactions(data.map((t: any) => ({
+                    ...t, 
+                    date: new Date(t.transaction_date).toLocaleDateString('pt-BR'),
+                    barberName: t.team_members?.name || null, // Extrai o nome do barbeiro
+                })));
             }
             setLoading(false);
         };
@@ -111,28 +120,34 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion }) => {
                 className="space-y-3"
             >
                 <AnimatePresence>
-                {visibleTransactions.map(t => (
-                    <motion.div 
-                        key={t.id} 
-                        variants={itemVariants} 
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        layout
-                        className="flex items-center gap-4 rounded-xl bg-card-dark p-3"
-                    >
-                        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${t.type === 'income' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-500'}`}>
-                           <span className="material-symbols-outlined">{t.type === 'income' ? 'arrow_downward' : 'arrow_upward'}</span>
-                        </div>
-                        <div className="flex-1">
-                            <p className="font-bold text-white">{t.description}</p>
-                            <p className="text-sm text-text-secondary-dark">{t.date}</p>
-                        </div>
-                        <p className={`font-bold ${t.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
-                           {t.type === 'income' ? `+R$${t.amount.toFixed(2)}` : `-R$${t.amount.toFixed(2)}`}
-                        </p>
-                    </motion.div>
-                ))}
+                {visibleTransactions.map(t => {
+                    const description = t.type === 'income' && t.barberName
+                        ? `${t.description} (${t.barberName.split(' ')[0]})` // Adiciona o primeiro nome do barbeiro
+                        : t.description;
+                        
+                    return (
+                        <motion.div 
+                            key={t.id} 
+                            variants={itemVariants} 
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            layout
+                            className="flex items-center gap-4 rounded-xl bg-card-dark p-3"
+                        >
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-full ${t.type === 'income' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-500'}`}>
+                               <span className="material-symbols-outlined">{t.type === 'income' ? 'arrow_downward' : 'arrow_upward'}</span>
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-bold text-white">{description}</p>
+                                <p className="text-sm text-text-secondary-dark">{t.date}</p>
+                            </div>
+                            <p className={`font-bold ${t.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
+                               {t.type === 'income' ? `+R$${t.amount.toFixed(2)}` : `-R$${t.amount.toFixed(2)}`}
+                            </p>
+                        </motion.div>
+                    );
+                })}
                 </AnimatePresence>
             </motion.div>
             

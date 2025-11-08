@@ -72,6 +72,7 @@ export interface Transaction {
     amount: number;
     type: 'income' | 'expense';
     date: string;
+    barberName?: string; // Novo campo
 }
 
 export interface BarberFinancials {
