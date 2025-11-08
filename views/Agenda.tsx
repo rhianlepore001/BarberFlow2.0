@@ -180,7 +180,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick 
             )}
             
             {hasSpaceForDuration && (
-                <div className="mt-auto flex items-center gap-1 text-xs font-semibold text-text-secondary-dark">
+                <div className="mt-auto flex items-center gap-1 text-xs font-semibold text-primary">
                     <span className="material-symbols-outlined text-sm">schedule</span>
                     <span>{displayTime} ({appointment.duration_minutes} min)</span>
                 </div>
