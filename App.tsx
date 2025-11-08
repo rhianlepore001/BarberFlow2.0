@@ -26,9 +26,9 @@ import EditWorkingHoursForm from './components/forms/EditWorkingHoursForm';
 import EditTeamMemberForm from './components/forms/EditTeamMemberForm';
 import EditCommissionForm from './components/forms/EditCommissionForm';
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
-import EditDailyGoalForm from './components/forms/EditDailyGoalForm'; // Novo Import
+import EditDailyGoalForm from './components/forms/EditDailyGoalForm';
 
-type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal'; // Novo Tipo
+type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal';
 
 interface AppProps {
     session: Session;
@@ -43,7 +43,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [user, setUser] = useState<User | null>(null);
     const [dataVersion, setDataVersion] = useState(0);
     const [profileLoadAttempts, setProfileLoadAttempts] = useState(0);
-    const [dailyGoal, setDailyGoal] = useState(500); // Estado para armazenar a meta diária
+    const [dailyGoal, setDailyGoal] = useState(500);
 
     const refreshData = () => setDataVersion(v => v + 1);
 
@@ -173,9 +173,16 @@ const App: React.FC<AppProps> = ({ session }) => {
     
     const handleAppointmentSelect = (appointment: Appointment) => {
         setEditingAppointment(appointment);
-        // Mudamos para o novo modal de detalhes/baixa
+        // Abre o modal de detalhes/baixa
         setModalContent('appointmentDetails'); 
         setIsModalOpen(true);
+    };
+    
+    // Nova função para alternar de Detalhes para Edição
+    const handleEditAppointment = (appointment: Appointment) => {
+        setEditingAppointment(appointment);
+        setModalContent('editAppointment');
+        // Não precisa fechar e reabrir o modal, apenas mudar o conteúdo
     };
 
     const renderView = () => {
@@ -206,11 +213,17 @@ const App: React.FC<AppProps> = ({ session }) => {
             case 'newAppointment':
                 return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'editAppointment':
-                // Mantemos o editAppointment caso o usuário queira apenas mudar o horário/barbeiro
+                // Usa o NewAppointmentForm no modo de edição
                 return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} shopId={user.shopId} />;
-            case 'appointmentDetails': // Novo caso
+            case 'appointmentDetails':
                 if (!editingAppointment) return null;
-                return <AppointmentDetailsModal appointment={editingAppointment} onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
+                return <AppointmentDetailsModal 
+                            appointment={editingAppointment} 
+                            onClose={closeModal} 
+                            onSuccess={handleSuccess} 
+                            shopId={user.shopId} 
+                            onEditClick={handleEditAppointment} // Passa a nova função
+                        />;
              case 'newClient':
                 return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'newTransaction':
@@ -227,7 +240,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return <EditTeamMemberForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
             case 'editCommission':
                 return <EditCommissionForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
-            case 'editDailyGoal': // Novo caso
+            case 'editDailyGoal':
                 return <EditDailyGoalForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} currentGoal={dailyGoal} />;
             default:
                 return null;

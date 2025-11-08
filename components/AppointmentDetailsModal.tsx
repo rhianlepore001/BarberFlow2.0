@@ -8,11 +8,12 @@ interface AppointmentDetailsModalProps {
     onClose: () => void;
     onSuccess: () => void;
     shopId: number;
+    onEditClick: (appointment: Appointment) => void; // Nova prop
 }
 
 const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
-const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appointment, onClose, onSuccess, shopId }) => {
+const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appointment, onClose, onSuccess, shopId, onEditClick }) => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -135,11 +136,11 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             <div className="flex gap-3 pt-4">
                 <button 
                     type="button" 
-                    onClick={handleCancelAppointment} 
+                    onClick={() => onEditClick(appointment)} // Novo botão de edição
                     disabled={isProcessing}
-                    className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white disabled:opacity-50"
+                    className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white disabled:opacity-50 hover:bg-gray-600 transition-colors"
                 >
-                    {isProcessing ? 'Processando...' : 'Cancelar'}
+                    Modificar
                 </button>
                 <button 
                     type="button" 
@@ -147,8 +148,11 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
                     disabled={isProcessing}
                     className="w-full rounded-full bg-green-600 py-3 text-center font-bold text-white hover:bg-green-700 transition-colors disabled:opacity-50"
                 >
-                    {isProcessing ? 'Dando Baixa...' : 'Dar Baixa (Concluir & Pagar)'}
+                    {isProcessing ? 'Dando Baixa...' : 'Dar Baixa'}
                 </button>
+            </div>
+            <div className="!mt-2">
+                <button type="button" onClick={handleCancelAppointment} disabled={isProcessing} className="w-full py-2 text-center font-semibold text-red-500 hover:text-red-400 transition-colors disabled:opacity-50">Cancelar Agendamento</button>
             </div>
         </motion.div>
     );
