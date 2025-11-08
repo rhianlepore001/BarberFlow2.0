@@ -137,7 +137,7 @@ interface AppointmentCardProps {
 
 const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick }) => {
     const clientName = appointment.clients?.name || 'Cliente';
-    const serviceName = appointment.services?.name || 'Serviço';
+    const serviceNames = appointment.services_json?.map(s => s.name).join(', ') || 'Serviço';
     const displayTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
     const startMinutes = new Date(appointment.startTime).getHours() * 60 + new Date(appointment.startTime).getMinutes();
@@ -160,7 +160,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick 
         >
             <p className="font-bold text-white text-sm leading-tight truncate">{clientName}</p>
             {height > 25 && (
-                <p className="text-xs text-text-secondary-dark truncate">{serviceName}</p>
+                <p className="text-xs text-text-secondary-dark truncate">{serviceNames}</p>
             )}
             {height > 40 && (
                 <p className="text-xs font-semibold text-primary mt-1">{displayTime}</p>
@@ -207,7 +207,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
             }
             setTeamMembers(teamMembersData);
 
-            // 2. Fetch Appointments for the selected week (Mon to Sat)
+            // 2. Fetch Appointments for the selected week (Mon to Sun)
             const startOfWeekISO = startOfSelectedWeek.toISOString();
             
             const endOfWeek = new Date(startOfSelectedWeek);
@@ -215,9 +215,10 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
             endOfWeek.setHours(23, 59, 59, 999);
             const endOfWeekISO = endOfWeek.toISOString();
 
+            // Busca services_json em vez de services(name)
             const { data: appointmentsData, error: appointmentsError } = await supabase
                 .from('appointments')
-                .select('*, clients(id, name, image_url), services(id, name), team_members(id, name)')
+                .select('*, clients(id, name, image_url), team_members(id, name)')
                 .gte('start_time', startOfWeekISO)
                 .lte('start_time', endOfWeekISO)
                 .order('start_time');
@@ -229,7 +230,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
                     ...a,
                     barberId: a.barber_id,
                     clientId: a.client_id,
-                    serviceId: a.service_id,
+                    services_json: a.services_json, // Novo campo
                     startTime: a.start_time,
                 })));
             }

@@ -11,7 +11,11 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMemb
     const displayTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     const clientName = appointment.clients?.name || 'Cliente';
-    const serviceName = appointment.services?.name || 'Serviço';
+    // Usa o primeiro serviço ou uma lista de serviços
+    const serviceName = appointment.services_json && appointment.services_json.length > 0 
+        ? appointment.services_json.map(s => s.name).join(', ') 
+        : 'Serviço';
+        
     const clientImageUrl = appointment.clients?.image_url || `https://ui-avatars.com/api/?name=${clientName}&background=E5A00D&color=101012`;
 
     return (
@@ -23,7 +27,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMemb
             ></div>
             <div>
                 <p className="truncate text-base font-bold text-white">{clientName}</p>
-                <p className="text-sm font-medium text-text-secondary-dark">{serviceName}</p>
+                <p className="text-sm font-medium text-text-secondary-dark truncate">{serviceName}</p>
                 <p className="mt-1 text-sm font-bold text-primary">
                     {displayTime} com {barber?.name.split(' ')[0] || 'Barbeiro'}
                 </p>
@@ -36,7 +40,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMemb
 interface AppointmentsSectionProps {
     appointments: Appointment[];
     teamMembers: TeamMember[];
-    onViewAllClick: () => void; // Nova propriedade
+    onViewAllClick: () => void;
 }
 
 const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({ appointments, teamMembers, onViewAllClick }) => {

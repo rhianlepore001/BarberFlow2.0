@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import AppointmentsSection from '../components/AppointmentsSection';
 import CashFlowChart from '../components/CashFlowChart';
 import FinancialSummary from '../components/FinancialSummary';
-import WeekSelector from '../components/WeekSelector'; // Novo Import
+import WeekSelector from '../components/WeekSelector';
 import type { User, Appointment, CashFlowDay, TeamMember, View } from '../types';
 
 interface HomeProps {
@@ -80,7 +80,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                 // Appointments for TODAY (always)
                 supabase
                     .from('appointments')
-                    .select('*, clients(id, name, image_url), services(id, name), team_members(id, name)')
+                    .select('*, clients(id, name, image_url), team_members(id, name)') // Removido services(id, name)
                     .gte('start_time', todayStrStart)
                     .lte('start_time', todayStrEnd)
                     .order('start_time')
@@ -109,11 +109,18 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                 const now = new Date();
                 const fetchedAppointments = appointmentsRes.data as unknown as Appointment[];
 
-                setAppointments(fetchedAppointments.map(a => ({
-                    ...a,
-                    barberId: (a as any).barber_id,
-                    startTime: (a as any).start_time,
-                })));
+                setAppointments(fetchedAppointments.map(a => {
+                    // Determina o nome do serviço principal para o resumo
+                    const serviceName = a.services_json && a.services_json.length > 0 ? a.services_json[0].name : 'Serviço';
+                    
+                    return {
+                        ...a,
+                        barberId: (a as any).barber_id,
+                        startTime: (a as any).start_time,
+                        // Adiciona um campo temporário para o nome do serviço principal para o FinancialSummary
+                        mainServiceName: serviceName 
+                    };
+                }));
 
                 setFinancials(prev => ({
                     ...prev,
@@ -183,6 +190,9 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
         ? 'Esta Semana' 
         : `${startOfSelectedWeek.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - ${endOfSelectedWeek.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
 
+    // Determina o nome do próximo agendamento
+    const nextAppointmentName = appointments[0]?.clients?.name || null;
+
     return (
         <motion.div
             variants={containerVariants}
@@ -201,7 +211,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                     dailyGoal={financials.dailyGoal}
                     completedAppointments={financials.completedAppointments}
                     totalAppointments={financials.totalAppointments}
-                    nextAppointmentName={appointments[0]?.clients?.name || null}
+                    nextAppointmentName={nextAppointmentName}
                     onEditGoalClick={() => openModal('editDailyGoal')}
                 />
             </motion.div>

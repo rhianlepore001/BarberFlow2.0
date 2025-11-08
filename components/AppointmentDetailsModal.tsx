@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { Appointment } from '../types';
+import type { Appointment, Service } from '../types';
 
 interface AppointmentDetailsModalProps {
     appointment: Appointment;
@@ -17,46 +17,34 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
     const [error, setError] = useState<string | null>(null);
 
     const clientName = appointment.clients?.name || 'Cliente Desconhecido';
-    const serviceName = appointment.services?.name || 'Serviço';
     const barberName = appointment.team_members?.name || 'Barbeiro';
     const startTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
-    // Nota: O preço do serviço não está diretamente no objeto Appointment, mas o service_id está.
-    // Para simplificar, vamos buscar o preço do serviço antes de dar baixa.
-    // No entanto, se o preço for fixo, podemos buscar o preço do serviço no momento da baixa.
-    // Vamos assumir que o preço do serviço é necessário para a transação.
+    const services: Service[] = appointment.services_json || [];
+    const totalAmount = services.reduce((sum, s) => sum + s.price, 0);
+    const serviceNames = services.map(s => s.name).join(', ');
+    const totalDuration = appointment.duration_minutes;
 
     const handleCompleteAppointment = async () => {
         setIsProcessing(true);
         setError(null);
 
-        if (!appointment.serviceId || !appointment.barberId) {
-            setError("Dados de serviço ou barbeiro ausentes.");
+        if (!appointment.barberId) {
+            setError("Dados de barbeiro ausentes.");
             setIsProcessing(false);
             return;
         }
         
-        // 1. Buscar o preço do serviço
-        const { data: serviceData, error: serviceError } = await supabase
-            .from('services')
-            .select('price')
-            .eq('id', appointment.serviceId)
-            .limit(1)
-            .single();
-
-        if (serviceError || !serviceData) {
-            console.error("Error fetching service price:", serviceError);
-            setError("Não foi possível obter o preço do serviço.");
+        if (totalAmount <= 0) {
+            setError("O valor total do agendamento é zero. Não é possível registrar a transação.");
             setIsProcessing(false);
             return;
         }
         
-        const price = serviceData.price;
-        
-        // 2. Inserir Transação de Entrada (Income)
+        // 1. Inserir Transação de Entrada (Income)
         const transactionData = {
-            description: `${serviceName} - ${clientName}`,
-            amount: price,
+            description: serviceNames,
+            amount: totalAmount,
             type: 'income',
             transaction_date: new Date().toISOString(),
             shop_id: shopId,
@@ -73,12 +61,11 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             return;
         }
 
-        // 3. Deletar Agendamento (Dar Baixa)
+        // 2. Deletar Agendamento (Dar Baixa)
         const { error: deleteError } = await supabase.from('appointments').delete().eq('id', appointment.id);
 
         if (deleteError) {
             console.error("Error deleting appointment:", deleteError);
-            // Se a transação foi salva, mas o agendamento não foi deletado, é um problema menor.
             setError(`Pagamento registrado, mas falha ao remover agendamento: ${deleteError.message}`);
             setIsProcessing(false);
             return;
@@ -118,18 +105,28 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary text-3xl">content_cut</span>
-                    <div>
-                        <p className="font-bold text-white">{serviceName}</p>
-                        <p className="text-sm text-text-secondary-dark">Serviço</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-primary text-3xl">schedule</span>
                     <div>
                         <p className="font-bold text-white">{startTime}</p>
                         <p className="text-sm text-text-secondary-dark">Horário com {barberName}</p>
                     </div>
+                </div>
+                
+                <div className="border-t border-white/10 pt-3">
+                    <p className="text-sm font-medium text-text-secondary-dark mb-1">Serviços ({totalDuration} min)</p>
+                    <ul className="space-y-1">
+                        {services.map((s, index) => (
+                            <li key={index} className="flex justify-between text-white text-sm">
+                                <span>{s.name}</span>
+                                <span className="font-semibold">{formatCurrency(s.price)}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                
+                <div className="flex justify-between items-center border-t border-white/10 pt-3">
+                    <p className="text-lg font-bold text-white">Total</p>
+                    <p className="text-xl font-extrabold text-primary">{formatCurrency(totalAmount)}</p>
                 </div>
             </div>
             

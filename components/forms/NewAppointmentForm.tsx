@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
 import type { Appointment, Client, Service, TeamMember } from '../../types';
@@ -7,60 +7,95 @@ interface NewAppointmentFormProps {
     onClose: () => void;
     onSuccess: () => void;
     appointment?: Appointment | null;
-    shopId: number; // Adicionado shopId
+    shopId: number;
 }
 
 const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSuccess, appointment, shopId }) => {
     const isEditing = !!appointment;
     const [clients, setClients] = useState<(Pick<Client, 'id' | 'name' | 'image_url'>)[]>([]);
-    const [services, setServices] = useState<Service[]>([]);
+    const [allServices, setAllServices] = useState<Service[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+    
+    const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>(
+        isEditing && appointment.services_json ? appointment.services_json.map(s => s.id) : []
+    );
+    
+    const [barberId, setBarberId] = useState(appointment?.barberId || '');
+    const [clientId, setClientId] = useState(appointment?.clientId || '');
+    const [date, setDate] = useState(appointment?.startTime ? appointment.startTime.split('T')[0] : new Date().toISOString().split('T')[0]);
+    const [time, setTime] = useState(appointment?.startTime ? new Date(appointment.startTime).toTimeString().substring(0,5) : "14:30");
+
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
-            // RLS agora garante que apenas dados do shopId do usuário sejam retornados
             const [clientsRes, servicesRes, teamRes] = await Promise.all([
-                supabase.from('clients').select('id, name, image_url'),
-                supabase.from('services').select('id, name, duration_minutes'),
-                supabase.from('team_members').select('id, name')
+                supabase.from('clients').select('id, name, image_url').order('name'),
+                supabase.from('services').select('id, name, price, duration_minutes').order('name'),
+                supabase.from('team_members').select('id, name').order('name')
             ]);
             if (clientsRes.data) setClients(clientsRes.data);
-            if (servicesRes.data) setServices(servicesRes.data);
+            if (servicesRes.data) setAllServices(servicesRes.data);
             if (teamRes.data) setTeamMembers(teamRes.data);
         };
         fetchData();
     }, []);
+    
+    const handleServiceToggle = (serviceId: number) => {
+        setSelectedServiceIds(prev => 
+            prev.includes(serviceId) 
+                ? prev.filter(id => id !== serviceId) 
+                : [...prev, serviceId]
+        );
+    };
+
+    const selectedServices = useMemo(() => {
+        return allServices.filter(s => selectedServiceIds.includes(s.id));
+    }, [selectedServiceIds, allServices]);
+
+    const totalDuration = useMemo(() => {
+        return selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0);
+    }, [selectedServices]);
+    
+    const totalPrice = useMemo(() => {
+        return selectedServices.reduce((sum, s) => sum + s.price, 0);
+    }, [selectedServices]);
+
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSaving(true);
         setError(null);
-        const formData = new FormData(e.currentTarget);
-        const clientId = formData.get('client') as string;
-        const serviceId = formData.get('service') as string;
-        const barberId = formData.get('barber') as string;
-        const time = formData.get('time') as string;
-        const date = formData.get('date') as string;
         
-        const start_time = new Date(`${date}T${time}:00`).toISOString();
-        
-        const service = services.find(s => s.id === parseInt(serviceId));
-
-        if (!service) {
-            setError("Serviço inválido.");
+        if (selectedServices.length === 0) {
+            setError("Selecione pelo menos um serviço.");
+            setIsSaving(false);
+            return;
+        }
+        if (!barberId || !clientId) {
+            setError("Selecione o cliente e o barbeiro.");
             setIsSaving(false);
             return;
         }
 
+        const start_time = new Date(`${date}T${time}:00`).toISOString();
+        
+        // Prepara os dados dos serviços para salvar como JSONB
+        const servicesToSave = selectedServices.map(s => ({
+            id: s.id,
+            name: s.name,
+            price: s.price,
+            duration_minutes: s.duration_minutes
+        }));
+
         const appointmentData = {
             start_time: start_time,
-            barber_id: parseInt(barberId),
-            client_id: parseInt(clientId),
-            service_id: service.id,
-            duration_minutes: service.duration_minutes, 
-            shop_id: shopId, // Adicionado shop_id
+            barber_id: parseInt(barberId as string),
+            client_id: parseInt(clientId as string),
+            duration_minutes: totalDuration, 
+            services_json: servicesToSave, // Novo campo JSONB
+            shop_id: shopId,
         };
 
         const { error: dbError } = isEditing
@@ -80,7 +115,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
         if (!appointment) return;
         setIsSaving(true);
         setError(null);
-        // RLS garante que apenas o proprietário do shop possa deletar
+        
         const { error: dbError } = await supabase.from('appointments').delete().eq('id', appointment.id);
         if (dbError) {
             console.error("Error deleting appointment:", dbError);
@@ -95,21 +130,69 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
             <h2 className="text-xl font-bold text-center text-white">{isEditing ? 'Editar Agendamento' : 'Novo Agendamento'}</h2>
             
             <form className="space-y-4" onSubmit={handleSubmit}>
-                <select name="client" defaultValue={appointment?.clientId} disabled={isEditing} required className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary disabled:opacity-50">
+                {/* Cliente */}
+                <select 
+                    name="client" 
+                    value={clientId}
+                    onChange={(e) => setClientId(parseInt(e.target.value))}
+                    disabled={isEditing} 
+                    required 
+                    className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary disabled:opacity-50"
+                >
                     <option value="" disabled>Selecione um cliente</option>
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <select name="service" defaultValue={appointment?.serviceId} required className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary">
-                     <option value="" disabled>Selecione um serviço</option>
-                    {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                 <select name="barber" defaultValue={appointment?.barberId} required className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary">
+                
+                {/* Barbeiro */}
+                 <select 
+                    name="barber" 
+                    value={barberId}
+                    onChange={(e) => setBarberId(parseInt(e.target.value))}
+                    required 
+                    className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                >
                      <option value="" disabled>Selecione um barbeiro</option>
                     {teamMembers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
+
+                {/* Seleção de Serviços (Múltipla) */}
+                <div className="bg-background-dark border-2 border-gray-700 rounded-lg p-3 max-h-40 overflow-y-auto">
+                    <p className="text-sm font-medium text-text-secondary-dark mb-2">Serviços ({totalDuration} min | R$ {totalPrice.toFixed(2).replace('.', ',')})</p>
+                    {allServices.map(s => (
+                        <div key={s.id} className="flex items-center justify-between py-1">
+                            <label htmlFor={`service-${s.id}`} className="flex items-center gap-2 text-white text-sm cursor-pointer flex-1">
+                                <input 
+                                    type="checkbox" 
+                                    id={`service-${s.id}`} 
+                                    checked={selectedServiceIds.includes(s.id)}
+                                    onChange={() => handleServiceToggle(s.id)}
+                                    className="form-checkbox h-4 w-4 text-primary bg-background-dark border-gray-600 rounded focus:ring-primary"
+                                />
+                                {s.name}
+                            </label>
+                            <span className="text-xs text-text-secondary-dark">R$ {s.price.toFixed(2)}</span>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Data e Hora */}
                 <div className="flex gap-3">
-                    <input type="date" name="date" required defaultValue={appointment?.startTime ? appointment.startTime.split('T')[0] : new Date().toISOString().split('T')[0]} className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"/>
-                    <input type="time" name="time" required defaultValue={appointment?.startTime ? new Date(appointment.startTime).toTimeString().substring(0,5) : "14:30"} className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"/>
+                    <input 
+                        type="date" 
+                        name="date" 
+                        required 
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                    />
+                    <input 
+                        type="time" 
+                        name="time" 
+                        required 
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
+                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                    />
                 </div>
 
                 {error && <p className="text-red-400 text-xs text-center pt-1">{error}</p>}

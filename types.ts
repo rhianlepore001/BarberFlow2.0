@@ -46,10 +46,10 @@ export interface Appointment {
   duration_minutes: number; // em minutos
   barberId: number;
   clientId?: number;
-  serviceId?: number;
+  // services_json armazena os detalhes dos serviços selecionados
+  services_json: Service[] | null; 
   // Propriedades aninhadas que virão da query com JOIN
   clients: Pick<Client, 'id' | 'name' | 'image_url'> | null;
-  services: Pick<Service, 'id' | 'name'> | null;
   team_members: Pick<TeamMember, 'id' | 'name'> | null;
 }
 
