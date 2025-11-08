@@ -99,41 +99,7 @@ const DaySelector: React.FC<DaySelectorProps> = ({ selectedDay, setSelectedDay, 
 const MINUTE_HEIGHT = 1.5; // pixels per minute (90px per hour)
 const HOUR_HEIGHT = MINUTE_HEIGHT * 60; // 90 pixels per hour
 
-const CurrentTimeIndicator: React.FC<{ scrollContainerRef: React.RefObject<HTMLDivElement>, startHour: number, endHour: number }> = ({ scrollContainerRef, startHour, endHour }) => {
-    const [top, setTop] = useState(0);
-
-    useEffect(() => {
-        const updatePosition = () => {
-            const now = new Date();
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
-            const minutesFromStart = currentMinutes - startHour * 60;
-            const newTop = minutesFromStart * MINUTE_HEIGHT;
-            setTop(newTop);
-        };
-
-        updatePosition();
-        // Atualiza a cada minuto
-        const interval = setInterval(updatePosition, 60000);
-        return () => clearInterval(interval);
-    }, [startHour]);
-
-    // Check if the indicator is within the visible time range
-    if (top < 0 || top > (endHour - startHour) * HOUR_HEIGHT) return null;
-
-    const now = new Date();
-    const displayTime = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-    return (
-        <div className="absolute w-full z-20 pointer-events-none" style={{ top: `${top}px` }}>
-            <div className="relative h-px bg-red-500">
-                <div className="absolute -left-14 w-14 text-right pr-2 -translate-y-1/2">
-                    <span className="text-xs font-bold text-red-500">{displayTime}</span>
-                </div>
-                <div className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full bg-red-500" />
-            </div>
-        </div>
-    );
-};
+// O componente CurrentTimeIndicator foi removido
 
 interface AppointmentCardProps {
     appointment: Appointment;
@@ -279,22 +245,11 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
         fetchData();
     }, [dataVersion, startOfSelectedWeek]); // Recarrega quando a semana muda ou dados mudam
     
-    // Scroll to current time on load/day change
+    // Scroll to top of the working hours on load/day change
     useEffect(() => {
         if (scrollContainerRef.current && !loading) {
-            const now = new Date();
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
-            const minutesFromStart = currentMinutes - startHour * 60;
-            const scrollTop = (minutesFromStart * MINUTE_HEIGHT) - scrollContainerRef.current.offsetHeight / 3;
-            
-            // Only scroll to current time if viewing the current day of the current week
-            const isCurrentDay = selectedDay === currentDayOfWeek && weekOffset === 0;
-            if (isCurrentDay) {
-                scrollContainerRef.current.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' });
-            } else {
-                 // Scroll to the top of the working hours if viewing another day/week
-                 scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-            }
+            // Scroll to the top of the working hours
+            scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }, [selectedDay, loading, weekOffset, startHour]);
 
@@ -341,7 +296,8 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
         return grouped;
     }, [selectedDay, appointments, teamMembers, startOfSelectedWeek]);
 
-    const isToday = selectedDay === currentDayOfWeek && weekOffset === 0;
+    // A variável isToday não é mais usada para o indicador, mas pode ser útil para outras lógicas
+    // const isToday = selectedDay === currentDayOfWeek && weekOffset === 0;
 
     if (loading) {
         return <div className="text-center p-10">Carregando agenda...</div>;
@@ -410,8 +366,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
                         );
                     })}
                     
-                    {/* Current Time Indicator */}
-                    {isToday && <CurrentTimeIndicator scrollContainerRef={scrollContainerRef} startHour={startHour} endHour={endHour} />}
+                    {/* Current Time Indicator (Removido) */}
 
                     {/* Appointment Columns */}
                     <div className="absolute inset-0 flex">
