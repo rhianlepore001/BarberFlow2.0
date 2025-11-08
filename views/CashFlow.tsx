@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { Transaction } from '../types';
+import TransactionItem from '../components/TransactionItem'; // Importa o novo componente
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -24,6 +25,8 @@ const ITEMS_PER_PAGE = 10;
 
 interface CashFlowProps {
     dataVersion: number;
+    // Adicionamos refreshData para forçar a atualização do App.tsx
+    refreshData: () => void; 
 }
 
 const FilterButtons: React.FC<{ activeFilter: FilterType; setFilter: (filter: FilterType) => void }> = ({ activeFilter, setFilter }) => {
@@ -54,7 +57,7 @@ const FilterButtons: React.FC<{ activeFilter: FilterType; setFilter: (filter: Fi
 }
 
 
-const CashFlow: React.FC<CashFlowProps> = ({ dataVersion }) => {
+const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData }) => {
     const [filter, setFilter] = useState<FilterType>('all');
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -120,34 +123,20 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion }) => {
                 className="space-y-3"
             >
                 <AnimatePresence>
-                {visibleTransactions.map(t => {
-                    const description = t.type === 'income' && t.barberName
-                        ? `${t.description} (${t.barberName.split(' ')[0]})` // Adiciona o primeiro nome do barbeiro
-                        : t.description;
-                        
-                    return (
-                        <motion.div 
-                            key={t.id} 
-                            variants={itemVariants} 
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                            layout
-                            className="flex items-center gap-4 rounded-xl bg-card-dark p-3"
-                        >
-                            <div className={`flex h-10 w-10 items-center justify-center rounded-full ${t.type === 'income' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-500'}`}>
-                               <span className="material-symbols-outlined">{t.type === 'income' ? 'arrow_downward' : 'arrow_upward'}</span>
-                            </div>
-                            <div className="flex-1">
-                                <p className="font-bold text-white">{description}</p>
-                                <p className="text-sm text-text-secondary-dark">{t.date}</p>
-                            </div>
-                            <p className={`font-bold ${t.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
-                               {t.type === 'income' ? `+R$${t.amount.toFixed(2)}` : `-R$${t.amount.toFixed(2)}`}
-                            </p>
-                        </motion.div>
-                    );
-                })}
+                {visibleTransactions.map(t => (
+                    <motion.div 
+                        key={t.id} 
+                        variants={itemVariants} 
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                    >
+                        <TransactionItem 
+                            transaction={t} 
+                            onDeleteSuccess={refreshData} 
+                        />
+                    </motion.div>
+                ))}
                 </AnimatePresence>
             </motion.div>
             

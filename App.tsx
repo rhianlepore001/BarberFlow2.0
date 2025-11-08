@@ -172,7 +172,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             case 'clientes':
                 return <Clients dataVersion={dataVersion} />;
             case 'caixa':
-                return <CashFlow dataVersion={dataVersion} />;
+                return <CashFlow dataVersion={dataVersion} refreshData={refreshData} />; // Passa refreshData
             case 'gestao':
                 return <Management user={user} openModal={openModal} dataVersion={dataVersion} refreshData={refreshData} />;
             case 'analise':
