@@ -74,7 +74,9 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Lógica para determinar o status do cliente
     const getClientStatus = (client: Client): 'vip' | 'at_risk' | null => {
+        // VIP: Gasto total >= R$ 1000
         if ((client.totalSpent ?? 0) >= 1000) return 'vip';
         
         if (client.lastVisitRaw) {
@@ -83,7 +85,7 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
             const diffTime = now.getTime() - lastVisitDate.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
-            // Client is 'at_risk' if last visit was more than 30 days ago
+            // Em Risco: Última visita há mais de 30 dias
             if (diffDays > 30) return 'at_risk';
         }
         return null;
@@ -92,6 +94,7 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
     useEffect(() => {
         const fetchClients = async () => {
             setLoading(true);
+            // Busca todos os campos, incluindo total_spent e last_visit
             const { data, error } = await supabase.from('clients').select('*').order('name');
             if (error) {
                 console.error("Error fetching clients:", error);
@@ -100,9 +103,10 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
                     id: c.id,
                     name: c.name,
                     imageUrl: c.image_url,
-                    lastVisitRaw: c.last_visit, // Store raw date
-                    lastVisit: getRelativeDate(c.last_visit), // Calculate display date
+                    lastVisitRaw: c.last_visit, // Data bruta para cálculo
+                    lastVisit: getRelativeDate(c.last_visit), // Data formatada para exibição
                     totalSpent: c.total_spent,
+                    phone: c.phone,
                 })));
             }
             setLoading(false);
@@ -124,7 +128,7 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
                     const lastVisitDate = new Date(c.lastVisitRaw);
                     const diffTime = now.getTime() - lastVisitDate.getTime();
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    // Recent: visited in the last 7 days
+                    // Recente: visitou nos últimos 7 dias
                     return diffDays <= 7;
                 });
                 break;
@@ -175,7 +179,7 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
                                 <div className="flex items-center gap-2">
                                     <p className="font-bold text-white truncate">{client.name}</p>
                                     {status === 'vip' && <span title="Cliente VIP" className="material-symbols-outlined text-primary text-base">workspace_premium</span>}
-                                    {status === 'at_risk' && <span title="Cliente em Risco" className="material-symbols-outlined text-text-secondary-dark text-base">hourglass_empty</span>}
+                                    {status === 'at_risk' && <span title="Cliente em Risco" className="material-symbols-outlined text-red-400 text-base">hourglass_empty</span>}
                                 </div>
                                 <p className="text-sm text-text-secondary-dark">Última visita: {client.lastVisit}</p>
                             </div>
