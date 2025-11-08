@@ -112,6 +112,7 @@ const CurrentTimeIndicator: React.FC<{ scrollContainerRef: React.RefObject<HTMLD
         };
 
         updatePosition();
+        // Atualiza a cada minuto
         const interval = setInterval(updatePosition, 60000);
         return () => clearInterval(interval);
     }, [startHour]);
@@ -119,9 +120,15 @@ const CurrentTimeIndicator: React.FC<{ scrollContainerRef: React.RefObject<HTMLD
     // Check if the indicator is within the visible time range
     if (top < 0 || top > (endHour - startHour) * HOUR_HEIGHT) return null;
 
+    const now = new Date();
+    const displayTime = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
     return (
         <div className="absolute w-full z-20 pointer-events-none" style={{ top: `${top}px` }}>
             <div className="relative h-px bg-red-500">
+                <div className="absolute -left-14 w-14 text-right pr-2 -translate-y-1/2">
+                    <span className="text-xs font-bold text-red-500">{displayTime}</span>
+                </div>
                 <div className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full bg-red-500" />
             </div>
         </div>
@@ -379,24 +386,29 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
                 <div className="relative ml-14" style={{ height: `${totalHeight}px` }}>
                     
                     {/* Time Grid Lines */}
-                    {timeMarkers.map((marker, index) => (
-                        <div 
-                            key={index} 
-                            className="relative" 
-                            style={{ 
-                                top: `${((marker.hour - startHour) * 60 + marker.minute) * MINUTE_HEIGHT}px`, 
-                                height: marker.isHour ? `${HOUR_HEIGHT}px` : `${HOUR_HEIGHT / 2}px`,
-                                marginTop: index === 0 ? '0' : marker.isHour ? `-${HOUR_HEIGHT}px` : `-${HOUR_HEIGHT / 2}px`
-                            }}
-                        >
-                             {marker.isHour && (
-                                 <div className="absolute -left-14 w-14 text-right pr-2 -translate-y-1/2">
-                                    <span className="text-xs text-text-secondary-dark">{marker.timeString}</span>
-                                 </div>
-                             )}
-                             <div className={`h-px ${marker.isHour ? 'bg-white/10' : 'bg-white/5'}`}></div>
-                        </div>
-                    ))}
+                    {timeMarkers.map((marker, index) => {
+                        // Calcula a posição top em pixels
+                        const minutesFromStart = (marker.hour - startHour) * 60 + marker.minute;
+                        const topPosition = minutesFromStart * MINUTE_HEIGHT;
+                        
+                        // A última linha (endHour:00) não precisa de rótulo de tempo, mas precisa da linha
+                        const isLastMarker = marker.hour === endHour && marker.minute === 0;
+
+                        return (
+                            <div 
+                                key={index} 
+                                className="absolute w-full" 
+                                style={{ top: `${topPosition}px` }}
+                            >
+                                 {marker.isHour && !isLastMarker && (
+                                     <div className="absolute -left-14 w-14 text-right pr-2 -translate-y-1/2">
+                                        <span className="text-xs text-text-secondary-dark">{marker.timeString}</span>
+                                     </div>
+                                 )}
+                                 <div className={`h-px ${marker.isHour ? 'bg-white/10' : 'bg-white/5'}`}></div>
+                            </div>
+                        );
+                    })}
                     
                     {/* Current Time Indicator */}
                     {isToday && <CurrentTimeIndicator scrollContainerRef={scrollContainerRef} startHour={startHour} endHour={endHour} />}
