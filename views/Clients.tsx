@@ -22,6 +22,7 @@ type ClientFilter = 'all' | 'vips' | 'recent' | 'at_risk';
 
 interface ClientsProps {
     dataVersion: number;
+    onClientSelect: (client: Client) => void; // Nova prop para selecionar cliente
 }
 
 const FilterButtons: React.FC<{ activeFilter: ClientFilter; setFilter: (filter: ClientFilter) => void }> = ({ activeFilter, setFilter }) => {
@@ -68,7 +69,7 @@ const getRelativeDate = (dateString: string | null): string => {
     return `Há ${diffMonths} ${diffMonths > 1 ? 'meses' : 'mês'}`;
 };
 
-const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
+const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeFilter, setActiveFilter] = useState<ClientFilter>('all');
     const [clients, setClients] = useState<Client[]>([]);
@@ -183,7 +184,10 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion }) => {
                                 </div>
                                 <p className="text-sm text-text-secondary-dark">Última visita: {client.lastVisit}</p>
                             </div>
-                            <button className="text-text-secondary-dark">
+                            <button 
+                                onClick={() => onClientSelect(client)}
+                                className="text-text-secondary-dark hover:text-white transition-colors"
+                            >
                                  <span className="material-symbols-outlined">more_vert</span>
                             </button>
                         </motion.div>

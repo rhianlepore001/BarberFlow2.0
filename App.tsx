@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Session } from '@supabase/supabase-js';
 
-import type { View, Appointment, User, TeamMember } from './types';
+import type { View, Appointment, User, TeamMember, Client } from './types';
 import { navItems } from './data';
 import { supabase } from './lib/supabaseClient';
 
@@ -27,8 +27,9 @@ import EditTeamMemberForm from './components/forms/EditTeamMemberForm';
 import EditCommissionForm from './components/forms/EditCommissionForm';
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 import EditDailyGoalForm from './components/forms/EditDailyGoalForm';
+import ClientDetailsModal from './components/ClientDetailsModal'; // Importa o novo modal
 
-type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal';
+type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails';
 
 interface AppProps {
     session: Session;
@@ -40,11 +41,12 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [modalContent, setModalContent] = useState<ModalContentType | null>(null);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null); // Novo estado para cliente
     const [user, setUser] = useState<User | null>(null);
     const [dataVersion, setDataVersion] = useState(0);
     const [profileLoadAttempts, setProfileLoadAttempts] = useState(0);
     const [dailyGoal, setDailyGoal] = useState(500);
-    const [isInitialLoading, setIsInitialLoading] = useState(true); // Novo estado para carregamento inicial
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
 
     const refreshData = () => setDataVersion(v => v + 1);
 
@@ -140,15 +142,14 @@ const App: React.FC<AppProps> = ({ session }) => {
     }, [session, dataVersion, profileLoadAttempts]);
     
     const openModal = (content: ModalContentType, data: any = null) => {
-        if (!user) return; // Previne abertura de modal se o usuário não estiver carregado
+        if (!user) return;
         
-        if (content === 'editTeamMember' && data) {
+        if (content === 'editTeamMember' || content === 'editCommission') {
             setEditingMember(data as TeamMember);
-        } else if (content === 'editCommission' && data) {
-            setEditingMember(data as TeamMember);
-        } else if (content === 'editProfile' && user) {
-            // No need to pass data, component will get it from props
+        } else if (content === 'clientDetails' && data) {
+            setSelectedClient(data as Client);
         }
+        
         setModalContent(content);
         setIsModalOpen(true);
     };
@@ -159,6 +160,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             setModalContent(null);
             setEditingAppointment(null);
             setEditingMember(null);
+            setSelectedClient(null); // Limpa o cliente selecionado
         }, 300);
     };
 
@@ -169,30 +171,32 @@ const App: React.FC<AppProps> = ({ session }) => {
     
     const handleAppointmentSelect = (appointment: Appointment) => {
         setEditingAppointment(appointment);
-        // Abre o modal de detalhes/baixa
         setModalContent('appointmentDetails'); 
         setIsModalOpen(true);
     };
     
-    // Nova função para alternar de Detalhes para Edição
+    const handleClientSelect = (client: Client) => {
+        setSelectedClient(client);
+        setModalContent('clientDetails');
+        setIsModalOpen(true);
+    };
+    
     const handleEditAppointment = (appointment: Appointment) => {
         setEditingAppointment(appointment);
         setModalContent('editAppointment');
-        // Não precisa fechar e reabrir o modal, apenas mudar o conteúdo
     };
 
     const renderView = () => {
         if (!user) return null;
         switch (activeView) {
             case 'inicio':
-                // Passa openModal para Home
                 return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} openModal={openModal} />;
             case 'agenda':
                 return <Agenda onAppointmentSelect={handleAppointmentSelect} dataVersion={dataVersion} />;
             case 'clientes':
-                return <Clients dataVersion={dataVersion} />;
+                return <Clients dataVersion={dataVersion} onClientSelect={handleClientSelect} />; // Passa a função de seleção
             case 'caixa':
-                return <CashFlow dataVersion={dataVersion} refreshData={refreshData} />; // Passa refreshData
+                return <CashFlow dataVersion={dataVersion} refreshData={refreshData} />;
             case 'gestao':
                 return <Management user={user} openModal={openModal} dataVersion={dataVersion} refreshData={refreshData} />;
             case 'analise':
@@ -209,7 +213,6 @@ const App: React.FC<AppProps> = ({ session }) => {
             case 'newAppointment':
                 return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'editAppointment':
-                // Usa o NewAppointmentForm no modo de edição
                 return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} shopId={user.shopId} />;
             case 'appointmentDetails':
                 if (!editingAppointment) return null;
@@ -218,10 +221,13 @@ const App: React.FC<AppProps> = ({ session }) => {
                             onClose={closeModal} 
                             onSuccess={handleSuccess} 
                             shopId={user.shopId} 
-                            onEditClick={handleEditAppointment} // Passa a nova função
+                            onEditClick={handleEditAppointment}
                         />;
              case 'newClient':
                 return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
+            case 'clientDetails':
+                if (!selectedClient) return null;
+                return <ClientDetailsModal client={selectedClient} onClose={closeModal} onSuccess={handleSuccess} />; // Novo modal
             case 'newTransaction':
                 return <NewTransactionForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'newTeamMember':
@@ -271,8 +277,6 @@ const App: React.FC<AppProps> = ({ session }) => {
         );
     }
     
-    // Se não estiver carregando e o usuário for nulo (falha no login/perfil), AuthGate deve redirecionar.
-    // Se o AuthGate falhar, o usuário será redirecionado para AuthScreen.
     if (!user) {
         return (
             <div className="flex justify-center items-center h-screen bg-background-dark text-white">
