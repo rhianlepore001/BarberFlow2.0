@@ -117,11 +117,13 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
     const [period, setPeriod] = useState<Period>('month');
     const [data, setData] = useState<FullAnalysisData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null); // Novo estado de erro
 
     useEffect(() => {
         const fetchDataForPeriod = async () => {
             setLoading(true);
             setData(null);
+            setFetchError(null);
 
             const { startDate, endDate, previousStartDate, previousEndDate } = getDateRanges(period);
             
@@ -131,12 +133,14 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
                  supabase.from('transactions').select('amount, type, transaction_date, client_id').gte('transaction_date', previousStartDate.toISOString()).lte('transaction_date', endDate.toISOString()),
                  // Fetch clients created from previous start date to current end date
                  supabase.from('clients').select('id, name, created_at').gte('created_at', previousStartDate.toISOString()).lte('created_at', endDate.toISOString()),
-                 supabase.from('appointments').select('services(name), start_time').gte('start_time', startDate.toISOString()).lte('start_time', endDate.toISOString())
+                 // Fetch appointments for the current period, joining with services
+                 supabase.from('appointments').select('services_json, start_time').gte('start_time', startDate.toISOString()).lte('start_time', endDate.toISOString())
             ]);
 
             const reqError = transactionsRes.error || clientsRes.error || appointmentsRes.error;
             if (reqError) {
                 console.error("Error fetching analysis data:", reqError);
+                setFetchError("Falha ao carregar dados de análise. Verifique sua conexão ou se há dados registrados.");
                 setLoading(false);
                 return;
             }
@@ -144,7 +148,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             // Define types for fetched data
             type TransactionData = {amount: number; type: 'income' | 'expense'; transaction_date: string; client_id: number | null};
             type ClientData = {id: number; name: string; created_at: string};
-            type AppointmentData = {services: {name: string} | null; start_time: string};
+            type AppointmentData = {services_json: {name: string, price: number}[] | null; start_time: string};
 
             const allTransactions: TransactionData[] = transactionsRes.data || [];
             const allClients: ClientData[] = clientsRes.data || [];
@@ -187,6 +191,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             currentPeriodIncome.forEach(t => {
                 const date = new Date(t.transaction_date);
                 const index = getTrendIndex(date);
+                // Garante que o índice esteja dentro do limite (importante para o cálculo mensal/anual)
                 if (index >= 0 && index < trendLength) {
                     revenueTrend[index] += t.amount;
                 }
@@ -195,8 +200,10 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             // --- 5. Top Services ---
             const serviceCounts: Record<string, number> = {};
             currentAppointments.forEach(a => {
-                if (a.services?.name) {
-                    serviceCounts[a.services.name] = (serviceCounts[a.services.name] || 0) + 1;
+                if (a.services_json) {
+                    a.services_json.forEach(s => {
+                        serviceCounts[s.name] = (serviceCounts[s.name] || 0) + 1;
+                    });
                 }
             });
 
@@ -237,8 +244,16 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
         fetchDataForPeriod();
     }, [period, dataVersion]);
 
-    if (loading || !data) {
+    if (loading) {
         return <div className="text-center p-10">Analisando dados...</div>;
+    }
+    
+    if (fetchError) {
+        return <div className="text-center p-10 text-red-400 font-semibold">{fetchError}</div>;
+    }
+
+    if (!data) {
+         return <div className="text-center p-10 text-text-secondary-dark">Nenhum dado encontrado para o período selecionado.</div>;
     }
 
     // Calculate percentage change safely
