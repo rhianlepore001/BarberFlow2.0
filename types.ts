@@ -89,6 +89,7 @@ export interface PeriodData {
   newClients: number;
   retentionRate: number;
   revenueTrend: number[];
+  xAxisLabels: string[]; // NOVO: Rótulos para o eixo X (dias, semanas, meses)
   topServices: { name: string; value: string }[];
   topClients: { name: string; value: string }[];
 }

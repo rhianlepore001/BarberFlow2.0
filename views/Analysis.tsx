@@ -185,26 +185,31 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             const newClients = allClients.filter(c => new Date(c.created_at) >= startDate && new Date(c.created_at) <= endDate).length;
             const previousNewClients = allClients.filter(c => new Date(c.created_at) >= previousStartDate && new Date(c.created_at) <= previousEndDate).length;
 
-            // --- 4. Calculate Revenue Trend ---
+            // --- 4. Calculate Revenue Trend and X-Axis Labels ---
             let trendLength: number;
             let getTrendIndex: (date: Date) => number;
+            let xAxisLabels: string[] = [];
             
             if (period === 'week') {
                 trendLength = 7;
+                const dayLabels = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
                 getTrendIndex = (date) => (date.getDay() + 6) % 7; // 0=Mon, 6=Sun
+                xAxisLabels = dayLabels;
             } else if (period === 'month') {
                 trendLength = 4; // 4 weeks
                 getTrendIndex = (date) => Math.floor((date.getDate() - 1) / 7);
+                xAxisLabels = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'];
             } else { // year
                 trendLength = 12;
                 getTrendIndex = (date) => date.getMonth();
+                xAxisLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
             }
 
             const revenueTrend = Array(trendLength).fill(0);
             currentPeriodIncome.forEach(t => {
                 const date = new Date(t.transaction_date);
                 const index = getTrendIndex(date);
-                // Garante que o índice esteja dentro do limite (importante para o cálculo mensal/anual)
+                // Garante que o índice esteja dentro do limite
                 if (index >= 0 && index < trendLength) {
                     revenueTrend[index] += t.amount;
                 }
@@ -246,6 +251,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
                 newClients,
                 retentionRate: 78, // Placeholder - requires more complex logic
                 revenueTrend,
+                xAxisLabels, // Adiciona os rótulos
                 topServices,
                 topClients,
                 previousAvgTicket,
