@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from '@google/genai';
@@ -30,6 +29,8 @@ const GeminiInsightCard: React.FC<GeminiInsightCardProps> = ({ data, period }) =
             
             const prompt = `
                 Você é um consultor de negócios especialista em barbearias. Analise os seguintes dados de performance ${periodMap[period]} e forneça um resumo conciso (máximo 3 parágrafos) com insights e uma recomendação prática. Seja direto e profissional.
+
+                **CONTEXTO CRÍTICO:** Os dados fornecidos refletem apenas o período de registro no sistema (BarberFlow). Se o faturamento anterior for zero ou muito baixo, **não conclua que o negócio está falido ou em crise**, mas sim que ele está em fase de **migração ou inicialização de dados** no aplicativo. Baseie sua análise na **tendência de crescimento** observada e na comparação entre os períodos.
 
                 Dados:
                 - Faturamento Total: R$ ${data.totalRevenue.toFixed(2)}
