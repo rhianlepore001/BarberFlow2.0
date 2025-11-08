@@ -155,7 +155,11 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView }) => {
             </motion.div>
 
             <motion.div variants={itemVariants}>
-                <AppointmentsSection appointments={appointments} teamMembers={teamMembers} />
+                <AppointmentsSection 
+                    appointments={appointments} 
+                    teamMembers={teamMembers} 
+                    onViewAllClick={() => setActiveView('agenda')} // Adiciona a ação
+                />
             </motion.div>
 
             <motion.div variants={itemVariants}>

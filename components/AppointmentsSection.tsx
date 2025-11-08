@@ -36,14 +36,15 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMemb
 interface AppointmentsSectionProps {
     appointments: Appointment[];
     teamMembers: TeamMember[];
+    onViewAllClick: () => void; // Nova propriedade
 }
 
-const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({ appointments, teamMembers }) => {
+const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({ appointments, teamMembers, onViewAllClick }) => {
     return (
         <section>
             <div className="flex items-center justify-between px-4 pb-3 pt-5">
                 <h3 className="text-xl font-bold tracking-tight text-white">Próximos Agendamentos</h3>
-                <a className="text-sm font-semibold text-primary" href="#">Ver todos</a>
+                <button onClick={onViewAllClick} className="text-sm font-semibold text-primary hover:text-yellow-400 transition-colors">Ver todos</button>
             </div>
             <div className="flex overflow-x-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="flex items-stretch gap-3 px-4">
