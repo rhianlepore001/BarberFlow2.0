@@ -137,7 +137,6 @@ interface AppointmentCardProps {
 
 const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick }) => {
     const clientName = appointment.clients?.name || 'Cliente';
-    const barberName = appointment.team_members?.name.split(' ')[0] || 'Barbeiro'; // Pega só o primeiro nome
     const services = appointment.services_json || [];
     const serviceNames = services.map(s => s.name).join(', ');
     const displayTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -147,7 +146,6 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick 
     const height = appointment.duration_minutes * MINUTE_HEIGHT - 2;
     
     // Determina se há espaço suficiente para exibir detalhes
-    const hasSpaceForBarber = height > 25;
     const hasSpaceForDetails = height > 45;
     const hasSpaceForDuration = height > 70;
 
@@ -167,11 +165,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick 
         >
             <p className="font-bold text-white text-sm leading-tight truncate">{clientName}</p>
             
-            {hasSpaceForBarber && (
-                <p className="text-xs text-primary leading-snug truncate">
-                    {barberName}
-                </p>
-            )}
+            {/* Removido o nome do barbeiro daqui */}
             
             {hasSpaceForDetails && (
                 <p className="text-xs text-text-secondary-dark leading-snug line-clamp-2 mt-1">
@@ -179,12 +173,11 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick 
                 </p>
             )}
             
-            {hasSpaceForDuration && (
-                <div className="mt-auto flex items-center gap-1 text-xs font-semibold text-primary">
-                    <span className="material-symbols-outlined text-sm">schedule</span>
-                    <span>{displayTime} ({appointment.duration_minutes} min)</span>
-                </div>
-            )}
+            {/* Mantido o destaque em laranja para o horário */}
+            <div className="mt-auto flex items-center gap-1 text-xs font-semibold text-primary">
+                <span className="material-symbols-outlined text-sm">schedule</span>
+                <span>{displayTime} ({appointment.duration_minutes} min)</span>
+            </div>
         </motion.div>
     );
 };
