@@ -25,9 +25,10 @@ import EditProfileForm from './components/forms/EditProfileForm';
 import EditWorkingHoursForm from './components/forms/EditWorkingHoursForm';
 import EditTeamMemberForm from './components/forms/EditTeamMemberForm';
 import EditCommissionForm from './components/forms/EditCommissionForm';
-import AppointmentDetailsModal from './components/AppointmentDetailsModal'; // Novo Import
+import AppointmentDetailsModal from './components/AppointmentDetailsModal';
+import EditDailyGoalForm from './components/forms/EditDailyGoalForm'; // Novo Import
 
-type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails'; // Novo Tipo
+type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal'; // Novo Tipo
 
 interface AppProps {
     session: Session;
@@ -42,6 +43,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [user, setUser] = useState<User | null>(null);
     const [dataVersion, setDataVersion] = useState(0);
     const [profileLoadAttempts, setProfileLoadAttempts] = useState(0);
+    const [dailyGoal, setDailyGoal] = useState(500); // Estado para armazenar a meta diária
 
     const refreshData = () => setDataVersion(v => v + 1);
 
@@ -100,6 +102,20 @@ const App: React.FC<AppProps> = ({ session }) => {
                 }
                 if (shopData) {
                     shopName = shopData.name;
+                }
+                
+                // 3. Fetch Daily Goal
+                const { data: settingsData } = await supabase
+                    .from('shop_settings')
+                    .select('daily_goal')
+                    .eq('shop_id', shopId)
+                    .limit(1)
+                    .single();
+                
+                if (settingsData && settingsData.daily_goal !== null) {
+                    setDailyGoal(settingsData.daily_goal);
+                } else {
+                    setDailyGoal(500); // Default fallback
                 }
             }
 
@@ -166,7 +182,8 @@ const App: React.FC<AppProps> = ({ session }) => {
         if (!user) return null;
         switch (activeView) {
             case 'inicio':
-                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} />;
+                // Passa openModal para Home
+                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} openModal={openModal} />;
             case 'agenda':
                 return <Agenda onAppointmentSelect={handleAppointmentSelect} dataVersion={dataVersion} />;
             case 'clientes':
@@ -178,7 +195,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             case 'analise':
                 return <Analysis dataVersion={dataVersion} />;
             default:
-                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} />;
+                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} openModal={openModal} />;
         }
     };
     
@@ -210,6 +227,8 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return <EditTeamMemberForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
             case 'editCommission':
                 return <EditCommissionForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
+            case 'editDailyGoal': // Novo caso
+                return <EditDailyGoalForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} currentGoal={dailyGoal} />;
             default:
                 return null;
         }

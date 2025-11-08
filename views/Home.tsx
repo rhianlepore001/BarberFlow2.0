@@ -10,6 +10,7 @@ interface HomeProps {
     user: User;
     dataVersion: number;
     setActiveView: (view: View) => void; // Nova propriedade
+    openModal: (content: 'editDailyGoal') => void; // Nova propriedade
 }
 
 const containerVariants = {
@@ -37,13 +38,13 @@ const getStartOfWeek = (date: Date): Date => {
     return d;
 };
 
-const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView }) => {
+const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [cashFlowData, setCashFlowData] = useState<CashFlowDay[]>([]);
     const [financials, setFinancials] = useState({
         dailyRevenue: 0,
-        dailyGoal: 500, // Assuming a static goal for now
+        dailyGoal: 500, // Default fallback
         completedAppointments: 0,
         totalAppointments: 0,
     });
@@ -59,7 +60,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView }) => {
             // Calculate start of the current week for chart filtering
             const startOfWeek = getStartOfWeek(today);
 
-            const [appointmentsRes, teamMembersRes, transactionsRes] = await Promise.all([
+            const [appointmentsRes, teamMembersRes, transactionsRes, settingsRes] = await Promise.all([
                 supabase
                     .from('appointments')
                     .select('*, clients(id, name, image_url), services(id, name), team_members(id, name)')
@@ -69,12 +70,21 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView }) => {
                     .limit(5),
                 supabase.from('team_members').select('*'),
                 // Fetch transactions only from the start of the current week
-                supabase.from('transactions').select('amount, transaction_date, type').gte('transaction_date', startOfWeek.toISOString())
+                supabase.from('transactions').select('amount, transaction_date, type').gte('transaction_date', startOfWeek.toISOString()),
+                supabase.from('shop_settings').select('daily_goal').eq('shop_id', user.shopId).limit(1).single()
             ]);
             
             // Team Members
             if (teamMembersRes.error) console.error("Error fetching team members:", teamMembersRes.error);
             else setTeamMembers(teamMembersRes.data);
+
+            // Shop Settings (Daily Goal)
+            let dailyGoal = 500;
+            if (settingsRes.data && settingsRes.data.daily_goal !== null) {
+                dailyGoal = settingsRes.data.daily_goal;
+            } else if (settingsRes.error && settingsRes.error.code !== 'PGRST116') {
+                console.error("Error fetching shop settings:", settingsRes.error);
+            }
 
             // Appointments and Financials
             if (appointmentsRes.error) console.error("Error fetching appointments:", appointmentsRes.error);
@@ -91,6 +101,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView }) => {
 
                 setFinancials(prev => ({
                     ...prev,
+                    dailyGoal,
                     totalAppointments: fetchedAppointments.length,
                     completedAppointments: fetchedAppointments.filter(a => new Date(a.startTime) < now).length,
                 }));
@@ -119,14 +130,14 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView }) => {
                 const currentDayIndex = (today.getDay() + 6) % 7;
                 weeklyFlow[currentDayIndex].isCurrent = true;
                 setCashFlowData(weeklyFlow);
-                setFinancials(prev => ({...prev, dailyRevenue}));
+                setFinancials(prev => ({...prev, dailyRevenue, dailyGoal}));
             }
 
             setLoading(false);
         };
 
         fetchData();
-    }, [dataVersion]);
+    }, [dataVersion, user.shopId]);
 
     if (loading) {
         return <div className="text-center p-10">Carregando...</div>;
@@ -151,6 +162,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView }) => {
                     completedAppointments={financials.completedAppointments}
                     totalAppointments={financials.totalAppointments}
                     nextAppointmentName={appointments[0]?.clients?.name || null}
+                    onEditGoalClick={() => openModal('editDailyGoal')} // Adiciona a ação de edição
                 />
             </motion.div>
 
@@ -158,7 +170,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView }) => {
                 <AppointmentsSection 
                     appointments={appointments} 
                     teamMembers={teamMembers} 
-                    onViewAllClick={() => setActiveView('agenda')} // Adiciona a ação
+                    onViewAllClick={() => setActiveView('agenda')}
                 />
             </motion.div>
 

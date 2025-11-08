@@ -7,9 +7,10 @@ interface FinancialSummaryProps {
     completedAppointments: number;
     totalAppointments: number;
     nextAppointmentName: string | null;
+    onEditGoalClick: () => void; // Nova propriedade
 }
 
-const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, dailyGoal, completedAppointments, totalAppointments, nextAppointmentName }) => {
+const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, dailyGoal, completedAppointments, totalAppointments, nextAppointmentName, onEditGoalClick }) => {
     const progress = dailyGoal > 0 ? Math.min((dailyRevenue / dailyGoal) * 100, 100) : 0;
     
     const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
@@ -24,7 +25,12 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, daily
             
             <div className="mt-4">
                 <div className="flex justify-between text-xs font-bold text-text-secondary-dark mb-1">
-                    <span>Meta diária</span>
+                    <div className="flex items-center gap-1">
+                        <span>Meta diária</span>
+                        <button onClick={onEditGoalClick} className="text-primary hover:text-yellow-400 transition-colors">
+                            <span className="material-symbols-outlined text-sm">edit</span>
+                        </button>
+                    </div>
                     <span>{formatCurrency(dailyGoal)}</span>
                 </div>
                 <div className="w-full bg-background-dark rounded-full h-2 overflow-hidden">
