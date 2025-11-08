@@ -5,6 +5,7 @@ import type { PeriodData } from '../types';
 import PerformanceChart from '../components/PerformanceChart';
 import GeminiInsightCard from '../components/GeminiInsightCard';
 import GeminiForecastCard from '../components/GeminiForecastCard';
+import Tooltip from '../components/Tooltip'; // Importa o Tooltip
 
 type Period = 'week' | 'month' | 'year';
 
@@ -52,11 +53,23 @@ const PeriodSelector: React.FC<{ selectedPeriod: Period; setPeriod: (p: Period) 
     );
 };
 
-const KPICard: React.FC<{ label: string; value: string; percentageChange: number }> = ({ label, value, percentageChange }) => {
+interface KPICardProps {
+    label: string;
+    value: string;
+    percentageChange: number;
+    tooltipContent: string; // Nova prop
+}
+
+const KPICard: React.FC<KPICardProps> = ({ label, value, percentageChange, tooltipContent }) => {
     const isPositive = percentageChange >= 0;
     return (
         <div className="bg-card-dark p-3 rounded-xl flex-1">
-            <p className="text-xs text-text-secondary-dark">{label}</p>
+            <div className="flex items-center gap-1">
+                <p className="text-xs text-text-secondary-dark">{label}</p>
+                <Tooltip content={tooltipContent}>
+                    <span className="material-symbols-outlined text-xs text-text-secondary-dark cursor-pointer hover:text-white transition-colors">info</span>
+                </Tooltip>
+            </div>
             <p className="text-lg font-bold text-white">{value}</p>
             <div className={`flex items-center text-xs font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
                 <span className="material-symbols-outlined text-sm">{isPositive ? 'trending_up' : 'trending_down'}</span>
@@ -117,7 +130,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
     const [period, setPeriod] = useState<Period>('month');
     const [data, setData] = useState<FullAnalysisData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [fetchError, setFetchError] = useState<string | null>(null); // Novo estado de erro
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchDataForPeriod = async () => {
@@ -267,6 +280,13 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
     const newClientsChange = calculateChange(data.newClients, data.previousNewClients);
     // Retention rate remains placeholder for now
     const retentionChange = 2.5; 
+    
+    const kpiDescriptions = {
+        faturamento: "O valor total de vendas e serviços realizados no período selecionado. Indica o volume de negócios.",
+        ticketMedio: "A média de gasto por transação (corte, barba, etc.). Um ticket médio alto sugere que os clientes estão comprando mais serviços ou produtos por visita.",
+        novosClientes: "O número de clientes que fizeram sua primeira visita ou agendamento neste período. Essencial para medir o crescimento.",
+        taxaRetencao: "A porcentagem de clientes que retornaram para um novo serviço após a primeira visita. Uma taxa alta indica fidelidade e satisfação."
+    };
 
     return (
         <motion.div
@@ -280,10 +300,30 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             </motion.div>
 
             <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
-                <KPICard label="Faturamento" value={formatCurrency(data.totalRevenue)} percentageChange={revenueChange} />
-                <KPICard label="Ticket Médio" value={formatCurrency(data.avgTicket)} percentageChange={avgTicketChange} /> 
-                <KPICard label="Novos Clientes" value={`${data.newClients}`} percentageChange={newClientsChange} />
-                <KPICard label="Taxa de Retenção" value={`${data.retentionRate}%`} percentageChange={retentionChange} />
+                <KPICard 
+                    label="Faturamento" 
+                    value={formatCurrency(data.totalRevenue)} 
+                    percentageChange={revenueChange} 
+                    tooltipContent={kpiDescriptions.faturamento}
+                />
+                <KPICard 
+                    label="Ticket Médio" 
+                    value={formatCurrency(data.avgTicket)} 
+                    percentageChange={avgTicketChange} 
+                    tooltipContent={kpiDescriptions.ticketMedio}
+                /> 
+                <KPICard 
+                    label="Novos Clientes" 
+                    value={`${data.newClients}`} 
+                    percentageChange={newClientsChange} 
+                    tooltipContent={kpiDescriptions.novosClientes}
+                />
+                <KPICard 
+                    label="Taxa de Retenção" 
+                    value={`${data.retentionRate}%`} 
+                    percentageChange={retentionChange} 
+                    tooltipContent={kpiDescriptions.taxaRetencao}
+                />
             </motion.div>
 
             <motion.div variants={itemVariants}>
