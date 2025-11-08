@@ -25,17 +25,19 @@ const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period })
         setForecast('');
 
         try {
+            // O process.env.API_KEY é definido no vite.config.ts
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
             const prompt = `
                 Você é um analista financeiro sênior especializado em pequenos negócios como barbearias.
-                Com base nos dados de faturamento ${periodMap[period].current} a seguir, forneça uma previsão de faturamento para o(a) ${periodMap[period].next}.
+                Sua função é analisar os dados de faturamento ${periodMap[period].current} e fornecer uma previsão de faturamento para o(a) ${periodMap[period].next}.
 
-                Dados de Tendência (valores sequenciais): ${data.revenueTrend.join(', ')}
-                Faturamento Total do Período Atual: R$ ${data.totalRevenue.toFixed(2)}
-                Faturamento Total do Período Anterior: R$ ${data.previousTotalRevenue.toFixed(2)}
+                Dados de Faturamento:
+                - Faturamento Total do Período Atual: R$ ${data.totalRevenue.toFixed(2)}
+                - Faturamento Total do Período Anterior: R$ ${data.previousTotalRevenue.toFixed(2)}
+                - Tendência de Receita (valores sequenciais): ${data.revenueTrend.join(', ')}
 
-                Sua resposta DEVE seguir estritamente o seguinte formato:
+                Sua resposta DEVE seguir estritamente o seguinte formato, com duas linhas separadas por quebra de linha:
                 1. Na primeira linha, apresente a previsão como um intervalo de valores. Exemplo: R$ X.XXX,XX - R$ Y.YYY,YY
                 2. Na segunda linha, forneça uma justificativa curta e clara (1-2 frases) baseada na tendência observada e na comparação com o período anterior.
 
@@ -51,13 +53,15 @@ const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period })
 
         } catch (err) {
             console.error("Error generating forecast:", err);
-            setError("Não foi possível gerar a previsão. Tente novamente.");
+            setError("Não foi possível gerar a previsão. Verifique sua chave de API ou tente novamente.");
         } finally {
             setIsLoading(false);
         }
     };
 
-    const [forecastRange, forecastText] = forecast.split('\n');
+    // Divide a resposta em intervalo e texto, garantindo que não falhe se a IA retornar apenas uma linha
+    const [forecastRange, ...rest] = forecast.split('\n');
+    const forecastText = rest.join(' ').trim();
 
     return (
         <div className="bg-card-dark p-4 rounded-xl">
@@ -95,7 +99,7 @@ const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period })
                     <motion.div key="forecast" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center">
                         <p className="text-xs text-text-secondary-dark">Previsão para {periodMap[period].next}</p>
                         <p className="text-2xl font-extrabold text-primary my-1">{forecastRange}</p>
-                        <p className="text-sm text-text-secondary-dark leading-relaxed">{forecastText}</p>
+                        <p className="text-sm text-text-secondary-dark leading-relaxed whitespace-pre-wrap">{forecastText}</p>
                     </motion.div>
                 )}
 
