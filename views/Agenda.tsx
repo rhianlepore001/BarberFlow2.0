@@ -291,11 +291,25 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
         }
     }, [selectedDay, loading, weekOffset, startHour]);
 
-    // Gera os marcadores de tempo com base nos horários dinâmicos
+    // Gera os marcadores de tempo a cada 30 minutos
     const timeMarkers = useMemo(() => {
         const markers = [];
-        for (let hour = startHour; hour <= endHour; hour++) {
-            markers.push(hour);
+        // Multiplica por 2 para incluir as meias horas
+        const totalMinutes = (endHour - startHour) * 60;
+        
+        for (let m = 0; m <= totalMinutes; m += 30) {
+            const currentHour = startHour + Math.floor(m / 60);
+            const currentMinute = m % 60;
+            
+            // Garante que não ultrapasse o horário final (endHour)
+            if (currentHour > endHour || (currentHour === endHour && currentMinute > 0)) continue;
+            
+            markers.push({
+                hour: currentHour,
+                minute: currentMinute,
+                isHour: currentMinute === 0,
+                timeString: `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
+            });
         }
         return markers;
     }, [startHour, endHour]);
@@ -365,12 +379,22 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
                 <div className="relative ml-14" style={{ height: `${totalHeight}px` }}>
                     
                     {/* Time Grid Lines */}
-                    {timeMarkers.map(hour => (
-                        <div key={hour} className="relative" style={{ top: `${(hour - startHour) * HOUR_HEIGHT}px`, height: `${HOUR_HEIGHT}px` }}>
-                             <div className="absolute -left-14 w-14 text-right pr-2 -translate-y-1/2">
-                                <span className="text-xs text-text-secondary-dark">{`${hour.toString().padStart(2, '0')}:00`}</span>
-                             </div>
-                             <div className="h-px bg-white/10"></div>
+                    {timeMarkers.map((marker, index) => (
+                        <div 
+                            key={index} 
+                            className="relative" 
+                            style={{ 
+                                top: `${((marker.hour - startHour) * 60 + marker.minute) * MINUTE_HEIGHT}px`, 
+                                height: marker.isHour ? `${HOUR_HEIGHT}px` : `${HOUR_HEIGHT / 2}px`,
+                                marginTop: index === 0 ? '0' : marker.isHour ? `-${HOUR_HEIGHT}px` : `-${HOUR_HEIGHT / 2}px`
+                            }}
+                        >
+                             {marker.isHour && (
+                                 <div className="absolute -left-14 w-14 text-right pr-2 -translate-y-1/2">
+                                    <span className="text-xs text-text-secondary-dark">{marker.timeString}</span>
+                                 </div>
+                             )}
+                             <div className={`h-px ${marker.isHour ? 'bg-white/10' : 'bg-white/5'}`}></div>
                         </div>
                     ))}
                     
