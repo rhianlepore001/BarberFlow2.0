@@ -27,9 +27,10 @@ import EditTeamMemberForm from './components/forms/EditTeamMemberForm';
 import EditCommissionForm from './components/forms/EditCommissionForm';
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 import EditDailyGoalForm from './components/forms/EditDailyGoalForm';
-import ClientDetailsModal from './components/ClientDetailsModal'; // Importa o novo modal
+import ClientDetailsModal from './components/ClientDetailsModal';
+import EditSettlementDayForm from './components/forms/EditSettlementDayForm'; // NOVO
 
-type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails';
+type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails' | 'editSettlementDay';
 
 interface AppProps {
     session: Session;
@@ -41,7 +42,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [modalContent, setModalContent] = useState<ModalContentType | null>(null);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
-    const [selectedClient, setSelectedClient] = useState<Client | null>(null); // Novo estado para cliente
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [user, setUser] = useState<User | null>(null);
     const [dataVersion, setDataVersion] = useState(0);
     const [profileLoadAttempts, setProfileLoadAttempts] = useState(0);
@@ -160,7 +161,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             setModalContent(null);
             setEditingAppointment(null);
             setEditingMember(null);
-            setSelectedClient(null); // Limpa o cliente selecionado
+            setSelectedClient(null);
         }, 300);
     };
 
@@ -195,16 +196,16 @@ const App: React.FC<AppProps> = ({ session }) => {
                             dataVersion={dataVersion} 
                             setActiveView={setActiveView} 
                             openModal={openModal} 
-                            onAppointmentSelect={handleAppointmentSelect} // Passa a função
+                            onAppointmentSelect={handleAppointmentSelect}
                         />;
             case 'agenda':
                 return <Agenda 
                             onAppointmentSelect={handleAppointmentSelect} 
                             dataVersion={dataVersion} 
-                            initialAppointment={editingAppointment} // Passa o agendamento para inicializar a view
+                            initialAppointment={editingAppointment}
                         />;
             case 'clientes':
-                return <Clients dataVersion={dataVersion} onClientSelect={handleClientSelect} />; // Passa a função de seleção
+                return <Clients dataVersion={dataVersion} onClientSelect={handleClientSelect} />;
             case 'caixa':
                 return <CashFlow dataVersion={dataVersion} refreshData={refreshData} />;
             case 'gestao':
@@ -243,7 +244,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'clientDetails':
                 if (!selectedClient) return null;
-                return <ClientDetailsModal client={selectedClient} onClose={closeModal} onSuccess={handleSuccess} />; // Novo modal
+                return <ClientDetailsModal client={selectedClient} onClose={closeModal} onSuccess={handleSuccess} />;
             case 'newTransaction':
                 return <NewTransactionForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             case 'newTeamMember':
@@ -260,6 +261,8 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return <EditCommissionForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
             case 'editDailyGoal':
                 return <EditDailyGoalForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} currentGoal={dailyGoal} />;
+            case 'editSettlementDay': // NOVO
+                return <EditSettlementDayForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
             default:
                 return null;
         }

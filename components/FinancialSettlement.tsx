@@ -12,14 +12,13 @@ const FinancialSettlement: React.FC<FinancialSettlementProps> = ({ financials, t
     return (
         <div>
             <div className="flex justify-between items-center mb-3 px-1">
-                <h4 className="text-lg font-bold">Acerto Mensal</h4>
-                {/* Ação 'Ver Histórico' sem funcionalidade por enquanto, mantendo o placeholder */}
-                <a className="text-sm font-semibold text-primary" href="#">Ver Histórico</a>
+                <h4 className="text-lg font-bold">Acerto de Comissão</h4>
+                {/* Removido o link 'Ver Histórico' */}
             </div>
             <div className="space-y-3">
                 {financials.length === 0 ? (
                     <div className="rounded-xl bg-card-dark p-4 text-center text-text-secondary-dark">
-                        Nenhum faturamento registrado este mês para acerto.
+                        Nenhum faturamento registrado neste ciclo de acerto.
                     </div>
                 ) : (
                     financials.map(fin => {

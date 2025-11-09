@@ -6,7 +6,7 @@ import FinancialSettlement from '../components/FinancialSettlement';
 
 interface ManagementProps {
     user: User;
-    openModal: (content: 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission', data?: any) => void;
+    openModal: (content: 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'editSettlementDay', data?: any) => void;
     dataVersion: number;
     refreshData: () => void;
 }
@@ -15,6 +15,7 @@ interface ShopSettings {
     open_days: string[];
     start_time: string;
     end_time: string;
+    settlement_day: number; // Adicionado
 }
 
 const containerVariants = {
@@ -33,6 +34,69 @@ const itemVariants = {
     visible: { opacity: 1, y: 0 },
 };
 
+// Helper function to calculate the settlement period based on the configured day
+const getSettlementPeriod = (settlementDay: number) => {
+    const now = new Date();
+    const currentDay = now.getDate();
+    
+    let startDate: Date;
+    let endDate: Date;
+
+    if (currentDay >= settlementDay) {
+        // O ciclo atual começou neste mês (no dia configurado) e termina no dia anterior do próximo mês
+        startDate = new Date(now.getFullYear(), now.getMonth(), settlementDay);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, settlementDay - 1, 23, 59, 59, 999);
+    } else {
+        // O ciclo atual começou no mês passado (no dia configurado) e termina no dia anterior deste mês
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, settlementDay);
+        endDate = new Date(now.getFullYear(), now.getMonth(), settlementDay - 1, 23, 59, 59, 999);
+    }
+    
+    // O período de cálculo deve ir do início do ciclo até AGORA (para ver o acerto em tempo real)
+    // Se o dia de acerto for 25, e hoje for 10, o período é de 26 do mês passado até 10 de hoje.
+    // Se o dia de acerto for 25, e hoje for 26, o período é de 26 de hoje até 26 do próximo mês.
+    
+    // Para simplificar, vamos calcular o período que está sendo fechado HOJE.
+    // Se hoje for 10/11 e o dia de acerto for 25: O período é 26/10 a 25/11.
+    // Se hoje for 26/11 e o dia de acerto for 25: O período é 26/11 a 25/12.
+    
+    // Vamos usar a regra mais simples: Acerto é sempre do dia configurado do mês passado até o dia configurado deste mês.
+    
+    // Início do Período (Dia configurado do Mês Passado)
+    const startMonth = currentDay >= settlementDay ? now.getMonth() : now.getMonth() - 1;
+    const startYear = currentDay >= settlementDay ? now.getFullYear() : (startMonth === -1 ? now.getFullYear() - 1 : now.getFullYear());
+    
+    startDate = new Date(startYear, startMonth, settlementDay);
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Fim do Período (Dia configurado deste Mês)
+    const endMonth = currentDay >= settlementDay ? now.getMonth() + 1 : now.getMonth();
+    const endYear = currentDay >= settlementDay ? now.getFullYear() : (endMonth === -1 ? now.getFullYear() - 1 : now.getFullYear());
+    
+    // O fim do período é o dia anterior ao dia de acerto do próximo ciclo.
+    // Se o dia de acerto é 25, o ciclo fecha no dia 24.
+    endDate = new Date(now.getFullYear(), now.getMonth(), currentDay, 23, 59, 59, 999); // Vai até o final do dia de hoje
+    
+    // Para o cálculo do acerto, o período deve ser: [Dia de Acerto do Mês Passado] até [HOJE]
+    // Ex: Acerto dia 25. Hoje é 10/11. Período: 26/10 até 10/11.
+    
+    let periodStart: Date;
+    
+    if (currentDay >= settlementDay) {
+        // Se hoje é 26/11 e acerto é 25: O ciclo começou em 26/11.
+        periodStart = new Date(now.getFullYear(), now.getMonth(), settlementDay);
+    } else {
+        // Se hoje é 10/11 e acerto é 25: O ciclo começou em 26/10.
+        periodStart = new Date(now.getFullYear(), now.getMonth() - 1, settlementDay);
+    }
+    periodStart.setHours(0, 0, 0, 0);
+    
+    const periodEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    return { periodStart, periodEnd };
+};
+
+
 const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, refreshData }) => {
     const [team, setTeam] = useState<TeamMember[]>([]);
     const [services, setServices] = useState<Service[]>([]);
@@ -45,12 +109,11 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
         const fetchData = async () => {
             setLoading(true);
             
-            // RLS garante que todas as buscas abaixo retornem apenas dados do shop do usuário
             const [teamRes, servicesRes, transactionsRes, settingsRes] = await Promise.all([
-                supabase.from('team_members').select('*, commission_rate'), // Inclui commission_rate
+                supabase.from('team_members').select('*, commission_rate'),
                 supabase.from('services').select('*'),
                 supabase.from('transactions').select('amount, barber_id, type, transaction_date'),
-                supabase.from('shop_settings').select('*').limit(1).single() // RLS filtra pelo shop_id
+                supabase.from('shop_settings').select('*').limit(1).single()
             ]);
 
             let fetchedTeam: TeamMember[] = [];
@@ -59,7 +122,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                 fetchedTeam = teamRes.data.map((t: any) => ({
                     ...t, 
                     imageUrl: t.image_url,
-                    commissionRate: t.commission_rate || 0.5 // Garante um valor padrão
+                    commissionRate: t.commission_rate || 0.5
                 }));
                 setTeam(fetchedTeam);
             }
@@ -67,34 +130,45 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             if (servicesRes.error) console.error("Error fetching services:", servicesRes.error.message);
             else setServices(servicesRes.data);
 
+            let currentSettings: ShopSettings | null = null;
             if (settingsRes.error && settingsRes.error.code !== 'PGRST116') {
                 console.error("Error fetching settings: ", settingsRes.error.message);
-            } else {
-                setSettings(settingsRes.data);
+            } else if (settingsRes.data) {
+                currentSettings = settingsRes.data as ShopSettings;
+                setSettings(currentSettings);
             }
+            
+            // --- Lógica de Acerto Mensal Baseada no settlement_day ---
+            const settlementDay = currentSettings?.settlement_day || 1;
+            const { periodStart, periodEnd } = getSettlementPeriod(settlementDay);
+            
+            const periodStartISO = periodStart.toISOString();
+            const periodEndISO = periodEnd.toISOString();
 
             if (transactionsRes.error) console.error("Error fetching transactions:", transactionsRes.error.message);
             else {
-                const now = new Date();
-                const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                
                 const barberRevenues: { [key: number]: number } = {};
+                
                 transactionsRes.data
-                    .filter(t => t.type === 'income' && new Date(t.transaction_date) >= firstDayOfMonth && t.barber_id)
+                    .filter(t => 
+                        t.type === 'income' && 
+                        new Date(t.transaction_date) >= periodStart && 
+                        new Date(t.transaction_date) <= periodEnd && 
+                        t.barber_id
+                    )
                     .forEach(t => {
                         barberRevenues[t.barber_id] = (barberRevenues[t.barber_id] || 0) + t.amount;
                     });
                 
-                const barberFinancials: BarberFinancials[] = Object.keys(barberRevenues).map(barberIdStr => {
-                    const barberId = parseInt(barberIdStr);
-                    const member = fetchedTeam.find(t => t.id === barberId);
-                    
-                    return {
-                        barberId: barberId,
-                        monthRevenue: barberRevenues[barberId],
-                        commissionRate: member?.commissionRate || 0.5 // Usa a taxa real ou fallback
-                    };
-                });
+                const barberFinancials: BarberFinancials[] = fetchedTeam
+                    .filter(member => member.id in barberRevenues) // Apenas membros com receita no período
+                    .map(member => {
+                        return {
+                            barberId: member.id,
+                            monthRevenue: barberRevenues[member.id] || 0,
+                            commissionRate: member.commissionRate || 0.5
+                        };
+                    });
                 setFinancials(barberFinancials);
             }
 
@@ -137,6 +211,19 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
 
         return sortedDays.map(d => dayMap[d]).join(', ');
     };
+    
+    const formatSettlementPeriod = () => {
+        if (!settings) return "Mês Atual";
+        const { periodStart, periodEnd } = getSettlementPeriod(settings.settlement_day);
+        
+        const startDay = periodStart.getDate().toString().padStart(2, '0');
+        const startMonth = (periodStart.getMonth() + 1).toString().padStart(2, '0');
+        
+        const endDay = periodEnd.getDate().toString().padStart(2, '0');
+        const endMonth = (periodEnd.getMonth() + 1).toString().padStart(2, '0');
+        
+        return `${startDay}/${startMonth} - ${endDay}/${endMonth}`;
+    }
 
     if(loading) {
         return <div className="text-center p-10">Carregando dados de gestão...</div>
@@ -176,6 +263,17 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             </motion.div>
 
             <motion.div variants={itemVariants}>
+                <div className="flex justify-between items-center mb-3 px-1">
+                    <h4 className="text-lg font-bold">Acerto Mensal</h4>
+                    <button onClick={() => openModal('editSettlementDay')} className="text-primary font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors">
+                        <span className="material-symbols-outlined text-lg">calendar_month</span>
+                        Dia de Acerto: {settings?.settlement_day || 1}
+                    </button>
+                </div>
+                <div className="rounded-xl bg-card-dark p-4 mb-4">
+                    <p className="text-sm font-medium text-text-secondary-dark">Período de Cálculo:</p>
+                    <p className="font-bold text-white text-base">{formatSettlementPeriod()}</p>
+                </div>
                 <FinancialSettlement financials={financials} team={team} />
             </motion.div>
 
