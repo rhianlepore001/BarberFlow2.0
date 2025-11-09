@@ -79,10 +79,6 @@ const KPICard: React.FC<KPICardProps> = ({ label, value, percentageChange, toolt
     )
 }
 
-interface AnalysisProps {
-    dataVersion: number;
-}
-
 // Helper function to calculate date ranges
 const getDateRanges = (period: Period) => {
     const now = new Date();
@@ -293,6 +289,8 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
         novosClientes: "O número de clientes que fizeram sua primeira visita ou agendamento neste período. Essencial para medir o crescimento.",
         taxaRetencao: "A porcentagem de clientes que retornaram para um novo serviço após a primeira visita. Uma taxa alta indica fidelidade e satisfação."
     };
+    
+    const iaTooltipContent = "A precisão da Previsão e do Insight da IA aumenta significativamente após 30 dias de uso consistente do aplicativo, pois ela terá dados históricos suficientes para identificar padrões e tendências reais do seu negócio.";
 
     return (
         <motion.div
@@ -337,6 +335,12 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             </motion.div>
 
             <motion.div variants={itemVariants} className="space-y-6">
+                 <div className="flex items-center gap-2 mb-1 px-1">
+                    <h3 className="font-bold text-white">Ferramentas de IA</h3>
+                    <Tooltip content={iaTooltipContent}>
+                        <span className="material-symbols-outlined text-sm text-text-secondary-dark cursor-pointer hover:text-white transition-colors">info</span>
+                    </Tooltip>
+                </div>
                  <GeminiForecastCard data={data} period={period}/>
                  <GeminiInsightCard data={data} period={period}/>
             </motion.div>
