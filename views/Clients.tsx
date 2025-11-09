@@ -26,6 +26,19 @@ interface ClientsProps {
     onClientSelect: (client: Client) => void; // Nova prop para selecionar cliente
 }
 
+const getFilterTooltipContent = (filter: ClientFilter) => {
+    switch (filter) {
+        case 'vips':
+            return "Clientes VIPs: Aqueles com gasto total acumulado igual ou superior a R$ 1000,00. Foco na fidelização e ofertas exclusivas.";
+        case 'recent':
+            return "Clientes Recentes: Clientes que visitaram a barbearia nos últimos 7 dias. Mantenha o contato para garantir o retorno.";
+        case 'at_risk':
+            return "Clientes em Risco: Clientes que não visitam a barbearia há mais de 30 dias. Recomenda-se contato para reengajamento.";
+        default:
+            return "";
+    }
+}
+
 const FilterButtons: React.FC<{ activeFilter: ClientFilter; setFilter: (filter: ClientFilter) => void }> = ({ activeFilter, setFilter }) => {
     const filters: { label: string; value: ClientFilter }[] = [
         { label: 'Todos', value: 'all' },
@@ -47,7 +60,14 @@ const FilterButtons: React.FC<{ activeFilter: ClientFilter; setFilter: (filter: 
                             className="absolute inset-0 bg-primary rounded-full z-0"
                         />
                     )}
-                    <span className="relative z-10">{filter.label}</span>
+                    <span className="relative z-10 flex items-center justify-center gap-1">
+                        {filter.label}
+                        {filter.value !== 'all' && (
+                            <Tooltip content={getFilterTooltipContent(filter.value)}>
+                                <span className="material-symbols-outlined text-xs cursor-pointer hover:text-white transition-colors">info</span>
+                            </Tooltip>
+                        )}
+                    </span>
                 </button>
             ))}
         </div>
@@ -78,13 +98,14 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect }) => {
 
     // Lógica para determinar o status do cliente
     const getClientStatus = (client: Client): 'vip' | 'at_risk' | 'recent' | null => {
-        const now = new Date();
+        // Mantemos a lógica de status para exibir os ícones na lista
         
         // VIP: Gasto total >= R$ 1000
         if ((client.totalSpent ?? 0) >= 1000) return 'vip';
         
         if (client.lastVisitRaw) {
             const lastVisitDate = new Date(client.lastVisitRaw);
+            const now = new Date();
             const diffTime = now.getTime() - lastVisitDate.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
@@ -145,18 +166,7 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect }) => {
         return <div className="text-center p-10">Carregando clientes...</div>;
     }
     
-    const getStatusTooltip = (status: 'vip' | 'at_risk' | 'recent') => {
-        switch (status) {
-            case 'vip':
-                return "Cliente VIP: Gasto total acumulado igual ou superior a R$ 1000,00. Foco na fidelização e ofertas exclusivas.";
-            case 'recent':
-                return "Cliente Recente: Visitou a barbearia nos últimos 7 dias. Mantenha o contato para garantir o retorno.";
-            case 'at_risk':
-                return "Cliente em Risco: Não visita a barbearia há mais de 30 dias. Recomenda-se contato para reengajamento.";
-            default:
-                return "";
-        }
-    }
+    // Removemos a função getStatusTooltip daqui, pois ela não é mais necessária para os ícones da lista.
 
     return (
         <div className="px-4 pt-4 pb-6">
@@ -190,20 +200,15 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect }) => {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                     <p className="font-bold text-white truncate">{client.name}</p>
+                                    {/* Ícones de status na lista (sem tooltip, apenas visual) */}
                                     {status === 'vip' && (
-                                        <Tooltip content={getStatusTooltip('vip')}>
-                                            <span title="Cliente VIP" className="material-symbols-outlined text-primary text-base cursor-pointer">workspace_premium</span>
-                                        </Tooltip>
+                                        <span title="Cliente VIP" className="material-symbols-outlined text-primary text-base">workspace_premium</span>
                                     )}
                                     {status === 'recent' && (
-                                        <Tooltip content={getStatusTooltip('recent')}>
-                                            <span title="Cliente Recente" className="material-symbols-outlined text-green-400 text-base cursor-pointer">schedule</span>
-                                        </Tooltip>
+                                        <span title="Cliente Recente" className="material-symbols-outlined text-green-400 text-base">schedule</span>
                                     )}
                                     {status === 'at_risk' && (
-                                        <Tooltip content={getStatusTooltip('at_risk')}>
-                                            <span title="Cliente em Risco" className="material-symbols-outlined text-red-400 text-base cursor-pointer">hourglass_empty</span>
-                                        </Tooltip>
+                                        <span title="Cliente em Risco" className="material-symbols-outlined text-red-400 text-base">hourglass_empty</span>
                                     )}
                                 </div>
                                 <p className="text-sm text-text-secondary-dark">Última visita: {client.lastVisit}</p>
