@@ -198,7 +198,11 @@ const App: React.FC<AppProps> = ({ session }) => {
                             onAppointmentSelect={handleAppointmentSelect} // Passa a função
                         />;
             case 'agenda':
-                return <Agenda onAppointmentSelect={handleAppointmentSelect} dataVersion={dataVersion} />;
+                return <Agenda 
+                            onAppointmentSelect={handleAppointmentSelect} 
+                            dataVersion={dataVersion} 
+                            initialAppointment={editingAppointment} // Passa o agendamento para inicializar a view
+                        />;
             case 'clientes':
                 return <Clients dataVersion={dataVersion} onClientSelect={handleClientSelect} />; // Passa a função de seleção
             case 'caixa':

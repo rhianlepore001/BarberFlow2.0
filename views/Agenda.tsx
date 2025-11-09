@@ -156,9 +156,10 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
 interface AgendaProps {
     onAppointmentSelect: (appointment: Appointment) => void;
     dataVersion: number;
+    initialAppointment: Appointment | null; // Nova prop para inicialização
 }
 
-const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => {
+const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initialAppointment }) => {
     const today = new Date();
     // 0=Seg, 5=Sab. Se for Dom(0) ou Sab(6), ajusta para Seg(0)
     const currentDayOfWeek = (today.getDay() + 6) % 7; 
@@ -174,6 +175,9 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
     // Horários de funcionamento dinâmicos
     const [startHour, setStartHour] = useState(8);
     const [endHour, setEndHour] = useState(20);
+    
+    // Estado para controlar se a rolagem inicial já foi feita
+    const initialScrollDone = useRef(false);
 
     // Calculate the start of the currently selected week (Monday)
     const startOfSelectedWeek = useMemo(() => {
@@ -181,6 +185,31 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
         date.setDate(date.getDate() + weekOffset * 7);
         return getStartOfWeek(date);
     }, [weekOffset]);
+    
+    // --- Lógica de Inicialização do Agendamento ---
+    useEffect(() => {
+        if (initialAppointment && !initialScrollDone.current) {
+            const apptDate = new Date(initialAppointment.startTime);
+            const today = new Date();
+            
+            // 1. Calcular Week Offset
+            const startOfApptWeek = getStartOfWeek(apptDate);
+            const startOfTodayWeek = getStartOfWeek(today);
+            
+            // Diferença em milissegundos / milissegundos por dia / 7 dias
+            const diffWeeks = Math.round((startOfApptWeek.getTime() - startOfTodayWeek.getTime()) / (1000 * 60 * 60 * 24 * 7));
+            setWeekOffset(diffWeeks);
+            
+            // 2. Calcular Selected Day (0=Mon, 5=Sat)
+            const dayIndex = (apptDate.getDay() + 6) % 7;
+            setSelectedDay(dayIndex);
+            
+            // 3. Forçar a rolagem (será executada no próximo useEffect)
+            // Marcamos que a rolagem inicial deve ocorrer
+            initialScrollDone.current = true;
+        }
+    }, [initialAppointment]);
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -245,13 +274,29 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion }) => 
         fetchData();
     }, [dataVersion, startOfSelectedWeek]); // Recarrega quando a semana muda ou dados mudam
     
-    // Scroll to top of the working hours on load/day change
+    // Scroll to the appointment time if initialAppointment is set
     useEffect(() => {
-        if (scrollContainerRef.current && !loading) {
-            // Scroll to the top of the working hours
+        if (scrollContainerRef.current && !loading && initialAppointment && initialScrollDone.current) {
+            const apptDate = new Date(initialAppointment.startTime);
+            const apptHour = apptDate.getHours();
+            const apptMinute = apptDate.getMinutes();
+            
+            // Calcula a posição em pixels
+            const minutesFromStart = (apptHour - startHour) * 60 + apptMinute;
+            const targetScroll = minutesFromStart * MINUTE_HEIGHT;
+            
+            // Rola para a posição, subtraindo um pouco para dar contexto (ex: 1 hora antes)
+            const scrollPosition = Math.max(0, targetScroll - HOUR_HEIGHT); 
+            
+            scrollContainerRef.current.scrollTo({ top: scrollPosition, behavior: 'smooth' });
+            
+            // Reseta a flag para que a rolagem só ocorra na inicialização via Home
+            initialScrollDone.current = false;
+        } else if (scrollContainerRef.current && !loading) {
+            // Se não houver agendamento inicial, rola para o topo da hora de início
             scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
         }
-    }, [selectedDay, loading, weekOffset, startHour]);
+    }, [selectedDay, loading, weekOffset, startHour, initialAppointment]);
 
     // Gera os marcadores de tempo a cada 30 minutos
     const timeMarkers = useMemo(() => {
