@@ -180,7 +180,8 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
 
     // Calculate the start of the currently selected week (Monday)
     const startOfSelectedWeek = useMemo(() => {
-        const date = new Date();
+        // Cria uma nova data baseada no dia atual para evitar referências fixas
+        const date = new Date(); 
         date.setDate(date.getDate() + weekOffset * 7);
         return getStartOfWeek(date);
     }, [weekOffset]);
