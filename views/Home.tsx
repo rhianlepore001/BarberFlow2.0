@@ -64,9 +64,9 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
+            const nowISO = new Date().toISOString(); // Ponto de partida: Agora
             const today = new Date();
             const todayStrStart = today.toISOString().split('T')[0] + 'T00:00:00.000Z';
-            const todayStrEnd = today.toISOString().split('T')[0] + 'T23:59:59.999Z';
             
             // Calculate start of the current week for daily stats (always today's week)
             const startOfCurrentWeek = getStartOfWeek(today);
@@ -78,12 +78,11 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
             endOfSelectedWeek.setHours(23, 59, 59, 999);
 
             const [appointmentsRes, teamMembersRes, transactionsRes, settingsRes] = await Promise.all([
-                // Appointments for TODAY (always)
+                // Appointments from NOW onwards (Next 5 appointments)
                 supabase
                     .from('appointments')
-                    .select('*, clients(id, name, image_url), team_members(id, name)') // Removido services(id, name)
-                    .gte('start_time', todayStrStart)
-                    .lte('start_time', todayStrEnd)
+                    .select('*, clients(id, name, image_url), team_members(id, name)')
+                    .gte('start_time', nowISO) // Busca a partir de agora
                     .order('start_time')
                     .limit(5),
                 supabase.from('team_members').select('*'),
@@ -123,11 +122,23 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                     };
                 }));
 
+                // Para o resumo financeiro, precisamos contar os agendamentos CONCLUÍDOS HOJE
+                // Vamos buscar todos os agendamentos de hoje para calcular os concluídos
+                const { data: todayAppointmentsData } = await supabase
+                    .from('appointments')
+                    .select('start_time')
+                    .gte('start_time', todayStrStart)
+                    .lte('start_time', today.toISOString().split('T')[0] + 'T23:59:59.999Z');
+                
+                const totalAppointmentsToday = todayAppointmentsData?.length || 0;
+                const completedAppointmentsToday = todayAppointmentsData?.filter(a => new Date(a.start_time) < now).length || 0;
+
+
                 setFinancials(prev => ({
                     ...prev,
                     dailyGoal,
-                    totalAppointments: fetchedAppointments.length,
-                    completedAppointments: fetchedAppointments.filter(a => new Date(a.startTime) < now).length,
+                    totalAppointments: totalAppointmentsToday,
+                    completedAppointments: completedAppointmentsToday,
                 }));
             }
             

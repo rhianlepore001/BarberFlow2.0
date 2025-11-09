@@ -9,7 +9,15 @@ interface AppointmentCardProps {
 
 const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMembers, onClick }) => {
     const barber = teamMembers.find(b => b.id === appointment.barberId);
-    const displayTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const appointmentDate = new Date(appointment.startTime);
+    const displayTime = appointmentDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
+    const today = new Date();
+    const isToday = appointmentDate.toDateString() === today.toDateString();
+    
+    const displayDate = isToday 
+        ? 'Hoje' 
+        : appointmentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
     const clientName = appointment.clients?.name || 'Cliente';
     // Usa o primeiro serviço ou uma lista de serviços
@@ -33,7 +41,10 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMemb
                 <p className="truncate text-base font-bold text-white">{clientName}</p>
                 <p className="text-sm font-medium text-text-secondary-dark truncate">{serviceName}</p>
                 <p className="mt-1 text-sm font-bold text-primary">
-                    {displayTime} com {barber?.name.split(' ')[0] || 'Barbeiro'}
+                    {displayTime} ({displayDate})
+                </p>
+                <p className="text-xs text-text-secondary-dark truncate">
+                    com {barber?.name.split(' ')[0] || 'Barbeiro'}
                 </p>
             </div>
         </div>
