@@ -157,6 +157,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             // Define types for fetched data
             type TransactionData = {amount: number; type: 'income' | 'expense'; transaction_date: string; client_id: number | null};
             type ClientData = {id: number; name: string; created_at: string};
+            // Ajusta a tipagem para garantir que services_json é um array de objetos com 'name'
             type AppointmentData = {services_json: {name: string, price: number}[] | null; start_time: string};
 
             const allTransactions: TransactionData[] = transactionsRes.data || [];
@@ -214,9 +215,13 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             // --- 5. Top Services ---
             const serviceCounts: Record<string, number> = {};
             currentAppointments.forEach(a => {
-                if (a.services_json) {
+                // Verifica se services_json existe e é um array
+                if (a.services_json && Array.isArray(a.services_json)) {
                     a.services_json.forEach(s => {
-                        serviceCounts[s.name] = (serviceCounts[s.name] || 0) + 1;
+                        // Garante que 'name' existe no objeto de serviço
+                        if (s.name) {
+                            serviceCounts[s.name] = (serviceCounts[s.name] || 0) + 1;
+                        }
                     });
                 }
             });
