@@ -96,8 +96,8 @@ const DaySelector: React.FC<DaySelectorProps> = ({ selectedDay, setSelectedDay, 
     );
 }
 
-const MINUTE_HEIGHT = 1.5; // pixels per minute (90px per hour)
-const HOUR_HEIGHT = MINUTE_HEIGHT * 60; // 90 pixels per hour
+const MINUTE_HEIGHT = 2.0; // pixels per minute (120px per hour) - Aumentado de 1.5 para 2.0
+const HOUR_HEIGHT = MINUTE_HEIGHT * 60; // 120 pixels per hour
 
 interface AppointmentCardProps {
     appointment: Appointment;
@@ -115,9 +115,9 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
     const top = (startMinutes - startHour * 60) * MINUTE_HEIGHT;
     const height = appointment.duration_minutes * MINUTE_HEIGHT - 2;
     
-    // Novo limite: 30 minutos (43px) é o mínimo para exibir nome e horário/duração
-    const isSmallCard = height < 45; 
-    const hasSpaceForServices = height > 60; // Reajustado para 60px (40 minutos)
+    // Novo limite: 30 minutos (58px) é o mínimo para exibir nome e horário/duração
+    const isSmallCard = height < 55; 
+    const hasSpaceForServices = height > 80; // Reajustado para 80px (40 minutos)
 
     return (
         <motion.div
