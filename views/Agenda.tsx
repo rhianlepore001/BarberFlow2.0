@@ -99,8 +99,6 @@ const DaySelector: React.FC<DaySelectorProps> = ({ selectedDay, setSelectedDay, 
 const MINUTE_HEIGHT = 1.5; // pixels per minute (90px per hour)
 const HOUR_HEIGHT = MINUTE_HEIGHT * 60; // 90 pixels per hour
 
-// O componente CurrentTimeIndicator foi removido
-
 interface AppointmentCardProps {
     appointment: Appointment;
     onClick: (appointment: Appointment) => void;
@@ -117,10 +115,9 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
     const top = (startMinutes - startHour * 60) * MINUTE_HEIGHT;
     const height = appointment.duration_minutes * MINUTE_HEIGHT - 2;
     
-    // Determina se há espaço suficiente para exibir detalhes
-    const hasSpaceForServices = height > 45;
-    
-    // O horário e a duração serão sempre exibidos, mas o layout pode ser ajustado.
+    // Novo limite: 30 minutos (43px) é o mínimo para exibir nome e horário/duração
+    const isSmallCard = height < 45; 
+    const hasSpaceForServices = height > 60; // Reajustado para 60px (40 minutos)
 
     return (
         <motion.div
@@ -136,19 +133,21 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
                 left: '1%',
             }}
         >
+            {/* Nome do Cliente (Sempre no topo) */}
             <p className="font-bold text-white text-sm leading-tight truncate">{clientName}</p>
             
+            {/* Horário e Duração */}
+            <div className={`flex items-center gap-1 text-xs font-semibold text-primary ${isSmallCard ? 'mt-0' : 'mt-auto'}`}>
+                <span className="material-symbols-outlined text-sm">schedule</span>
+                <span>{displayTime} ({appointment.duration_minutes} min)</span>
+            </div>
+            
+            {/* Serviços (Apenas se houver espaço suficiente) */}
             {hasSpaceForServices && (
                 <p className="text-xs text-text-secondary-dark leading-snug line-clamp-2 mt-1">
                     {serviceNames}
                 </p>
             )}
-            
-            {/* Garante que o horário e a duração sejam sempre exibidos, ajustando o layout se o card for pequeno */}
-            <div className={`flex items-center gap-1 text-xs font-semibold text-primary ${hasSpaceForServices ? 'mt-auto' : 'absolute bottom-1 left-2'}`}>
-                <span className="material-symbols-outlined text-sm">schedule</span>
-                <span>{displayTime} ({appointment.duration_minutes} min)</span>
-            </div>
         </motion.div>
     );
 };
