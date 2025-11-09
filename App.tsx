@@ -190,7 +190,13 @@ const App: React.FC<AppProps> = ({ session }) => {
         if (!user) return null;
         switch (activeView) {
             case 'inicio':
-                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} openModal={openModal} />;
+                return <Home 
+                            user={user} 
+                            dataVersion={dataVersion} 
+                            setActiveView={setActiveView} 
+                            openModal={openModal} 
+                            onAppointmentSelect={handleAppointmentSelect} // Passa a função
+                        />;
             case 'agenda':
                 return <Agenda onAppointmentSelect={handleAppointmentSelect} dataVersion={dataVersion} />;
             case 'clientes':
@@ -202,7 +208,13 @@ const App: React.FC<AppProps> = ({ session }) => {
             case 'analise':
                 return <Analysis dataVersion={dataVersion} />;
             default:
-                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} openModal={openModal} />;
+                return <Home 
+                            user={user} 
+                            dataVersion={dataVersion} 
+                            setActiveView={setActiveView} 
+                            openModal={openModal} 
+                            onAppointmentSelect={handleAppointmentSelect}
+                        />;
         }
     };
     

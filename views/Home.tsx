@@ -12,6 +12,7 @@ interface HomeProps {
     dataVersion: number;
     setActiveView: (view: View) => void;
     openModal: (content: 'editDailyGoal') => void;
+    onAppointmentSelect: (appointment: Appointment) => void; // Nova prop
 }
 
 const containerVariants = {
@@ -47,7 +48,7 @@ const getStartOfWeekByOffset = (offset: number): Date => {
     return getStartOfWeek(date);
 };
 
-const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal }) => {
+const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal, onAppointmentSelect }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [cashFlowData, setCashFlowData] = useState<CashFlowDay[]>([]);
@@ -192,6 +193,13 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
 
     // Determina o nome do próximo agendamento
     const nextAppointmentName = appointments[0]?.clients?.name || null;
+    
+    const handleAppointmentClick = (appointment: Appointment) => {
+        // 1. Mudar para a view 'agenda'
+        setActiveView('agenda');
+        // 2. Abrir o modal de detalhes/edição
+        onAppointmentSelect(appointment);
+    };
 
     return (
         <motion.div
@@ -221,6 +229,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                     appointments={appointments} 
                     teamMembers={teamMembers} 
                     onViewAllClick={() => setActiveView('agenda')}
+                    onAppointmentClick={handleAppointmentClick} // Passa a nova função
                 />
             </motion.div>
 
