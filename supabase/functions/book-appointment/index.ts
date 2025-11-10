@@ -50,11 +50,12 @@ serve(async (req) => {
     let clientId = null;
     
     // Tenta encontrar cliente pelo nome e telefone (se fornecido)
+    // Nota: A busca por nome exato pode ser muito restritiva. Vamos focar na criação se não houver correspondência.
     const { data: existingClient } = await supabase
         .from('clients')
-        .select('id, name')
+        .select('id')
         .eq('shop_id', shopId)
-        .ilike('name', clientName)
+        .eq('phone', clientPhone) // Busca por telefone é mais confiável
         .limit(1)
         .single();
         
@@ -71,14 +72,18 @@ serve(async (req) => {
                 name: clientName,
                 phone: clientPhone,
                 image_url: defaultImageUrl,
-                last_visit: new Date().toISOString(), // Marca como visita atual
+                // last_visit não é estritamente necessário aqui, pois será atualizado no passo 5
             })
             .select('id')
             .single();
             
         if (clientError) {
             console.error('Error creating client:', clientError);
-            // Continua, mas registra o erro
+            // Se falhar ao criar o cliente, retornamos um erro 500
+            return new Response(JSON.stringify({ error: 'Falha ao criar o registro do cliente.' }), {
+                status: 500,
+                headers: corsHeaders,
+            })
         } else if (newClientData) {
             clientId = newClientData.id;
         }
@@ -124,8 +129,6 @@ serve(async (req) => {
     }
 
     // 4. Inserir o agendamento na tabela principal (appointments)
-    // Nota: Estamos inserindo diretamente em 'appointments' em vez de 'public_bookings'
-    // para que o agendamento apareça imediatamente no dashboard.
     const { data: appointmentData, error: bookingError } = await supabase
       .from('appointments')
       .insert({
@@ -147,7 +150,7 @@ serve(async (req) => {
       })
     }
     
-    // 5. Opcional: Atualizar a última visita do cliente (já feito na criação, mas garantimos aqui)
+    // 5. Atualizar a última visita do cliente
     if (clientId) {
         await supabase.from('clients').update({ last_visit: new Date().toISOString() }).eq('id', clientId);
     }

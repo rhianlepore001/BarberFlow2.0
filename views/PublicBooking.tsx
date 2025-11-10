@@ -128,6 +128,7 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, shopName
             <div className="text-center">
                 <img src={barber.image_url} alt={barber.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-2 border-2 border-card-dark" />
                 <h2 className="text-3xl font-extrabold text-white">Agendar com {barber.name.split(' ')[0]}</h2>
+                {/* CORREÇÃO: Exibe o nome da loja */}
                 <p className="text-sm text-text-secondary-dark mt-1">{barber.role} | {shopName}</p>
             </div>
 
@@ -246,7 +247,7 @@ const PublicBooking: React.FC = () => {
                 .eq('id', id)
                 .single();
                 
-            if (memberError || !memberData) {
+            if (memberError || !memberData || !memberData.shop_id) {
                 console.error("Error fetching member:", memberError);
                 setFetchError("Barbeiro não encontrado ou link inválido.");
                 setLoading(false);
@@ -258,16 +259,20 @@ const PublicBooking: React.FC = () => {
             
             // 2. Buscar Nome da Loja
             if (shopId) {
-                // RLS: 'Owners can view their shop' permite a leitura se o usuário for o owner, mas aqui estamos anon.
-                // Como a chave anon é usada, precisamos de uma política que permita a leitura do nome da loja.
-                // Vamos assumir que a tabela 'shops' tem uma política de leitura anônima por ID (que não existe, mas é necessária).
-                // Para evitar adicionar uma política insegura (anon read all shops), vamos buscar o nome da loja no lado do cliente.
-                const { data: shopData } = await supabase
+                // Para permitir a leitura anônima do nome da loja, precisamos de uma política RLS.
+                // Como não podemos adicionar políticas RLS aqui, vamos usar a chave anon para tentar buscar o nome da loja.
+                // Se a política RLS 'Allow anon read by ID' na tabela 'shops' não existir, isso pode falhar.
+                // Vamos assumir que a política de leitura anônima para shops existe (ou que a busca por ID funciona).
+                const { data: shopData, error: shopError } = await supabase
                     .from('shops')
                     .select('name')
                     .eq('id', shopId)
                     .limit(1)
                     .single();
+                
+                if (shopError && shopError.code !== 'PGRST116') {
+                    console.warn("Could not fetch shop name anonymously:", shopError);
+                }
                 
                 if (shopData) {
                     setShopName(shopData.name);

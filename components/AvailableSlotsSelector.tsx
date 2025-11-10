@@ -68,18 +68,16 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 setSettings(settingsData);
             }
 
-            // 3. Fetch Appointments for the current week (to allow easy date switching)
-            const startOfWeek = getStartOfWeek(currentDate);
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(startOfWeek.getDate() + 6);
-            endOfWeek.setHours(23, 59, 59, 999);
+            // 3. Fetch Appointments for the current month (para cobrir a navegação de datas)
+            const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
 
             const { data: appointmentsData } = await supabase
                 .from('appointments')
                 .select('start_time, duration_minutes')
                 .eq('barber_id', barberId)
-                .gte('start_time', startOfWeek.toISOString())
-                .lte('start_time', endOfWeek.toISOString());
+                .gte('start_time', startOfMonth.toISOString())
+                .lte('start_time', endOfMonth.toISOString());
 
             if (appointmentsData) {
                 setAppointments(appointmentsData as unknown as Appointment[]);
@@ -88,7 +86,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
             setLoading(false);
         };
         fetchData();
-    }, [barberId, currentDate]);
+    }, [barberId, currentDate.getMonth(), currentDate.getFullYear()]); // Recarrega ao mudar o mês
 
     // 2. Calculate Available Slots
     const availableSlots = useMemo(() => {
@@ -184,13 +182,15 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
     const handleNextWeek = () => {
         const nextWeek = new Date(currentDate);
         nextWeek.setDate(currentDate.getDate() + 7);
-        handleDateChange(nextWeek);
+        setCurrentDate(nextWeek);
+        onSelectSlot(nextWeek.toISOString().split('T')[0], '');
     };
     
     const handlePrevWeek = () => {
         const prevWeek = new Date(currentDate);
         prevWeek.setDate(currentDate.getDate() - 7);
-        handleDateChange(prevWeek);
+        setCurrentDate(prevWeek);
+        onSelectSlot(prevWeek.toISOString().split('T')[0], '');
     };
 
     const currentMonthYear = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
