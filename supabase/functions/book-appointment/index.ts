@@ -71,14 +71,12 @@ serve(async (req) => {
                 name: clientName,
                 phone: clientPhone,
                 image_url: defaultImageUrl,
-                // total_spent e last_visit serão atualizados posteriormente ou no dashboard
             })
             .select('id')
             .single();
             
         if (clientError) {
             console.error('Error creating client:', clientError);
-            // Retorna um erro 500 com a mensagem de erro do banco de dados
             return new Response(JSON.stringify({ error: `Falha ao criar o registro do cliente: ${clientError.message}` }), {
                 status: 500,
                 headers: corsHeaders,
@@ -95,7 +93,7 @@ serve(async (req) => {
         })
     }
 
-    // 3. Validação de Conflito de Horário
+    // 3. Validação de Conflito de Horário (Segurança final)
     const newSlotStart = new Date(startTime);
     const newSlotEnd = new Date(newSlotStart.getTime() + durationMinutes * 60000);
     
@@ -128,7 +126,7 @@ serve(async (req) => {
     }
 
     if (isConflict) {
-        return new Response(JSON.stringify({ error: 'Conflito de horário. Este horário já está ocupado.' }), {
+        return new Response(JSON.stringify({ error: 'Conflito de horário detectado. Por favor, selecione outro horário.' }), {
             status: 409,
             headers: corsHeaders,
         })

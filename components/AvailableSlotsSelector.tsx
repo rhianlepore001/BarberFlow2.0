@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
-import type { Appointment } from '../types';
 import { useTheme } from '../hooks/useTheme';
 
 interface AvailableSlotsSelectorProps {
@@ -12,7 +10,8 @@ interface AvailableSlotsSelectorProps {
     selectedTime: string;
 }
 
-const TIME_STEP = 30; // Intervalo de 30 minutos para os slots
+// Define a URL da nova Edge Function
+const SLOTS_FUNCTION_URL = 'https://avodqajneytxiarbjrcp.supabase.co/functions/v1/get-available-slots';
 
 // Helper para obter o início da semana (Segunda)
 const getStartOfWeek = (date: Date): Date => {
@@ -25,142 +24,60 @@ const getStartOfWeek = (date: Date): Date => {
 };
 
 const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberId, requiredDuration, onSelectSlot, selectedDate, selectedTime }) => {
-    const [appointments, setAppointments] = useState<Appointment[]>([]);
-    const [settings, setSettings] = useState<{ start_time: string, end_time: string, open_days: string[] } | null>(null);
+    const [availableSlots, setAvailableSlots] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const theme = useTheme(null); 
 
-    // Fallbacks
-    const DEFAULT_START_HOUR = 9;
-    const DEFAULT_END_HOUR = 18;
-    const DEFAULT_OPEN_DAYS = ["seg", "ter", "qua", "qui", "sex", "sab"];
-    
     const dayLabels = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
 
-    const startHour = settings?.start_time ? parseInt(settings.start_time.split(':')[0]) : DEFAULT_START_HOUR;
-    const endHour = settings?.end_time ? parseInt(settings.end_time.split(':')[0]) : DEFAULT_END_HOUR;
-    const openDays = settings?.open_days && settings.open_days.length > 0 ? settings.open_days : DEFAULT_OPEN_DAYS;
-
-    // 1. Fetch Settings and Appointments for the selected day
+    // 1. Fetch Slots from Edge Function
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            
-            // 1. Fetch Shop ID
-            const { data: memberData } = await supabase.from('team_members').select('shop_id').eq('id', barberId).single();
-            const shopId = memberData?.shop_id;
-            
-            if (!shopId) {
-                setLoading(false);
-                return;
-            }
-
-            // 2. Fetch Shop Settings (only once)
-            if (!settings) {
-                const { data: settingsData } = await supabase
-                    .from('shop_settings')
-                    .select('start_time, end_time, open_days')
-                    .eq('shop_id', shopId)
-                    .limit(1)
-                    .single();
-                
-                if (settingsData) {
-                    setSettings(settingsData);
-                }
-            }
-
-            // 3. Fetch Appointments for the CURRENTLY SELECTED DAY
-            const dayStartISO = currentDate.toISOString().split('T')[0] + 'T00:00:00.000Z';
-            const dayEndISO = currentDate.toISOString().split('T')[0] + 'T23:59:59.999Z';
-
-            const { data: appointmentsData } = await supabase
-                .from('appointments')
-                .select('start_time, duration_minutes')
-                .eq('barber_id', barberId)
-                .gte('start_time', dayStartISO)
-                .lte('start_time', dayEndISO);
-
-            if (appointmentsData) {
-                setAppointments(appointmentsData as unknown as Appointment[]);
-            }
-            
+        if (requiredDuration <= 0) {
+            setAvailableSlots([]);
             setLoading(false);
-        };
-        fetchData();
-    }, [barberId, currentDate.toDateString()]); // Dependência: barberId e o dia atual
-
-    // 2. Calculate Available Slots
-    const availableSlots = useMemo(() => {
-        if (loading || requiredDuration <= 0) return [];
-
-        const slots: { time: string; isAvailable: boolean; isPast: boolean }[] = [];
-        const selectedDayIndex = currentDate.getDay(); // 0=Sun, 6=Sat
-        const selectedDayLabel = dayLabels[selectedDayIndex];
-        
-        // 1. Verifica se a barbearia está aberta neste dia
-        if (!openDays.includes(selectedDayLabel)) {
-            return [];
+            return;
         }
-
-        const today = new Date();
-        const isCurrentDay = currentDate.toDateString() === today.toDateString();
         
-        // Mapeia agendamentos existentes para intervalos de tempo (em milissegundos)
-        const occupiedIntervals = appointments.map(appt => {
-            const apptStart = new Date(appt.startTime).getTime();
-            const apptEnd = apptStart + appt.duration_minutes * 60000;
-            return { start: apptStart, end: apptEnd };
-        });
+        const fetchSlots = async () => {
+            setLoading(true);
+            setFetchError(null);
+            setAvailableSlots([]);
+            
+            const dateISO = currentDate.toISOString().split('T')[0];
 
-        // 3. Gera e valida todos os slots possíveis
-        for (let h = startHour; h < endHour; h++) {
-            for (let m = 0; m < 60; m += TIME_STEP) {
-                const slotTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                
-                const slotStart = new Date(currentDate);
-                slotStart.setHours(h, m, 0, 0);
-                const slotStartMs = slotStart.getTime();
-                
-                const slotEndMs = slotStartMs + requiredDuration * 60000;
-                
-                // Verifica se o slot já passou
-                const isPast = isCurrentDay && slotStartMs < today.getTime();
-                
-                // Verifica se o slot de término ultrapassa o horário de fechamento
-                const endHourLimit = new Date(currentDate);
-                endHourLimit.setHours(endHour, 0, 0, 0);
-                if (slotEndMs > endHourLimit.getTime()) continue;
+            try {
+                const response = await fetch(SLOTS_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        barberId,
+                        requiredDuration,
+                        date: dateISO,
+                    }),
+                });
 
-                let isConflict = false;
-                
-                // Verifica conflito com agendamentos existentes
-                for (const interval of occupiedIntervals) {
-                    // Conflito se: (Novo.start < Existente.end) AND (Novo.end > Existente.start)
-                    // Esta é a lógica correta para sobreposição de intervalos.
-                    if (
-                        (slotStartMs < interval.end) &&
-                        (slotEndMs > interval.start)
-                    ) {
-                        isConflict = true;
-                        break;
-                    }
+                const result = await response.json();
+
+                if (!response.ok) {
+                    setFetchError(result.error || 'Falha ao buscar horários disponíveis.');
+                    setAvailableSlots([]);
+                } else {
+                    setAvailableSlots(result.slots || []);
                 }
-
-                if (!isConflict && !isPast) {
-                    slots.push({
-                        time: slotTime,
-                        isAvailable: true,
-                        isPast: false
-                    });
-                }
+            } catch (err) {
+                console.error('Network error fetching slots:', err);
+                setFetchError('Erro de conexão ao buscar horários.');
+            } finally {
+                setLoading(false);
             }
-        }
+        };
         
-        return slots;
-    }, [currentDate, appointments, requiredDuration, startHour, endHour, openDays, loading]);
-    
-    // 3. Date Selector Logic
+        fetchSlots();
+    }, [barberId, requiredDuration, currentDate.toDateString()]); // Recarrega ao mudar o dia ou duração
+
+    // 2. Date Selector Logic
     const daysInWeek = useMemo(() => {
         const startOfWeek = getStartOfWeek(currentDate);
         const days = [];
@@ -201,6 +118,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
             {/* Week Navigation */}
             <div className="flex items-center justify-between px-2">
                 <button 
+                    type="button"
                     onClick={() => handleWeekChange(-1)}
                     disabled={isPrevWeekDisabled}
                     className={`p-2 transition-colors ${isPrevWeekDisabled ? 'text-gray-600 cursor-not-allowed' : 'text-text-secondary-dark hover:text-white'}`}
@@ -210,6 +128,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 </button>
                 <h3 className="text-lg font-bold text-white capitalize">{currentMonthYear}</h3>
                 <button 
+                    type="button"
                     onClick={() => handleWeekChange(1)}
                     className="p-2 text-text-secondary-dark hover:text-white transition-colors"
                     aria-label="Próxima Semana"
@@ -227,16 +146,17 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                     const isToday = date.toDateString() === new Date().toDateString();
                     
                     const isPastDay = date < new Date(new Date().setHours(0, 0, 0, 0));
-                    const isOpen = openDays.includes(dayLabels[date.getDay()]);
+                    // Não podemos verificar openDays aqui, pois settings é carregado de forma assíncrona.
+                    // A Edge Function fará a validação final.
 
                     return (
                         <button 
                             type="button"
                             key={index}
                             onClick={() => handleDateChange(date)}
-                            disabled={isPastDay || !isOpen}
+                            disabled={isPastDay}
                             className={`relative w-full flex flex-col items-center text-sm font-bold py-2 rounded-lg transition-colors 
-                                ${isPastDay || !isOpen ? 'text-gray-600 cursor-not-allowed' : isSelected ? 'text-background-dark' : 'text-text-secondary-dark hover:bg-gray-700/50'}`}
+                                ${isPastDay ? 'text-gray-600 cursor-not-allowed' : isSelected ? 'text-background-dark' : 'text-text-secondary-dark hover:bg-gray-700/50'}`}
                         >
                             {isSelected && (
                                 <motion.div
@@ -244,7 +164,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                                     className={`absolute inset-0 ${theme.bgPrimary} rounded-lg z-0`}
                                 />
                             )}
-                            <span className={`relative z-10 text-xs ${isToday && !isSelected && isOpen ? theme.primary : ''}`}>{dayLabel}</span>
+                            <span className={`relative z-10 text-xs ${isToday && !isSelected ? theme.primary : ''}`}>{dayLabel}</span>
                             <span className="relative z-10 text-sm font-extrabold">{dateLabel}</span>
                         </button>
                     );
@@ -255,26 +175,26 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
             <div className="pt-4">
                 <h4 className="text-lg font-bold text-white mb-3">Horários Disponíveis ({requiredDuration} min)</h4>
                 
+                {fetchError && <p className="text-red-400 text-sm text-center p-2">{fetchError}</p>}
+                
                 {loading ? (
-                    <div className="text-center text-text-secondary-dark">Carregando horários...</div>
+                    <div className="text-center text-text-secondary-dark">Calculando horários...</div>
                 ) : availableSlots.length === 0 ? (
                     <div className="text-center text-text-secondary-dark p-4 bg-card-dark rounded-xl">
-                        {!openDays.includes(dayLabels[currentDate.getDay()]) 
-                            ? 'Barbearia fechada neste dia.' 
-                            : 'Nenhum horário disponível para esta duração. Tente outro dia.'}
+                        Nenhum horário disponível para esta duração. Tente outro dia.
                     </div>
                 ) : (
                     <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto p-1">
                         {availableSlots.map(slot => (
                             <button
                                 type="button"
-                                key={slot.time}
-                                onClick={() => handleSlotClick(slot.time)}
+                                key={slot}
+                                onClick={() => handleSlotClick(slot)}
                                 className={`py-2 rounded-lg font-semibold transition-colors text-sm 
-                                    ${slot.time === selectedTime ? `${theme.bgPrimary} text-background-dark` : 'bg-card-dark text-white hover:bg-gray-700'}
+                                    ${slot === selectedTime ? `${theme.bgPrimary} text-background-dark` : 'bg-card-dark text-white hover:bg-gray-700'}
                                 `}
                             >
-                                {slot.time}
+                                {slot}
                             </button>
                         ))}
                     </div>
