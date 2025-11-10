@@ -3,9 +3,10 @@ export interface User {
   imageUrl: string;
   shopName: string;
   shopId: number; // Adicionado shopId
+  shopType: 'barbearia' | 'salao'; // Adicionado shopType
 }
 
-export type View = 'inicio' | 'agenda' | 'clientes' | 'caixa' | 'gestao' | 'analise';
+export type View = 'inicio' | 'agenda' | 'clientes' | 'caixa' | 'gestao' | 'analise' | 'public-booking';
 
 export interface Stat {
   icon: string;
@@ -37,6 +38,7 @@ export interface TeamMember {
     role: string;
     image_url: string; // Corresponde ao BD
     commissionRate: number; // Taxa de comissão (0.0 a 1.0)
+    shop_id?: number; // Adicionado para uso na Edge Function
 }
 
 // O tipo Appointment agora reflete os dados obtidos com JOINs do Supabase.
@@ -61,7 +63,7 @@ export interface CashFlowDay {
 }
 
 export interface NavItemData {
-  id: View;
+  id: Exclude<View, 'public-booking'>; // Nav items não incluem a view pública
   icon: string;
   label: string;
 }

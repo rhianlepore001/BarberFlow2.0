@@ -16,6 +16,7 @@ import Clients from './views/Clients';
 import CashFlow from './views/CashFlow';
 import Management from './views/Management';
 import Analysis from './views/Analysis';
+import PublicBooking from './views/PublicBooking'; // Importa a nova view
 import Modal from './components/Modal';
 import NewAppointmentForm from './components/forms/NewAppointmentForm';
 import NewClientForm from './components/forms/NewClientForm';
@@ -37,8 +38,21 @@ interface AppProps {
     session: Session;
 }
 
+// Função para obter a view inicial da URL
+const getInitialView = (): View => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view') as View;
+    if (view && navItems.map(i => i.id).includes(view as Exclude<View, 'public-booking'>)) {
+        return view as Exclude<View, 'public-booking'>;
+    }
+    if (view === 'public-booking') {
+        return 'public-booking';
+    }
+    return 'inicio';
+};
+
 const App: React.FC<AppProps> = ({ session }) => {
-    const [activeView, setActiveView] = useState<View>('inicio');
+    const [activeView, setActiveView] = useState<View>(getInitialView());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState<ModalContentType | null>(null);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
@@ -59,6 +73,12 @@ const App: React.FC<AppProps> = ({ session }) => {
     };
 
     useEffect(() => {
+        // Se estiver na view pública, não precisamos carregar o perfil do dashboard
+        if (activeView === 'public-booking') {
+            setIsInitialLoading(false);
+            return;
+        }
+        
         const MAX_ATTEMPTS = 5;
         
         const fetchUserProfile = async () => {
@@ -146,7 +166,7 @@ const App: React.FC<AppProps> = ({ session }) => {
         
         // Inicia a busca ou repetição
         fetchUserProfile();
-    }, [session, dataVersion, profileLoadAttempts]);
+    }, [session, dataVersion, profileLoadAttempts, activeView]);
     
     const openModal = (content: ModalContentType, data: any = null) => {
         if (!user) return;
@@ -194,7 +214,12 @@ const App: React.FC<AppProps> = ({ session }) => {
     };
 
     const renderView = () => {
+        if (activeView === 'public-booking') {
+            return <PublicBooking />;
+        }
+        
         if (!user) return null;
+        
         switch (activeView) {
             case 'inicio':
                 return <Home 
@@ -302,6 +327,11 @@ const App: React.FC<AppProps> = ({ session }) => {
                 <p>Carregando painel...</p>
             </div>
         );
+    }
+    
+    // Se estiver na view pública, renderiza apenas o PublicBooking
+    if (activeView === 'public-booking') {
+        return renderView();
     }
     
     if (!user) {
