@@ -35,8 +35,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, openModal, items, act
     return (
         <aside className="hidden md:flex flex-col w-64 bg-background-dark border-r border-card-dark fixed h-full p-4">
             <div className="flex items-center gap-3 mb-10 px-2">
-                <span className="material-symbols-outlined text-primary text-3xl transform -scale-x-100 rotate-45">content_cut</span>
-                <h1 className="text-2xl font-extrabold text-white">Barber<span className="text-primary">Flow</span></h1>
+                {/* Ícone neutro para FlowPro */}
+                <span className="material-symbols-outlined text-primary text-3xl">auto_awesome</span>
+                <h1 className="text-2xl font-extrabold text-white">Flow<span className="text-primary">Pro</span></h1>
             </div>
 
             <nav className="flex-grow flex flex-col gap-2">

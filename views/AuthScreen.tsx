@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import AuthInput from '../components/AuthInput';
 
 type AuthMode = 'login' | 'signup';
+type ShopType = 'barbearia' | 'salao';
 
 const AuthScreen: React.FC = () => {
     const [mode, setMode] = useState<AuthMode>('login');
@@ -11,14 +12,19 @@ const AuthScreen: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [name, setName] = useState('');
     const [shopName, setShopName] = useState('');
+    const [shopType, setShopType] = useState<ShopType>('barbearia'); // Novo estado
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState(''); // Novo estado para confirmação de senha
+    const [confirmPassword, setConfirmPassword] = useState('');
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+
+        // Define a cor do avatar com base no tipo de loja
+        const avatarColor = shopType === 'salao' ? '8A2BE2' : 'E5A00D';
+        const defaultImageUrl = `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${avatarColor}&color=101012`;
 
         if (mode === 'signup') {
             if (password !== confirmPassword) {
@@ -27,8 +33,6 @@ const AuthScreen: React.FC = () => {
                 return;
             }
             
-            // Tenta cadastrar o usuário. Se a confirmação de e-mail estiver DESLIGADA no Supabase,
-            // o usuário será logado automaticamente.
             const { data, error } = await supabase.auth.signUp({ 
                 email, 
                 password,
@@ -36,7 +40,8 @@ const AuthScreen: React.FC = () => {
                     data: {
                         name: name,
                         shop_name: shopName,
-                        image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=E5A00D&color=101012`
+                        shop_type: shopType, // Salva o tipo de loja
+                        image_url: defaultImageUrl
                     }
                 }
             });
@@ -44,7 +49,6 @@ const AuthScreen: React.FC = () => {
             if (error) {
                 setError(error.message);
             } else if (data.user && data.session === null) {
-                // Isso acontece se a confirmação de e-mail estiver LIGADA no Supabase.
                 setError("Confirmação de e-mail necessária. Verifique sua caixa de entrada.");
             }
             
@@ -73,10 +77,11 @@ const AuthScreen: React.FC = () => {
             >
                 <div className="text-center mb-8">
                     <div className="flex justify-center items-center gap-3">
-                        <span className="material-symbols-outlined text-primary text-4xl transform -scale-x-100 rotate-45">content_cut</span>
-                        <h1 className="text-4xl font-extrabold text-white">Barber<span className="text-primary">Flow</span></h1>
+                        {/* Ícone neutro para FlowPro */}
+                        <span className="material-symbols-outlined text-primary text-4xl">auto_awesome</span>
+                        <h1 className="text-4xl font-extrabold text-white">Flow<span className="text-primary">Pro</span></h1>
                     </div>
-                    <p className="text-text-secondary-dark mt-2">Gestão de primeira para sua barbearia.</p>
+                    <p className="text-text-secondary-dark mt-2">Gestão de primeira para seu negócio de beleza.</p>
                 </div>
                 
                 <div className="bg-card-dark p-2 rounded-full flex items-center gap-2 mb-6">
@@ -103,7 +108,22 @@ const AuthScreen: React.FC = () => {
                     >
                         {mode === 'signup' && (
                             <>
-                                <AuthInput icon="store" type="text" placeholder="Nome da Barbearia" value={shopName} onChange={e => setShopName(e.target.value)} required />
+                                {/* Seleção do Tipo de Negócio */}
+                                <div className="relative">
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">store</span>
+                                    <select
+                                        value={shopType}
+                                        onChange={e => setShopType(e.target.value as ShopType)}
+                                        required
+                                        className="w-full bg-background-dark border-2 border-card-dark rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 focus:ring-primary focus:border-primary transition-all appearance-none"
+                                    >
+                                        <option value="barbearia">Barbearia</option>
+                                        <option value="salao">Salão de Beleza</option>
+                                    </select>
+                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary-dark pointer-events-none">expand_more</span>
+                                </div>
+                                
+                                <AuthInput icon="store" type="text" placeholder="Nome do Negócio" value={shopName} onChange={e => setShopName(e.target.value)} required />
                                 <AuthInput icon="person" type="text" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} required />
                             </>
                         )}
