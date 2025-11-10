@@ -5,7 +5,7 @@ import { Session } from '@supabase/supabase-js';
 import type { View, Appointment, User, TeamMember, Client } from './types';
 import { navItems } from './data';
 import { supabase } from './lib/supabaseClient';
-import { useTheme } from './hooks/useTheme';
+import { useTheme } from '@/hooks/useTheme';
 
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
