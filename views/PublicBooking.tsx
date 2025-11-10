@@ -128,11 +128,41 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, shopName
             <div className="text-center">
                 <img src={barber.image_url} alt={barber.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-2 border-2 border-card-dark" />
                 <h2 className="text-3xl font-extrabold text-white">Agendar com {barber.name.split(' ')[0]}</h2>
-                {/* CORREÇÃO: Exibe o nome da loja */}
                 <p className="text-sm text-text-secondary-dark mt-1">{barber.role} | {shopName}</p>
+                <p className="text-base font-medium text-white mt-4">
+                    Bem-vindo(a)! Preencha seus dados e escolha o melhor horário para o seu serviço.
+                </p>
             </div>
 
             <form className="space-y-6" onSubmit={handleSubmit}>
+                {/* 3. Dados do Cliente (Movido para o topo para registro) */}
+                <div className="space-y-3 pt-4 bg-card-dark p-4 rounded-xl shadow-lg">
+                    <h4 className="text-lg font-bold text-white">Seus Dados</h4>
+                    <input 
+                        type="text" 
+                        placeholder="Seu Nome Completo" 
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        required
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
+                    />
+                    <input 
+                        type="tel" 
+                        placeholder="Seu Telefone (WhatsApp)" 
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        required
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
+                    />
+                    <input 
+                        type="email" 
+                        placeholder="Seu Email (Opcional)" 
+                        value={clientEmail}
+                        onChange={(e) => setClientEmail(e.target.value)}
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
+                    />
+                </div>
+                
                 {/* 1. Seleção de Serviços */}
                 <div className="bg-card-dark rounded-xl p-4 shadow-lg">
                     <p className="text-lg font-bold text-white mb-3">Serviços ({totalDuration} min | R$ {totalPrice.toFixed(2).replace('.', ',')})</p>
@@ -155,7 +185,7 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, shopName
                     </div>
                 </div>
                 
-                {/* 2. Seleção de Horário (Novo Componente) */}
+                {/* 2. Seleção de Horário */}
                 {totalDuration > 0 ? (
                     <AvailableSlotsSelector 
                         barberId={barber.id}
@@ -168,39 +198,11 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, shopName
                     <div className="text-center text-text-secondary-dark p-4 bg-card-dark rounded-xl">Selecione um serviço para ver os horários.</div>
                 )}
 
-                {/* 3. Dados do Cliente */}
-                <div className="space-y-3 pt-4">
-                    <h4 className="text-lg font-bold text-white">Seus Dados</h4>
-                    <input 
-                        type="text" 
-                        placeholder="Seu Nome Completo" 
-                        value={clientName}
-                        onChange={(e) => setClientName(e.target.value)}
-                        required
-                        className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
-                    />
-                    <input 
-                        type="tel" 
-                        placeholder="Seu Telefone (WhatsApp)" 
-                        value={clientPhone}
-                        onChange={(e) => setClientPhone(e.target.value)}
-                        required
-                        className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
-                    />
-                    <input 
-                        type="email" 
-                        placeholder="Seu Email (Opcional)" 
-                        value={clientEmail}
-                        onChange={(e) => setClientEmail(e.target.value)}
-                        className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
-                    />
-                </div>
-
                 {error && <p className="text-red-400 text-xs text-center pt-1">{error}</p>}
 
                 <button 
                     type="submit" 
-                    disabled={isSaving || selectedServices.length === 0 || !time}
+                    disabled={isSaving || selectedServices.length === 0 || !time || !clientName || !clientPhone}
                     className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark hover:${theme.bgPrimary}/80 transition-colors disabled:opacity-50`}
                 >
                     {isSaving ? 'Solicitando Agendamento...' : `Agendar (R$ ${totalPrice.toFixed(2).replace('.', ',')})`}
@@ -259,10 +261,6 @@ const PublicBooking: React.FC = () => {
             
             // 2. Buscar Nome da Loja
             if (shopId) {
-                // Para permitir a leitura anônima do nome da loja, precisamos de uma política RLS.
-                // Como não podemos adicionar políticas RLS aqui, vamos usar a chave anon para tentar buscar o nome da loja.
-                // Se a política RLS 'Allow anon read by ID' na tabela 'shops' não existir, isso pode falhar.
-                // Vamos assumir que a política de leitura anônima para shops existe (ou que a busca por ID funciona).
                 const { data: shopData, error: shopError } = await supabase
                     .from('shops')
                     .select('name')

@@ -22,8 +22,8 @@ serve(async (req) => {
 
     const { barberId, clientName, clientPhone, clientEmail, startTime, durationMinutes, services } = await req.json()
 
-    if (!barberId || !clientName || !startTime || !durationMinutes || !services || services.length === 0) {
-      return new Response(JSON.stringify({ error: 'Dados de agendamento incompletos.' }), {
+    if (!barberId || !clientName || !clientPhone || !startTime || !durationMinutes || !services || services.length === 0) {
+      return new Response(JSON.stringify({ error: 'Dados de agendamento incompletos (Nome, Telefone, Horário e Serviço são obrigatórios).' }), {
         status: 400,
         headers: corsHeaders,
       })
@@ -46,16 +46,14 @@ serve(async (req) => {
     
     const shopId = memberData.shop_id;
 
-    // 2. Buscar/Criar Cliente
+    // 2. Buscar/Criar Cliente (Busca por telefone é a chave para evitar duplicidade)
     let clientId = null;
     
-    // Tenta encontrar cliente pelo nome e telefone (se fornecido)
-    // Nota: A busca por nome exato pode ser muito restritiva. Vamos focar na criação se não houver correspondência.
     const { data: existingClient } = await supabase
         .from('clients')
         .select('id')
         .eq('shop_id', shopId)
-        .eq('phone', clientPhone) // Busca por telefone é mais confiável
+        .eq('phone', clientPhone) 
         .limit(1)
         .single();
         
@@ -72,14 +70,13 @@ serve(async (req) => {
                 name: clientName,
                 phone: clientPhone,
                 image_url: defaultImageUrl,
-                // last_visit não é estritamente necessário aqui, pois será atualizado no passo 5
+                // total_spent e last_visit serão atualizados posteriormente ou no dashboard
             })
             .select('id')
             .single();
             
         if (clientError) {
             console.error('Error creating client:', clientError);
-            // Se falhar ao criar o cliente, retornamos um erro 500
             return new Response(JSON.stringify({ error: 'Falha ao criar o registro do cliente.' }), {
                 status: 500,
                 headers: corsHeaders,
@@ -134,7 +131,7 @@ serve(async (req) => {
       .insert({
         shop_id: shopId,
         barber_id: barberId,
-        client_id: clientId, // Usa o ID do cliente (novo ou existente)
+        client_id: clientId, 
         start_time: startTime,
         duration_minutes: durationMinutes,
         services_json: services,
@@ -150,7 +147,7 @@ serve(async (req) => {
       })
     }
     
-    // 5. Atualizar a última visita do cliente
+    // 5. Atualizar a última visita do cliente (opcional, mas bom para o dashboard)
     if (clientId) {
         await supabase.from('clients').update({ last_visit: new Date().toISOString() }).eq('id', clientId);
     }

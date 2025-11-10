@@ -12,7 +12,7 @@ interface AvailableSlotsSelectorProps {
     selectedTime: string;
 }
 
-const TIME_STEP = 30; // Intervalo de 30 minutos
+const TIME_STEP = 30; // Intervalo de 30 minutos para os slots
 
 // Helper para obter o início da semana (Segunda)
 const getStartOfWeek = (date: Date): Date => {
@@ -29,20 +29,20 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
     const [settings, setSettings] = useState<{ start_time: string, end_time: string, open_days: string[] } | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
-    const theme = useTheme(null); // Tema estático
+    const theme = useTheme(null); 
 
     // Fallbacks
     const DEFAULT_START_HOUR = 9;
     const DEFAULT_END_HOUR = 18;
-    const DEFAULT_OPEN_DAYS = ["seg", "ter", "qua", "qui", "sex", "sab"]; // Seg a Sáb
+    const DEFAULT_OPEN_DAYS = ["seg", "ter", "qua", "qui", "sex", "sab"];
+    
+    const dayLabels = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
 
     const startHour = settings?.start_time ? parseInt(settings.start_time.split(':')[0]) : DEFAULT_START_HOUR;
     const endHour = settings?.end_time ? parseInt(settings.end_time.split(':')[0]) : DEFAULT_END_HOUR;
     const openDays = settings?.open_days && settings.open_days.length > 0 ? settings.open_days : DEFAULT_OPEN_DAYS;
-    
-    const dayLabels = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
 
-    // 1. Fetch Settings and Appointments for the selected date
+    // 1. Fetch Settings and Appointments
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -56,7 +56,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 return;
             }
 
-            // 2. Fetch Shop Settings (only once)
+            // 2. Fetch Shop Settings (apenas se não tivermos)
             if (!settings) {
                 const { data: settingsData } = await supabase
                     .from('shop_settings')
@@ -70,16 +70,18 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 }
             }
 
-            // 3. Fetch Appointments for the selected day
-            const dayStartISO = currentDate.toISOString().split('T')[0] + 'T00:00:00.000Z';
-            const dayEndISO = currentDate.toISOString().split('T')[0] + 'T23:59:59.999Z';
+            // 3. Fetch Appointments for the current week (para otimizar a navegação)
+            const startOfWeek = getStartOfWeek(currentDate);
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            endOfWeek.setHours(23, 59, 59, 999);
 
             const { data: appointmentsData } = await supabase
                 .from('appointments')
                 .select('start_time, duration_minutes')
                 .eq('barber_id', barberId)
-                .gte('start_time', dayStartISO)
-                .lte('start_time', dayEndISO);
+                .gte('start_time', startOfWeek.toISOString())
+                .lte('start_time', endOfWeek.toISOString());
 
             if (appointmentsData) {
                 setAppointments(appointmentsData as unknown as Appointment[]);
@@ -88,17 +90,17 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
             setLoading(false);
         };
         fetchData();
-    }, [barberId, currentDate.toDateString()]); // Recarrega ao mudar o dia
+    }, [barberId, currentDate.toDateString()]); // Recarrega ao mudar o dia/semana
 
     // 2. Calculate Available Slots
     const availableSlots = useMemo(() => {
-        if (loading) return [];
+        if (loading || requiredDuration <= 0) return [];
 
         const slots: { time: string; isAvailable: boolean; isPast: boolean }[] = [];
         const selectedDayIndex = currentDate.getDay(); // 0=Sun, 6=Sat
         const selectedDayLabel = dayLabels[selectedDayIndex];
         
-        // Verifica se a barbearia está aberta neste dia
+        // 1. Verifica se a barbearia está aberta neste dia
         if (!openDays.includes(selectedDayLabel)) {
             return [];
         }
@@ -106,14 +108,19 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
         const today = new Date();
         const isCurrentDay = currentDate.toDateString() === today.toDateString();
         
+        // 2. Filtra agendamentos para o dia selecionado
+        const appointmentsToday = appointments.filter(a => 
+            new Date(a.startTime).toDateString() === currentDate.toDateString()
+        );
+
         // Mapeia agendamentos existentes para intervalos de tempo (em milissegundos)
-        const occupiedIntervals = appointments.map(appt => {
+        const occupiedIntervals = appointmentsToday.map(appt => {
             const apptStart = new Date(appt.startTime).getTime();
             const apptEnd = apptStart + appt.duration_minutes * 60000;
             return { start: apptStart, end: apptEnd };
         });
 
-        // Gera todos os slots possíveis (a cada 30 minutos)
+        // 3. Gera e valida todos os slots possíveis
         for (let h = startHour; h < endHour; h++) {
             for (let m = 0; m < 60; m += TIME_STEP) {
                 const slotTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
@@ -146,11 +153,13 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                     }
                 }
 
-                slots.push({
-                    time: slotTime,
-                    isAvailable: !isConflict && !isPast,
-                    isPast: isPast
-                });
+                if (!isConflict && !isPast) {
+                    slots.push({
+                        time: slotTime,
+                        isAvailable: true,
+                        isPast: false
+                    });
+                }
             }
         }
         
@@ -170,7 +179,6 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
     }, [currentDate]);
     
     const handleDateChange = (date: Date) => {
-        // Garante que não podemos selecionar datas passadas
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (date < today) return;
@@ -192,7 +200,6 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
 
     const currentMonthYear = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
     
-    // Verifica se a semana anterior é passada
     const isPrevWeekDisabled = getStartOfWeek(currentDate).getTime() <= getStartOfWeek(new Date()).getTime();
 
     return (
@@ -225,10 +232,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                     const isSelected = date.toDateString() === currentDate.toDateString();
                     const isToday = date.toDateString() === new Date().toDateString();
                     
-                    // Desabilita dias passados
                     const isPastDay = date < new Date(new Date().setHours(0, 0, 0, 0));
-                    
-                    // Verifica se o dia está aberto
                     const isOpen = openDays.includes(dayLabels[date.getDay()]);
 
                     return (
@@ -260,10 +264,10 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 {loading ? (
                     <div className="text-center text-text-secondary-dark">Carregando horários...</div>
                 ) : availableSlots.length === 0 ? (
-                    <div className="text-center text-text-secondary-dark">
+                    <div className="text-center text-text-secondary-dark p-4 bg-card-dark rounded-xl">
                         {!openDays.includes(dayLabels[currentDate.getDay()]) 
                             ? 'Barbearia fechada neste dia.' 
-                            : 'Nenhum horário disponível para esta duração.'}
+                            : 'Nenhum horário disponível para esta duração. Tente outro dia.'}
                     </div>
                 ) : (
                     <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto p-1">
@@ -272,12 +276,9 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                                 type="button"
                                 key={slot.time}
                                 onClick={() => handleSlotClick(slot.time)}
-                                disabled={!slot.isAvailable}
                                 className={`py-2 rounded-lg font-semibold transition-colors text-sm 
-                                    ${slot.isAvailable 
-                                        ? (slot.time === selectedTime ? `${theme.bgPrimary} text-background-dark` : 'bg-card-dark text-white hover:bg-gray-700')
-                                        : 'bg-card-dark/50 text-text-secondary-dark/50 cursor-not-allowed'
-                                    }`}
+                                    ${slot.time === selectedTime ? `${theme.bgPrimary} text-background-dark` : 'bg-card-dark text-white hover:bg-gray-700'}
+                                `}
                             >
                                 {slot.time}
                             </button>
