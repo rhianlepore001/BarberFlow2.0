@@ -13,6 +13,7 @@ serve(async (req) => {
   }
   
   try {
+    // Usamos a chave anon para acesso público
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -35,9 +36,9 @@ serve(async (req) => {
       .eq('id', barberId)
       .single()
 
-    if (memberError || !memberData) {
+    if (memberError || !memberData || !memberData.shop_id) {
       console.error('Barber not found or shop ID missing:', memberError)
-      return new Response(JSON.stringify({ error: 'Barbeiro não encontrado.' }), {
+      return new Response(JSON.stringify({ error: 'Barbeiro ou loja não encontrados.' }), {
         status: 404,
         headers: corsHeaders,
       })
@@ -45,7 +46,45 @@ serve(async (req) => {
     
     const shopId = memberData.shop_id;
 
-    // 2. Validação de Conflito de Horário (Mais robusta: busca agendamentos do dia e verifica sobreposição)
+    // 2. Buscar/Criar Cliente
+    let clientId = null;
+    
+    // Tenta encontrar cliente pelo nome e telefone (se fornecido)
+    const { data: existingClient } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('shop_id', shopId)
+        .ilike('name', clientName)
+        .limit(1)
+        .single();
+        
+    if (existingClient) {
+        clientId = existingClient.id;
+    } else {
+        // Se não existir, cria um novo cliente
+        const defaultImageUrl = `https://ui-avatars.com/api/?name=${clientName.replace(' ', '+')}&background=4169E1&color=101012`;
+        
+        const { data: newClientData, error: clientError } = await supabase
+            .from('clients')
+            .insert({
+                shop_id: shopId,
+                name: clientName,
+                phone: clientPhone,
+                image_url: defaultImageUrl,
+                last_visit: new Date().toISOString(), // Marca como visita atual
+            })
+            .select('id')
+            .single();
+            
+        if (clientError) {
+            console.error('Error creating client:', clientError);
+            // Continua, mas registra o erro
+        } else if (newClientData) {
+            clientId = newClientData.id;
+        }
+    }
+
+    // 3. Validação de Conflito de Horário
     const newSlotStart = new Date(startTime);
     const newSlotEnd = new Date(newSlotStart.getTime() + durationMinutes * 60000);
     
@@ -84,15 +123,15 @@ serve(async (req) => {
         })
     }
 
-    // 3. Inserir o agendamento público
-    const { data: bookingData, error: bookingError } = await supabase
-      .from('public_bookings')
+    // 4. Inserir o agendamento na tabela principal (appointments)
+    // Nota: Estamos inserindo diretamente em 'appointments' em vez de 'public_bookings'
+    // para que o agendamento apareça imediatamente no dashboard.
+    const { data: appointmentData, error: bookingError } = await supabase
+      .from('appointments')
       .insert({
         shop_id: shopId,
         barber_id: barberId,
-        client_name: clientName,
-        client_phone: clientPhone,
-        client_email: clientEmail,
+        client_id: clientId, // Usa o ID do cliente (novo ou existente)
         start_time: startTime,
         duration_minutes: durationMinutes,
         services_json: services,
@@ -101,14 +140,19 @@ serve(async (req) => {
       .single()
 
     if (bookingError) {
-      console.error('Error inserting public booking:', bookingError)
+      console.error('Error inserting appointment:', bookingError)
       return new Response(JSON.stringify({ error: 'Falha ao registrar o agendamento.' }), {
         status: 500,
         headers: corsHeaders,
       })
     }
+    
+    // 5. Opcional: Atualizar a última visita do cliente (já feito na criação, mas garantimos aqui)
+    if (clientId) {
+        await supabase.from('clients').update({ last_visit: new Date().toISOString() }).eq('id', clientId);
+    }
 
-    return new Response(JSON.stringify({ message: 'Agendamento solicitado com sucesso!', booking: bookingData }), {
+    return new Response(JSON.stringify({ message: 'Agendamento realizado com sucesso!', appointment: appointmentData }), {
       status: 201,
       headers: corsHeaders,
     })

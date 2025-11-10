@@ -98,7 +98,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
         const selectedDayIndex = currentDate.getDay(); // 0=Sun, 6=Sat
         const selectedDayLabel = dayLabels[selectedDayIndex];
         
-        // Verifica se a barbearia está aberta neste dia (usando o fallback se settings for null)
+        // Verifica se a barbearia está aberta neste dia
         if (!openDays.includes(selectedDayLabel)) {
             return [];
         }
