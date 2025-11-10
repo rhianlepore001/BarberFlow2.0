@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { User, Service, TeamMember, BarberFinancials } from '../types';
 import FinancialSettlement from '../components/FinancialSettlement';
+import { useTheme } from '../hooks/useTheme'; // Importa o hook
 
 interface ManagementProps {
     user: User;
@@ -39,47 +40,6 @@ const getSettlementPeriod = (settlementDay: number) => {
     const now = new Date();
     const currentDay = now.getDate();
     
-    let startDate: Date;
-    let endDate: Date;
-
-    if (currentDay >= settlementDay) {
-        // O ciclo atual começou neste mês (no dia configurado) e termina no dia anterior do próximo mês
-        startDate = new Date(now.getFullYear(), now.getMonth(), settlementDay);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, settlementDay - 1, 23, 59, 59, 999);
-    } else {
-        // O ciclo atual começou no mês passado (no dia configurado) e termina no dia anterior deste mês
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, settlementDay);
-        endDate = new Date(now.getFullYear(), now.getMonth(), settlementDay - 1, 23, 59, 59, 999);
-    }
-    
-    // O período de cálculo deve ir do início do ciclo até AGORA (para ver o acerto em tempo real)
-    // Se o dia de acerto for 25, e hoje for 10, o período é de 26 do mês passado até 10 de hoje.
-    // Se o dia de acerto for 25, e hoje for 26, o período é de 26 de hoje até 26 do próximo mês.
-    
-    // Para simplificar, vamos calcular o período que está sendo fechado HOJE.
-    // Se hoje for 10/11 e o dia de acerto for 25: O período é 26/10 a 25/11.
-    // Se hoje for 26/11 e o dia de acerto for 25: O período é 26/11 a 25/12.
-    
-    // Vamos usar a regra mais simples: Acerto é sempre do dia configurado do mês passado até o dia configurado deste mês.
-    
-    // Início do Período (Dia configurado do Mês Passado)
-    const startMonth = currentDay >= settlementDay ? now.getMonth() : now.getMonth() - 1;
-    const startYear = currentDay >= settlementDay ? now.getFullYear() : (startMonth === -1 ? now.getFullYear() - 1 : now.getFullYear());
-    
-    startDate = new Date(startYear, startMonth, settlementDay);
-    startDate.setHours(0, 0, 0, 0);
-    
-    // Fim do Período (Dia configurado deste Mês)
-    const endMonth = currentDay >= settlementDay ? now.getMonth() + 1 : now.getMonth();
-    const endYear = currentDay >= settlementDay ? now.getFullYear() : (endMonth === -1 ? now.getFullYear() - 1 : now.getFullYear());
-    
-    // O fim do período é o dia anterior ao dia de acerto do próximo ciclo.
-    // Se o dia de acerto é 25, o ciclo fecha no dia 24.
-    endDate = new Date(now.getFullYear(), now.getMonth(), currentDay, 23, 59, 59, 999); // Vai até o final do dia de hoje
-    
-    // Para o cálculo do acerto, o período deve ser: [Dia de Acerto do Mês Passado] até [HOJE]
-    // Ex: Acerto dia 25. Hoje é 10/11. Período: 26/10 até 10/11.
-    
     let periodStart: Date;
     
     if (currentDay >= settlementDay) {
@@ -104,6 +64,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     const [settings, setSettings] = useState<ShopSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
+    const theme = useTheme(user); // Usa o hook de tema
 
     useEffect(() => {
         const fetchData = async () => {
@@ -240,14 +201,14 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                 <img src={user.imageUrl || `https://ui-avatars.com/api/?name=${user.name}&background=E5A00D&color=101012`} alt={user.name} className="w-16 h-16 rounded-full object-cover"/>
                 <div>
                     <h3 className="text-xl font-bold">{user.name}</h3>
-                    <button onClick={() => openModal('editProfile')} className="text-sm font-semibold text-primary hover:text-yellow-400 transition-colors">Editar perfil</button>
+                    <button onClick={() => openModal('editProfile')} className={`text-sm font-semibold ${theme.primary} hover:text-yellow-400 transition-colors`}>Editar perfil</button>
                 </div>
             </motion.div>
 
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
                     <h4 className="text-lg font-bold">Horário de Funcionamento</h4>
-                    <button onClick={() => openModal('editHours')} className="text-primary font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors">
+                    <button onClick={() => openModal('editHours')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">edit</span>
                         Editar
                     </button>
@@ -265,7 +226,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
                     <h4 className="text-lg font-bold">Acerto Mensal</h4>
-                    <button onClick={() => openModal('editSettlementDay')} className="text-primary font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors">
+                    <button onClick={() => openModal('editSettlementDay')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">calendar_month</span>
                         Dia de Acerto: {settings?.settlement_day || 1}
                     </button>
@@ -274,13 +235,13 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                     <p className="text-sm font-medium text-text-secondary-dark">Período de Cálculo:</p>
                     <p className="font-bold text-white text-base">{formatSettlementPeriod()}</p>
                 </div>
-                <FinancialSettlement financials={financials} team={team} />
+                <FinancialSettlement financials={financials} team={team} user={user} />
             </motion.div>
 
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
                     <h4 className="text-lg font-bold">Equipe</h4>
-                    <button onClick={() => openModal('newTeamMember')} className="text-primary font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors">
+                    <button onClick={() => openModal('newTeamMember')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">add</span>
                         Adicionar
                     </button>
@@ -356,7 +317,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
                     <h4 className="text-lg font-bold">Serviços</h4>
-                    <button onClick={() => openModal('newService')} className="text-primary font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors">
+                    <button onClick={() => openModal('newService')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">add</span>
                         Adicionar
                     </button>
@@ -368,7 +329,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                <p className="font-semibold text-white">{service.name}</p>
                                <p className="text-sm text-text-secondary-dark">{service.duration_minutes} min</p>
                             </div>
-                             <p className="font-bold text-primary">R$ {service.price.toFixed(2)}</p>
+                             <p className={`font-bold ${theme.primary}`}>R$ {service.price.toFixed(2)}</p>
                         </div>
                     ))}
                 </div>

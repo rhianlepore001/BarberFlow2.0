@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Appointment, TeamMember } from '../types';
+import type { Appointment, TeamMember, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 
 interface AppointmentCardProps {
@@ -28,7 +28,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMemb
         ? appointment.services_json.map(s => s.name).join(', ') 
         : 'Serviço';
         
-    const clientImageUrl = appointment.clients?.image_url || `https://ui-avatars.com/api/?name=${clientName}&background=E5A00D&color=101012`;
+    const clientImageUrl = appointment.clients?.image_url || `https://ui-avatars.com/api/?name=${clientName}&background=${theme.themeColor.substring(1)}&color=101012`;
 
     return (
         <div 

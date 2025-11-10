@@ -1,14 +1,18 @@
 import React from 'react';
-import type { BarberFinancials, TeamMember } from '../types';
+import type { BarberFinancials, TeamMember, User } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface FinancialSettlementProps {
     financials: BarberFinancials[];
     team: TeamMember[];
+    user: User; // Adiciona user
 }
 
 const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
-const FinancialSettlement: React.FC<FinancialSettlementProps> = ({ financials, team }) => {
+const FinancialSettlement: React.FC<FinancialSettlementProps> = ({ financials, team, user }) => {
+    const theme = useTheme(user);
+    
     return (
         <div>
             <div className="flex justify-between items-center mb-3 px-1">
@@ -46,7 +50,7 @@ const FinancialSettlement: React.FC<FinancialSettlementProps> = ({ financials, t
                                     </div>
                                     <div className="flex justify-between">
                                         <p className="text-text-secondary-dark">Valor a Pagar ({barberPercentage}%)</p>
-                                        <p className="font-bold text-lg text-green-400">{formatCurrency(barberPayment)}</p>
+                                        <p className={`font-bold text-lg ${theme.primary}`}>{formatCurrency(barberPayment)}</p>
                                     </div>
                                 </div>
                             </div>
