@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { Appointment, User } from '../types';
+import type { Appointment } from '../types';
 import { useTheme } from '../hooks/useTheme';
 
 interface AvailableSlotsSelectorProps {
@@ -42,7 +42,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
     
     const dayLabels = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
 
-    // 1. Fetch Settings and Appointments
+    // 1. Fetch Settings and Appointments for the selected date
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -56,28 +56,30 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 return;
             }
 
-            // 2. Fetch Shop Settings
-            const { data: settingsData } = await supabase
-                .from('shop_settings')
-                .select('start_time, end_time, open_days')
-                .eq('shop_id', shopId)
-                .limit(1)
-                .single();
-            
-            if (settingsData) {
-                setSettings(settingsData);
+            // 2. Fetch Shop Settings (only once)
+            if (!settings) {
+                const { data: settingsData } = await supabase
+                    .from('shop_settings')
+                    .select('start_time, end_time, open_days')
+                    .eq('shop_id', shopId)
+                    .limit(1)
+                    .single();
+                
+                if (settingsData) {
+                    setSettings(settingsData);
+                }
             }
 
-            // 3. Fetch Appointments for the current month (para cobrir a navegação de datas)
-            const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-            const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
+            // 3. Fetch Appointments for the selected day
+            const dayStartISO = currentDate.toISOString().split('T')[0] + 'T00:00:00.000Z';
+            const dayEndISO = currentDate.toISOString().split('T')[0] + 'T23:59:59.999Z';
 
             const { data: appointmentsData } = await supabase
                 .from('appointments')
                 .select('start_time, duration_minutes')
                 .eq('barber_id', barberId)
-                .gte('start_time', startOfMonth.toISOString())
-                .lte('start_time', endOfMonth.toISOString());
+                .gte('start_time', dayStartISO)
+                .lte('start_time', dayEndISO);
 
             if (appointmentsData) {
                 setAppointments(appointmentsData as unknown as Appointment[]);
@@ -86,7 +88,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
             setLoading(false);
         };
         fetchData();
-    }, [barberId, currentDate.getMonth(), currentDate.getFullYear()]); // Recarrega ao mudar o mês
+    }, [barberId, currentDate.toDateString()]); // Recarrega ao mudar o dia
 
     // 2. Calculate Available Slots
     const availableSlots = useMemo(() => {
@@ -104,38 +106,40 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
         const today = new Date();
         const isCurrentDay = currentDate.toDateString() === today.toDateString();
         
-        const appointmentsToday = appointments.filter(a => 
-            new Date(a.startTime).toDateString() === currentDate.toDateString()
-        );
+        // Mapeia agendamentos existentes para intervalos de tempo (em milissegundos)
+        const occupiedIntervals = appointments.map(appt => {
+            const apptStart = new Date(appt.startTime).getTime();
+            const apptEnd = apptStart + appt.duration_minutes * 60000;
+            return { start: apptStart, end: apptEnd };
+        });
 
         // Gera todos os slots possíveis (a cada 30 minutos)
         for (let h = startHour; h < endHour; h++) {
             for (let m = 0; m < 60; m += TIME_STEP) {
                 const slotTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                
                 const slotStart = new Date(currentDate);
                 slotStart.setHours(h, m, 0, 0);
+                const slotStartMs = slotStart.getTime();
                 
-                const slotEnd = new Date(slotStart.getTime() + requiredDuration * 60000);
+                const slotEndMs = slotStartMs + requiredDuration * 60000;
                 
                 // Verifica se o slot já passou
-                const isPast = isCurrentDay && slotStart < today;
+                const isPast = isCurrentDay && slotStartMs < today.getTime();
                 
                 // Verifica se o slot de término ultrapassa o horário de fechamento
                 const endHourLimit = new Date(currentDate);
                 endHourLimit.setHours(endHour, 0, 0, 0);
-                if (slotEnd > endHourLimit) continue;
+                if (slotEndMs > endHourLimit.getTime()) continue;
 
                 let isConflict = false;
                 
                 // Verifica conflito com agendamentos existentes
-                for (const appt of appointmentsToday) {
-                    const apptStart = new Date(appt.startTime);
-                    const apptEnd = new Date(apptStart.getTime() + appt.duration_minutes * 60000);
-                    
+                for (const interval of occupiedIntervals) {
                     // Conflito se: (Novo.start < Existente.end) AND (Novo.end > Existente.start)
                     if (
-                        (slotStart < apptEnd) &&
-                        (slotEnd > apptStart)
+                        (slotStartMs < interval.end) &&
+                        (slotEndMs > interval.start)
                     ) {
                         isConflict = true;
                         break;
@@ -179,18 +183,11 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
         onSelectSlot(currentDate.toISOString().split('T')[0], time);
     };
     
-    const handleNextWeek = () => {
-        const nextWeek = new Date(currentDate);
-        nextWeek.setDate(currentDate.getDate() + 7);
-        setCurrentDate(nextWeek);
-        onSelectSlot(nextWeek.toISOString().split('T')[0], '');
-    };
-    
-    const handlePrevWeek = () => {
-        const prevWeek = new Date(currentDate);
-        prevWeek.setDate(currentDate.getDate() - 7);
-        setCurrentDate(prevWeek);
-        onSelectSlot(prevWeek.toISOString().split('T')[0], '');
+    const handleWeekChange = (offset: number) => {
+        const newDate = new Date(currentDate);
+        newDate.setDate(currentDate.getDate() + offset * 7);
+        setCurrentDate(newDate);
+        onSelectSlot(newDate.toISOString().split('T')[0], '');
     };
 
     const currentMonthYear = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -203,7 +200,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
             {/* Week Navigation */}
             <div className="flex items-center justify-between px-2">
                 <button 
-                    onClick={handlePrevWeek}
+                    onClick={() => handleWeekChange(-1)}
                     disabled={isPrevWeekDisabled}
                     className={`p-2 transition-colors ${isPrevWeekDisabled ? 'text-gray-600 cursor-not-allowed' : 'text-text-secondary-dark hover:text-white'}`}
                     aria-label="Semana Anterior"
@@ -212,7 +209,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 </button>
                 <h3 className="text-lg font-bold text-white capitalize">{currentMonthYear}</h3>
                 <button 
-                    onClick={handleNextWeek}
+                    onClick={() => handleWeekChange(1)}
                     className="p-2 text-text-secondary-dark hover:text-white transition-colors"
                     aria-label="Próxima Semana"
                 >
