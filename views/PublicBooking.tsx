@@ -202,11 +202,18 @@ const PublicBooking: React.FC = () => {
     
     // Extrai o barberId da URL (simulando a leitura de query params)
     const urlParams = new URLSearchParams(window.location.search);
-    const barberId = urlParams.get('barberId');
+    const barberIdParam = urlParams.get('barberId');
     
     useEffect(() => {
-        if (!barberId) {
+        if (!barberIdParam) {
             setFetchError("ID do barbeiro não fornecido na URL.");
+            setLoading(false);
+            return;
+        }
+        
+        const id = parseInt(barberIdParam);
+        if (isNaN(id)) {
+            setFetchError("ID do barbeiro inválido.");
             setLoading(false);
             return;
         }
@@ -214,8 +221,6 @@ const PublicBooking: React.FC = () => {
         const fetchData = async () => {
             setLoading(true);
             setFetchError(null);
-            
-            const id = parseInt(barberId);
             
             // 1. Buscar dados do Barbeiro e Shop ID
             const { data: memberData, error: memberError } = await supabase
@@ -225,6 +230,7 @@ const PublicBooking: React.FC = () => {
                 .single();
                 
             if (memberError || !memberData) {
+                console.error("Error fetching member:", memberError);
                 setFetchError("Barbeiro não encontrado ou link inválido.");
                 setLoading(false);
                 return;
@@ -251,8 +257,10 @@ const PublicBooking: React.FC = () => {
         };
         
         fetchData();
-    }, [barberId]);
+    }, [barberIdParam]);
     
+    const theme = useTheme(null); // Tema estático para a página pública
+
     if (loading) {
         return <div className="flex justify-center items-center h-screen bg-background-dark text-white">Carregando formulário...</div>;
     }
