@@ -46,8 +46,9 @@ serve(async (req) => {
     
     const shopId = memberData.shop_id;
 
-    // 2. Buscar/Criar Cliente (Busca por telefone é a chave para evitar duplicidade)
+    // 2. Buscar/Criar/Atualizar Cliente (Usando UPSERT baseado no telefone)
     let clientId = null;
+    const defaultImageUrl = `https://ui-avatars.com/api/?name=${clientName.replace(' ', '+')}&background=4169E1&color=101012`;
     
     // Tenta encontrar cliente pelo telefone
     const { data: existingClient } = await supabase
@@ -60,10 +61,13 @@ serve(async (req) => {
         
     if (existingClient) {
         clientId = existingClient.id;
+        // Atualiza nome e email se o cliente já existir (mantendo o registro de visita)
+        await supabase
+            .from('clients')
+            .update({ name: clientName, phone: clientPhone, image_url: defaultImageUrl, last_visit: new Date().toISOString() })
+            .eq('id', clientId);
     } else {
-        // Se não existir, cria um novo cliente
-        const defaultImageUrl = `https://ui-avatars.com/api/?name=${clientName.replace(' ', '+')}&background=4169E1&color=101012`;
-        
+        // Se não existir, insere um novo cliente
         const { data: newClientData, error: clientError } = await supabase
             .from('clients')
             .insert({
@@ -71,6 +75,7 @@ serve(async (req) => {
                 name: clientName,
                 phone: clientPhone,
                 image_url: defaultImageUrl,
+                last_visit: new Date().toISOString(), // Define a primeira visita
             })
             .select('id')
             .single();
@@ -154,11 +159,6 @@ serve(async (req) => {
       })
     }
     
-    // 5. Atualizar a última visita do cliente
-    if (clientId) {
-        await supabase.from('clients').update({ last_visit: new Date().toISOString() }).eq('id', clientId);
-    }
-
     return new Response(JSON.stringify({ message: 'Agendamento realizado com sucesso!', appointment: appointmentData }), {
       status: 201,
       headers: corsHeaders,
