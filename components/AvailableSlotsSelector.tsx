@@ -42,7 +42,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
     const endHour = settings?.end_time ? parseInt(settings.end_time.split(':')[0]) : DEFAULT_END_HOUR;
     const openDays = settings?.open_days && settings.open_days.length > 0 ? settings.open_days : DEFAULT_OPEN_DAYS;
 
-    // 1. Fetch Settings and Appointments
+    // 1. Fetch Settings and Appointments for the selected day
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -56,7 +56,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 return;
             }
 
-            // 2. Fetch Shop Settings (apenas se não tivermos)
+            // 2. Fetch Shop Settings (only once)
             if (!settings) {
                 const { data: settingsData } = await supabase
                     .from('shop_settings')
@@ -70,18 +70,16 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 }
             }
 
-            // 3. Fetch Appointments for the current week (para otimizar a navegação)
-            const startOfWeek = getStartOfWeek(currentDate);
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(startOfWeek.getDate() + 6);
-            endOfWeek.setHours(23, 59, 59, 999);
+            // 3. Fetch Appointments for the CURRENTLY SELECTED DAY
+            const dayStartISO = currentDate.toISOString().split('T')[0] + 'T00:00:00.000Z';
+            const dayEndISO = currentDate.toISOString().split('T')[0] + 'T23:59:59.999Z';
 
             const { data: appointmentsData } = await supabase
                 .from('appointments')
                 .select('start_time, duration_minutes')
                 .eq('barber_id', barberId)
-                .gte('start_time', startOfWeek.toISOString())
-                .lte('start_time', endOfWeek.toISOString());
+                .gte('start_time', dayStartISO)
+                .lte('start_time', dayEndISO);
 
             if (appointmentsData) {
                 setAppointments(appointmentsData as unknown as Appointment[]);
@@ -90,7 +88,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
             setLoading(false);
         };
         fetchData();
-    }, [barberId, currentDate.toDateString()]); // Recarrega ao mudar o dia/semana
+    }, [barberId, currentDate.toDateString()]); // Dependência: barberId e o dia atual
 
     // 2. Calculate Available Slots
     const availableSlots = useMemo(() => {
@@ -108,13 +106,8 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
         const today = new Date();
         const isCurrentDay = currentDate.toDateString() === today.toDateString();
         
-        // 2. Filtra agendamentos para o dia selecionado
-        const appointmentsToday = appointments.filter(a => 
-            new Date(a.startTime).toDateString() === currentDate.toDateString()
-        );
-
         // Mapeia agendamentos existentes para intervalos de tempo (em milissegundos)
-        const occupiedIntervals = appointmentsToday.map(appt => {
+        const occupiedIntervals = appointments.map(appt => {
             const apptStart = new Date(appt.startTime).getTime();
             const apptEnd = apptStart + appt.duration_minutes * 60000;
             return { start: apptStart, end: apptEnd };
@@ -144,6 +137,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 // Verifica conflito com agendamentos existentes
                 for (const interval of occupiedIntervals) {
                     // Conflito se: (Novo.start < Existente.end) AND (Novo.end > Existente.start)
+                    // Esta é a lógica correta para sobreposição de intervalos.
                     if (
                         (slotStartMs < interval.end) &&
                         (slotEndMs > interval.start)

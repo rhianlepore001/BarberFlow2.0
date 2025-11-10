@@ -49,6 +49,7 @@ serve(async (req) => {
     // 2. Buscar/Criar Cliente (Busca por telefone é a chave para evitar duplicidade)
     let clientId = null;
     
+    // Tenta encontrar cliente pelo telefone
     const { data: existingClient } = await supabase
         .from('clients')
         .select('id')
@@ -77,13 +78,21 @@ serve(async (req) => {
             
         if (clientError) {
             console.error('Error creating client:', clientError);
-            return new Response(JSON.stringify({ error: 'Falha ao criar o registro do cliente.' }), {
+            // Retorna um erro 500 com a mensagem de erro do banco de dados
+            return new Response(JSON.stringify({ error: `Falha ao criar o registro do cliente: ${clientError.message}` }), {
                 status: 500,
                 headers: corsHeaders,
             })
         } else if (newClientData) {
             clientId = newClientData.id;
         }
+    }
+    
+    if (!clientId) {
+        return new Response(JSON.stringify({ error: 'Falha crítica: Não foi possível obter ou criar o ID do cliente.' }), {
+            status: 500,
+            headers: corsHeaders,
+        })
     }
 
     // 3. Validação de Conflito de Horário
@@ -141,13 +150,13 @@ serve(async (req) => {
 
     if (bookingError) {
       console.error('Error inserting appointment:', bookingError)
-      return new Response(JSON.stringify({ error: 'Falha ao registrar o agendamento.' }), {
+      return new Response(JSON.stringify({ error: `Falha ao registrar o agendamento: ${bookingError.message}` }), {
         status: 500,
         headers: corsHeaders,
       })
     }
     
-    // 5. Atualizar a última visita do cliente (opcional, mas bom para o dashboard)
+    // 5. Atualizar a última visita do cliente
     if (clientId) {
         await supabase.from('clients').update({ last_visit: new Date().toISOString() }).eq('id', clientId);
     }
