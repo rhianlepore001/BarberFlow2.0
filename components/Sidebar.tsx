@@ -1,18 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import type { NavItemData, View, User } from '../types';
+import { useTheme } from '../hooks/useTheme'; // Importa o hook
 
 interface SidebarNavItemProps {
     item: NavItemData;
     isActive: boolean;
     onClick: () => void;
+    theme: ReturnType<typeof useTheme>; // Adiciona theme
 }
 
-const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, isActive, onClick }) => (
+const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, isActive, onClick, theme }) => (
     <button
         onClick={onClick}
         className={`flex items-center w-full text-left gap-3 px-4 py-3 rounded-lg transition-colors duration-200 relative ${
-            isActive ? 'bg-primary text-background-dark' : 'text-text-secondary-dark hover:bg-card-dark hover:text-white'
+            isActive ? `${theme.bgPrimary} text-background-dark` : 'text-text-secondary-dark hover:bg-card-dark hover:text-white'
         }`}
         aria-current={isActive ? 'page' : undefined}
     >
@@ -32,12 +34,14 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, openModal, items, activeView, setActiveView }) => {
+    const theme = useTheme(user); // Usa o hook de tema
+    
     return (
         <aside className="hidden md:flex flex-col w-64 bg-background-dark border-r border-card-dark fixed h-full p-4">
             <div className="flex items-center gap-3 mb-10 px-2">
-                {/* Ícone neutro para FlowPro */}
-                <span className="material-symbols-outlined text-primary text-3xl">auto_awesome</span>
-                <h1 className="text-2xl font-extrabold text-white">Flow<span className="text-primary">Pro</span></h1>
+                {/* Ícone neutro para FlowPro, cor dinâmica */}
+                <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>auto_awesome</span>
+                <h1 className="text-2xl font-extrabold text-white">Flow<span className={theme.primary}>Pro</span></h1>
             </div>
 
             <nav className="flex-grow flex flex-col gap-2">
@@ -47,6 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, openModal, items, act
                         item={item}
                         isActive={activeView === item.id}
                         onClick={() => setActiveView(item.id)}
+                        theme={theme} // Passa o tema para o item
                     />
                 ))}
             </nav>

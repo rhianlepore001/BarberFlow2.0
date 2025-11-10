@@ -16,6 +16,19 @@ const AuthScreen: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    
+    // Define as classes de tema para uso local
+    const themeClasses = shopType === 'salao' 
+        ? { 
+            primary: 'text-salon-primary', 
+            bgPrimary: 'bg-salon-primary',
+            focusRing: 'focus:ring-salon-primary focus:border-salon-primary'
+        }
+        : { 
+            primary: 'text-primary', 
+            bgPrimary: 'bg-primary',
+            focusRing: 'focus:ring-primary focus:border-primary'
+        };
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,20 +90,20 @@ const AuthScreen: React.FC = () => {
             >
                 <div className="text-center mb-8">
                     <div className="flex justify-center items-center gap-3">
-                        {/* Ícone neutro para FlowPro */}
-                        <span className="material-symbols-outlined text-primary text-4xl">auto_awesome</span>
-                        <h1 className="text-4xl font-extrabold text-white">Flow<span className="text-primary">Pro</span></h1>
+                        {/* Ícone com cor dinâmica */}
+                        <span className={`material-symbols-outlined ${themeClasses.primary} text-4xl`}>auto_awesome</span>
+                        <h1 className="text-4xl font-extrabold text-white">Flow<span className={themeClasses.primary}>Pro</span></h1>
                     </div>
                     <p className="text-text-secondary-dark mt-2">Gestão de primeira para seu negócio de beleza.</p>
                 </div>
                 
                 <div className="bg-card-dark p-2 rounded-full flex items-center gap-2 mb-6">
                     <button onClick={() => setMode('login')} className="w-full relative py-2 rounded-full text-sm font-bold">
-                        {mode === 'login' && <motion.div layoutId="auth-mode" className="absolute inset-0 bg-primary rounded-full z-0" />}
+                        {mode === 'login' && <motion.div layoutId="auth-mode" className={`absolute inset-0 ${themeClasses.bgPrimary} rounded-full z-0`} />}
                         <span className={`relative z-10 transition-colors ${mode === 'login' ? 'text-background-dark' : 'text-text-secondary-dark'}`}>Entrar</span>
                     </button>
                     <button onClick={() => setMode('signup')} className="w-full relative py-2 rounded-full text-sm font-bold">
-                        {mode === 'signup' && <motion.div layoutId="auth-mode" className="absolute inset-0 bg-primary rounded-full z-0" />}
+                        {mode === 'signup' && <motion.div layoutId="auth-mode" className={`absolute inset-0 ${themeClasses.bgPrimary} rounded-full z-0`} />}
                         <span className={`relative z-10 transition-colors ${mode === 'signup' ? 'text-background-dark' : 'text-text-secondary-dark'}`}>Cadastrar</span>
                     </button>
                 </div>
@@ -115,7 +128,7 @@ const AuthScreen: React.FC = () => {
                                         value={shopType}
                                         onChange={e => setShopType(e.target.value as ShopType)}
                                         required
-                                        className="w-full bg-background-dark border-2 border-card-dark rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 focus:ring-primary focus:border-primary transition-all appearance-none"
+                                        className={`w-full bg-background-dark border-2 border-card-dark rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 ${themeClasses.focusRing} transition-all appearance-none`}
                                     >
                                         <option value="barbearia">Barbearia</option>
                                         <option value="salao">Salão de Beleza</option>
@@ -123,20 +136,20 @@ const AuthScreen: React.FC = () => {
                                     <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary-dark pointer-events-none">expand_more</span>
                                 </div>
                                 
-                                <AuthInput icon="store" type="text" placeholder="Nome do Negócio" value={shopName} onChange={e => setShopName(e.target.value)} required />
-                                <AuthInput icon="person" type="text" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} required />
+                                <AuthInput icon="store" type="text" placeholder="Nome do Negócio" value={shopName} onChange={e => setShopName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                                <AuthInput icon="person" type="text" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                             </>
                         )}
-                        <AuthInput icon="mail" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-                        <AuthInput icon="lock" type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required />
+                        <AuthInput icon="mail" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                        <AuthInput icon="lock" type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                         
                         {mode === 'signup' && (
-                            <AuthInput icon="lock" type="password" placeholder="Confirmar Senha" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
+                            <AuthInput icon="lock" type="password" placeholder="Confirmar Senha" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                         )}
                         
                         {error && <p className="text-red-400 text-xs text-center">{error}</p>}
 
-                        <button type="submit" disabled={loading} className="w-full bg-primary text-background-dark font-bold py-3 rounded-full hover:bg-yellow-400 transition-colors disabled:opacity-50">
+                        <button type="submit" disabled={loading} className={`w-full ${themeClasses.bgPrimary} text-background-dark font-bold py-3 rounded-full hover:${themeClasses.bgPrimary}/80 transition-colors disabled:opacity-50`}>
                             {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar' : 'Criar Conta')}
                         </button>
                     </motion.form>

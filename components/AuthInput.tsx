@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 
 interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     icon: string;
+    focusRingClass?: string; // Nova prop para classe de foco
 }
 
-const AuthInput: React.FC<AuthInputProps> = ({ icon, type, ...props }) => {
+const AuthInput: React.FC<AuthInputProps> = ({ icon, type, focusRingClass = 'focus:ring-primary focus:border-primary', ...props }) => {
     const isPassword = type === 'password';
     const [showPassword, setShowPassword] = useState(false);
     
@@ -17,7 +18,7 @@ const AuthInput: React.FC<AuthInputProps> = ({ icon, type, ...props }) => {
             <input
                 {...props}
                 type={inputType}
-                className="w-full bg-background-dark border-2 border-card-dark rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                className={`w-full bg-background-dark border-2 border-card-dark rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 ${focusRingClass} transition-all`}
             />
             
             {isPassword && (
