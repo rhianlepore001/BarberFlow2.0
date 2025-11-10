@@ -1,46 +1,30 @@
 import { useMemo } from 'react';
 import type { User } from '../types';
 
-// Define as classes de tema para Barbearia (Laranja) e Salão (Violeta)
-const THEMES = {
-    barbearia: {
-        // Classes de texto e borda
-        primary: 'text-primary',
-        borderPrimary: 'border-primary',
-        ringPrimary: 'focus:ring-primary',
-        // Classes de fundo
-        bgPrimary: 'bg-primary',
-        // Classes de gradiente (para o Saldo)
-        gradientPrimary: 'from-primary/80 to-primary',
-        // Classes de sombra
-        shadowPrimary: 'shadow-primary/30',
-        // Cor bruta (para UI Avatars)
-        themeColor: '#E5A00D',
-    },
-    salao: {
-        // Classes de texto e borda
-        primary: 'text-salon-primary',
-        borderPrimary: 'border-salon-primary',
-        ringPrimary: 'focus:ring-salon-primary',
-        // Classes de fundo
-        bgPrimary: 'bg-salon-primary',
-        // Classes de gradiente (para o Saldo)
-        gradientPrimary: 'from-salon-primary/80 to-salon-primary',
-        // Classes de sombra
-        shadowPrimary: 'shadow-salon-primary/30',
-        // Cor bruta (para UI Avatars)
-        themeColor: '#8A2BE2',
-    },
+// Define as classes de tema estático (Azul Royal)
+const THEME = {
+    // Classes de texto e borda
+    primary: 'text-primary',
+    borderPrimary: 'border-primary',
+    ringPrimary: 'focus:ring-primary',
+    // Classes de fundo
+    bgPrimary: 'bg-primary',
+    // Classes de gradiente (para o Saldo)
+    gradientPrimary: 'from-primary/80 to-primary',
+    // Classes de sombra
+    shadowPrimary: 'shadow-primary/30',
+    // Cor bruta (para UI Avatars) - Usaremos um azul neutro para avatares se não houver imagem
+    themeColor: '4169E1', // Azul Royal
 };
 
 /**
- * Hook para obter as classes de tema dinâmico com base no tipo de loja do usuário.
- * @param user O objeto User, que contém shopType.
- * @returns Um objeto com classes Tailwind dinâmicas.
+ * Hook para obter as classes de tema estático (Azul Royal).
+ * @param user O objeto User (mantido para compatibilidade de props, mas não usado para lógica de cor).
+ * @returns Um objeto com classes Tailwind estáticas.
  */
 export const useTheme = (user: User | null) => {
+    // O useMemo é mantido, mas o retorno é estático
     return useMemo(() => {
-        const shopType = user?.shopType || 'barbearia';
-        return THEMES[shopType];
-    }, [user?.shopType]);
+        return THEME;
+    }, [user?.shopType]); // Mantemos user?.shopType na dependência para garantir que o componente que o usa seja re-renderizado se o user mudar, embora o valor retornado seja fixo.
 };

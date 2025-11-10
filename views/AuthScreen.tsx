@@ -12,31 +12,25 @@ const AuthScreen: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [name, setName] = useState('');
     const [shopName, setShopName] = useState('');
-    const [shopType, setShopType] = useState<ShopType>('barbearia'); // Novo estado
+    const [shopType, setShopType] = useState<ShopType>('barbearia'); // Mantém a escolha do tipo de loja
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     
-    // Define as classes de tema para uso local
-    const themeClasses = shopType === 'salao' 
-        ? { 
-            primary: 'text-salon-primary', 
-            bgPrimary: 'bg-salon-primary',
-            focusRing: 'focus:ring-salon-primary focus:border-salon-primary'
-        }
-        : { 
-            primary: 'text-primary', 
-            bgPrimary: 'bg-primary',
-            focusRing: 'focus:ring-primary focus:border-primary'
-        };
+    // Classes estáticas baseadas na cor primária global (Azul Royal)
+    const themeClasses = { 
+        primary: 'text-primary', 
+        bgPrimary: 'bg-primary',
+        focusRing: 'focus:ring-primary focus:border-primary'
+    };
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
-        // Define a cor do avatar com base no tipo de loja
-        const avatarColor = shopType === 'salao' ? '8A2BE2' : 'E5A00D';
+        // Define a cor do avatar com base no tipo de loja (mantemos a cor do avatar para diferenciar)
+        const avatarColor = shopType === 'salao' ? '8A2BE2' : '4169E1'; // Azul Royal para barbearia, Violeta para salão (apenas no avatar)
         const defaultImageUrl = `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${avatarColor}&color=101012`;
 
         if (mode === 'signup') {
@@ -90,7 +84,7 @@ const AuthScreen: React.FC = () => {
             >
                 <div className="text-center mb-8">
                     <div className="flex justify-center items-center gap-3">
-                        {/* Ícone com cor dinâmica */}
+                        {/* Ícone com cor primária global */}
                         <span className={`material-symbols-outlined ${themeClasses.primary} text-4xl`}>auto_awesome</span>
                         <h1 className="text-4xl font-extrabold text-white">Flow<span className={themeClasses.primary}>Pro</span></h1>
                     </div>
@@ -121,7 +115,7 @@ const AuthScreen: React.FC = () => {
                     >
                         {mode === 'signup' && (
                             <>
-                                {/* Seleção do Tipo de Negócio */}
+                                {/* Seleção do Tipo de Negócio (Mantida) */}
                                 <div className="relative">
                                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">store</span>
                                     <select

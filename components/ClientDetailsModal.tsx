@@ -2,21 +2,24 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { Client } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface ClientDetailsModalProps {
     client: Client;
     onClose: () => void;
     onSuccess: () => void;
+    user: User; // Adiciona user para usar o tema
 }
 
 const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
-const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose, onSuccess }) => {
+const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose, onSuccess, user }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(client.name);
     const [phone, setPhone] = useState(client.phone || '');
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user); // Usa o hook de tema
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -59,7 +62,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
             <h2 className="text-xl font-bold text-center text-white">{isEditing ? 'Editar Cliente' : 'Detalhes do Cliente'}</h2>
             
             <div className="flex justify-center my-4">
-                <img src={client.imageUrl || `https://ui-avatars.com/api/?name=${client.name}&background=E5A00D&color=101012`} alt={client.name} className="w-24 h-24 rounded-full object-cover border-2 border-card-dark" />
+                <img src={client.imageUrl || `https://ui-avatars.com/api/?name=${client.name}&background=${theme.themeColor}&color=101012`} alt={client.name} className="w-24 h-24 rounded-full object-cover border-2 border-card-dark" />
             </div>
 
             {isEditing ? (
@@ -72,7 +75,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             required
-                            className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                            className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                         />
                     </div>
                     <div>
@@ -82,7 +85,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                             id="client-phone" 
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                            className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                         />
                     </div>
                     
@@ -93,7 +96,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                         <button 
                             type="submit" 
                             disabled={isSaving}
-                            className="w-full rounded-full bg-primary py-3 text-center font-bold text-background-dark disabled:bg-primary/50"
+                            className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}
                         >
                             {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                         </button>
@@ -107,7 +110,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                     </div>
                     <div className="flex justify-between items-center">
                         <p className="text-sm font-medium text-text-secondary-dark">Total Gasto</p>
-                        <p className="font-bold text-primary">{formatCurrency(client.totalSpent || 0)}</p>
+                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(client.totalSpent || 0)}</p>
                     </div>
                     <div className="flex justify-between items-center">
                         <p className="text-sm font-medium text-text-secondary-dark">Telefone</p>
@@ -115,7 +118,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                     </div>
                     
                     <div className="flex gap-3 pt-4">
-                        <button type="button" onClick={() => setIsEditing(true)} className="w-full rounded-full bg-primary/20 py-3 text-center font-bold text-primary hover:bg-primary/30 transition-colors">
+                        <button type="button" onClick={() => setIsEditing(true)} className={`w-full rounded-full ${theme.bgPrimary}/20 py-3 text-center font-bold ${theme.primary} hover:${theme.bgPrimary}/30 transition-colors`}>
                             Editar
                         </button>
                         <button type="button" onClick={onClose} className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white hover:bg-gray-600 transition-colors">
