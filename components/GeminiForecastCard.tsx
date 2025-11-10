@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from '@google/genai';
-import type { PeriodData } from '../types';
+import type { PeriodData, User } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface GeminiForecastCardProps {
     data: PeriodData;
     period: 'week' | 'month' | 'year';
+    user: User; // Adiciona user para obter o tema
 }
 
 const periodMap = {
@@ -14,10 +16,11 @@ const periodMap = {
     year: { current: 'anual', next: 'próximo ano' },
 };
 
-const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period }) => {
+const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period, user }) => {
     const [forecast, setForecast] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     const handleGenerateForecast = async () => {
         setIsLoading(true);
@@ -29,7 +32,7 @@ const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period })
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
             const prompt = `
-                Você é um analista financeiro sênior especializado em pequenos negócios como barbearias.
+                Você é um analista financeiro sênior especializado em pequenos negócios como barbearias/salões.
                 Sua função é analisar os dados de faturamento ${periodMap[period].current} e fornecer uma previsão de faturamento para o(a) ${periodMap[period].next}.
 
                 Dados de Faturamento:
@@ -66,7 +69,7 @@ const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period })
     return (
         <div className="bg-card-dark p-4 rounded-xl">
             <div className="flex items-center gap-2 mb-3">
-                 <span className="material-symbols-outlined text-primary text-xl">query_stats</span>
+                 <span className={`material-symbols-outlined ${theme.primary} text-xl`}>query_stats</span>
                  <h3 className="font-bold text-white">Previsão com IA</h3>
             </div>
             
@@ -74,7 +77,7 @@ const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period })
                 {isLoading && (
                     <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-center items-center h-24">
                        <div className="flex items-center gap-2 text-sm text-text-secondary-dark">
-                           <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                           <svg className={`animate-spin h-5 w-5 ${theme.primary}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                            </svg>
@@ -88,7 +91,7 @@ const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period })
                         <p className="text-sm text-red-400 mb-2">{error}</p>
                          <button 
                             onClick={handleGenerateForecast}
-                            className="bg-primary/20 text-primary font-bold py-1 px-4 rounded-full hover:bg-primary/30 transition-colors text-sm"
+                            className={`${theme.bgPrimary}/20 ${theme.primary} font-bold py-1 px-4 rounded-full hover:${theme.bgPrimary}/30 transition-colors text-sm`}
                         >
                             Tentar Novamente
                         </button>
@@ -98,7 +101,7 @@ const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period })
                 {forecast && !isLoading && (
                     <motion.div key="forecast" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center">
                         <p className="text-xs text-text-secondary-dark">Previsão para {periodMap[period].next}</p>
-                        <p className="text-2xl font-extrabold text-primary my-1">{forecastRange}</p>
+                        <p className={`text-2xl font-extrabold ${theme.primary} my-1`}>{forecastRange}</p>
                         <p className="text-sm text-text-secondary-dark leading-relaxed whitespace-pre-wrap">{forecastText}</p>
                     </motion.div>
                 )}
@@ -108,7 +111,7 @@ const GeminiForecastCard: React.FC<GeminiForecastCardProps> = ({ data, period })
                         <p className="text-sm text-text-secondary-dark mb-4">Veja uma projeção do seu faturamento para o próximo período com base nos dados atuais.</p>
                         <button 
                             onClick={handleGenerateForecast}
-                            className="bg-primary/20 text-primary font-bold py-2 px-5 rounded-full hover:bg-primary/30 transition-colors"
+                            className={`${theme.bgPrimary}/20 ${theme.primary} font-bold py-2 px-5 rounded-full hover:${theme.bgPrimary}/30 transition-colors`}
                         >
                             Gerar Previsão
                         </button>

@@ -1,21 +1,24 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { Appointment, Service } from '../types';
+import type { Appointment, Service, User } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface AppointmentDetailsModalProps {
     appointment: Appointment;
     onClose: () => void;
     onSuccess: () => void;
     shopId: number;
-    onEditClick: (appointment: Appointment) => void; // Nova prop
+    onEditClick: (appointment: Appointment) => void;
+    user: User; // Adiciona user para obter o tema
 }
 
 const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
-const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appointment, onClose, onSuccess, shopId, onEditClick }) => {
+const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appointment, onClose, onSuccess, shopId, onEditClick, user }) => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     const clientName = appointment.clients?.name || 'Cliente Desconhecido';
     const barberName = appointment.team_members?.name || 'Barbeiro';
@@ -99,14 +102,14 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             
             <div className="bg-background-dark p-4 rounded-xl space-y-3">
                 <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary text-3xl">person</span>
+                    <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>person</span>
                     <div>
                         <p className="font-bold text-white">{clientName}</p>
                         <p className="text-sm text-text-secondary-dark">Cliente</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary text-3xl">schedule</span>
+                    <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>schedule</span>
                     <div>
                         <p className="font-bold text-white">{startTime}</p>
                         <p className="text-sm text-text-secondary-dark">Horário com {barberName}</p>
@@ -127,7 +130,7 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
                 
                 <div className="flex justify-between items-center border-t border-white/10 pt-3">
                     <p className="text-lg font-bold text-white">Total</p>
-                    <p className="text-xl font-extrabold text-primary">{formatCurrency(totalAmount)}</p>
+                    <p className={`text-xl font-extrabold ${theme.primary}`}>{formatCurrency(totalAmount)}</p>
                 </div>
             </div>
             

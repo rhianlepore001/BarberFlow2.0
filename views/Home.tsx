@@ -232,6 +232,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                     totalAppointments={financials.totalAppointments}
                     nextAppointmentName={nextAppointmentName}
                     onEditGoalClick={() => openModal('editDailyGoal')}
+                    user={user} // Passa o user
                 />
             </motion.div>
 
@@ -240,7 +241,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                     appointments={appointments} 
                     teamMembers={teamMembers} 
                     onViewAllClick={() => setActiveView('agenda')}
-                    onAppointmentClick={handleAppointmentClick} // Passa a nova função
+                    onAppointmentClick={handleAppointmentClick} // Passa a função de clique
                 />
             </motion.div>
 
@@ -257,7 +258,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
             </motion.div>
 
             <motion.div variants={itemVariants}>
-                <CashFlowChart data={cashFlowData} onDetailsClick={() => setActiveView('caixa')} />
+                <CashFlowChart data={cashFlowData} onDetailsClick={() => setActiveView('caixa')} user={user} />
             </motion.div>
         </motion.div>
     );

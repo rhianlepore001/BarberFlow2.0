@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { Transaction } from '../types';
+import type { Transaction, User } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface TransactionItemProps {
     transaction: Transaction;
     onDeleteSuccess: () => void;
+    user: User; // Adiciona user para obter o tema
 }
 
-const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDeleteSuccess }) => {
+const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDeleteSuccess, user }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     const description = transaction.type === 'income' && transaction.barberName
         ? `${transaction.description} (${transaction.barberName.split(' ')[0]})`

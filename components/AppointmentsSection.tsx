@@ -1,13 +1,16 @@
 import React from 'react';
 import type { Appointment, TeamMember } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface AppointmentCardProps {
     appointment: Appointment;
     teamMembers: TeamMember[];
     onClick: (appointment: Appointment) => void; // Nova prop
+    user: User; // Adiciona user para obter o tema
 }
 
-const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMembers, onClick }) => {
+const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMembers, onClick, user }) => {
+    const theme = useTheme(user);
     const barber = teamMembers.find(b => b.id === appointment.barberId);
     const appointmentDate = new Date(appointment.startTime);
     const displayTime = appointmentDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -40,7 +43,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMemb
             <div>
                 <p className="truncate text-base font-bold text-white">{clientName}</p>
                 <p className="text-sm font-medium text-text-secondary-dark truncate">{serviceName}</p>
-                <p className="mt-1 text-sm font-bold text-primary">
+                <p className={`mt-1 text-sm font-bold ${theme.primary}`}>
                     {displayTime} ({displayDate})
                 </p>
                 <p className="text-xs text-text-secondary-dark truncate">
@@ -57,14 +60,17 @@ interface AppointmentsSectionProps {
     teamMembers: TeamMember[];
     onViewAllClick: () => void;
     onAppointmentClick: (appointment: Appointment) => void; // Nova prop
+    user: User; // Adiciona user para obter o tema
 }
 
-const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({ appointments, teamMembers, onViewAllClick, onAppointmentClick }) => {
+const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({ appointments, teamMembers, onViewAllClick, onAppointmentClick, user }) => {
+    const theme = useTheme(user);
+    
     return (
         <section>
             <div className="flex items-center justify-between px-4 pb-3 pt-5">
                 <h3 className="text-xl font-bold tracking-tight text-white">Próximos Agendamentos</h3>
-                <button onClick={onViewAllClick} className="text-sm font-semibold text-primary hover:text-yellow-400 transition-colors">Ver todos</button>
+                <button onClick={onViewAllClick} className={`text-sm font-semibold ${theme.primary} hover:text-yellow-400 transition-colors`}>Ver todos</button>
             </div>
             <div className="flex overflow-x-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="flex items-stretch gap-3 px-4">
@@ -74,6 +80,7 @@ const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({ appointments,
                             appointment={appointment} 
                             teamMembers={teamMembers} 
                             onClick={onAppointmentClick} // Passa a função de clique
+                            user={user}
                         />
                     ))}
                 </div>

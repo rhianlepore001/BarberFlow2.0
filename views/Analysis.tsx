@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { PeriodData } from '../types';
+import type { PeriodData, User } from '../types';
 import PerformanceChart from '../components/PerformanceChart';
 import GeminiInsightCard from '../components/GeminiInsightCard';
 import GeminiForecastCard from '../components/GeminiForecastCard';
-import Tooltip from '../components/Tooltip'; // Importa o Tooltip
+import Tooltip from '../components/Tooltip';
+import { useTheme } from '../hooks/useTheme';
 
 type Period = 'week' | 'month' | 'year';
 
@@ -26,7 +27,7 @@ const itemVariants = {
 
 const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
-const PeriodSelector: React.FC<{ selectedPeriod: Period; setPeriod: (p: Period) => void }> = ({ selectedPeriod, setPeriod }) => {
+const PeriodSelector: React.FC<{ selectedPeriod: Period; setPeriod: (p: Period) => void; theme: ReturnType<typeof useTheme> }> = ({ selectedPeriod, setPeriod, theme }) => {
     const periods: { label: string; value: Period }[] = [
         { label: 'Semana', value: 'week' },
         { label: 'Mês', value: 'month' },
@@ -43,7 +44,7 @@ const PeriodSelector: React.FC<{ selectedPeriod: Period; setPeriod: (p: Period) 
                     {selectedPeriod === period.value && (
                         <motion.div
                             layoutId="period-selector-active"
-                            className="absolute inset-0 bg-primary rounded-full z-0"
+                            className={`absolute inset-0 ${theme.bgPrimary} rounded-full z-0`}
                         />
                     )}
                     <span className="relative z-10">{period.label}</span>
@@ -57,7 +58,7 @@ interface KPICardProps {
     label: string;
     value: string;
     percentageChange: number;
-    tooltipContent: string; // Nova prop
+    tooltipContent: string;
 }
 
 const KPICard: React.FC<KPICardProps> = ({ label, value, percentageChange, tooltipContent }) => {
@@ -122,11 +123,18 @@ interface FullAnalysisData extends PeriodData {
     previousNewClients: number;
 }
 
-const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
+interface AnalysisProps {
+    dataVersion: number;
+    // O App.tsx precisa passar o user para que o tema seja aplicado
+    user: User; 
+}
+
+const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
     const [period, setPeriod] = useState<Period>('month');
     const [data, setData] = useState<FullAnalysisData | null>(null);
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     useEffect(() => {
         const fetchDataForPeriod = async () => {
@@ -305,7 +313,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             className="px-4 pt-4 pb-6 space-y-6"
         >
             <motion.div variants={itemVariants}>
-                <PeriodSelector selectedPeriod={period} setPeriod={setPeriod} />
+                <PeriodSelector selectedPeriod={period} setPeriod={setPeriod} theme={theme} />
             </motion.div>
 
             <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
@@ -336,7 +344,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
             </motion.div>
 
             <motion.div variants={itemVariants}>
-                <PerformanceChart data={data} />
+                <PerformanceChart data={data} user={user} />
             </motion.div>
 
             <motion.div variants={itemVariants} className="space-y-6">
@@ -356,7 +364,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion }) => {
                     {data.topServices.length > 0 ? data.topServices.map(service => (
                         <div key={service.name} className="flex justify-between items-center text-sm">
                             <p className="font-semibold text-white">{service.name}</p>
-                            <p className="font-bold text-primary">{service.value}</p>
+                            <p className={`font-bold ${theme.primary}`}>{service.value}</p>
                         </div>
                     )) : <p className="text-sm text-center text-text-secondary-dark">Sem dados de serviços.</p>}
                 </div>

@@ -1,5 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import type { User } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface FinancialSummaryProps {
     dailyRevenue: number;
@@ -7,10 +9,12 @@ interface FinancialSummaryProps {
     completedAppointments: number;
     totalAppointments: number;
     nextAppointmentName: string | null;
-    onEditGoalClick: () => void; // Nova propriedade
+    onEditGoalClick: () => void;
+    user: User; // Adiciona user para obter o tema
 }
 
-const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, dailyGoal, completedAppointments, totalAppointments, nextAppointmentName, onEditGoalClick }) => {
+const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, dailyGoal, completedAppointments, totalAppointments, nextAppointmentName, onEditGoalClick, user }) => {
+    const theme = useTheme(user);
     const progress = dailyGoal > 0 ? Math.min((dailyRevenue / dailyGoal) * 100, 100) : 0;
     
     const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
@@ -19,7 +23,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, daily
         <div className="rounded-xl bg-card-dark p-4">
             <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-text-secondary-dark">Faturamento de Hoje</p>
-                <span className="material-symbols-outlined text-primary text-xl">monitoring</span>
+                <span className={`material-symbols-outlined ${theme.primary} text-xl`}>monitoring</span>
             </div>
             <p className="text-3xl font-extrabold text-white mt-1">{formatCurrency(dailyRevenue)}</p>
             
@@ -27,7 +31,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, daily
                 <div className="flex justify-between text-xs font-bold text-text-secondary-dark mb-1">
                     <div className="flex items-center gap-1">
                         <span>Meta diária</span>
-                        <button onClick={onEditGoalClick} className="text-primary hover:text-yellow-400 transition-colors">
+                        <button onClick={onEditGoalClick} className={`${theme.primary} hover:text-yellow-400 transition-colors`}>
                             <span className="material-symbols-outlined text-sm">edit</span>
                         </button>
                     </div>
@@ -35,7 +39,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, daily
                 </div>
                 <div className="w-full bg-background-dark rounded-full h-2 overflow-hidden">
                     <motion.div
-                        className="bg-primary h-2 rounded-full"
+                        className={`${theme.bgPrimary} h-2 rounded-full`}
                         initial={{ width: 0 }}
                         animate={{ width: `${progress}%` }}
                         transition={{ duration: 1, ease: "circOut" }}

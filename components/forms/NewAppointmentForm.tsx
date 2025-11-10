@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
-import type { Appointment, Client, Service, TeamMember } from '../../types';
+import type { Appointment, Client, Service, TeamMember, User } from '../../types';
+import { useTheme } from '../../hooks/useTheme';
 
 interface NewAppointmentFormProps {
     onClose: () => void;
     onSuccess: () => void;
     appointment?: Appointment | null;
     shopId: number;
+    user: User; // Adiciona user para obter o tema
 }
 
-const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSuccess, appointment, shopId }) => {
+const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSuccess, appointment, shopId, user }) => {
     const isEditing = !!appointment;
     const [clients, setClients] = useState<(Pick<Client, 'id' | 'name' | 'image_url'>)[]>([]);
     const [allServices, setAllServices] = useState<Service[]>([]);
@@ -27,6 +29,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
 
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -137,7 +140,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
                     onChange={(e) => setClientId(parseInt(e.target.value))}
                     disabled={isEditing} 
                     required 
-                    className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary disabled:opacity-50"
+                    className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary disabled:opacity-50`}
                 >
                     <option value="" disabled>Selecione um cliente</option>
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -149,7 +152,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
                     value={barberId}
                     onChange={(e) => setBarberId(parseInt(e.target.value))}
                     required 
-                    className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                    className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                 >
                      <option value="" disabled>Selecione um barbeiro</option>
                     {teamMembers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -166,7 +169,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
                                     id={`service-${s.id}`} 
                                     checked={selectedServiceIds.includes(s.id)}
                                     onChange={() => handleServiceToggle(s.id)}
-                                    className="form-checkbox h-4 w-4 text-primary bg-background-dark border-gray-600 rounded focus:ring-primary"
+                                    className={`form-checkbox h-4 w-4 ${theme.primary} bg-background-dark border-gray-600 rounded ${theme.ringPrimary}`}
                                 />
                                 {s.name}
                             </label>
@@ -183,7 +186,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
                         required 
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                     />
                     <input 
                         type="time" 
@@ -191,7 +194,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
                         required 
                         value={time}
                         onChange={(e) => setTime(e.target.value)}
-                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
 
@@ -199,7 +202,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
 
                 <div className="flex gap-3 pt-2">
                     <button type="button" onClick={onClose} className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white">Cancelar</button>
-                    <button type="submit" disabled={isSaving} className="w-full rounded-full bg-primary py-3 text-center font-bold text-background-dark disabled:bg-primary/50">{isSaving ? 'Salvando...' : (isEditing ? 'Salvar' : 'Agendar')}</button>
+                    <button type="submit" disabled={isSaving} className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}>{isSaving ? 'Salvando...' : (isEditing ? 'Salvar' : 'Agendar')}</button>
                 </div>
 
                 {isEditing && (

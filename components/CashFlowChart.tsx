@@ -1,12 +1,14 @@
 import React from 'react';
-import type { CashFlowDay } from '../types';
+import type { CashFlowDay, User } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface BarProps {
     day: CashFlowDay;
     maxRevenue: number;
+    theme: ReturnType<typeof useTheme>;
 }
 
-const Bar: React.FC<BarProps> = ({ day, maxRevenue }) => {
+const Bar: React.FC<BarProps> = ({ day, maxRevenue, theme }) => {
     const barHeight = maxRevenue > 0 ? (day.revenue / maxRevenue) * 100 : 0;
 
     return (
@@ -15,11 +17,11 @@ const Bar: React.FC<BarProps> = ({ day, maxRevenue }) => {
                 R${day.revenue.toFixed(2).replace('.',',')}
             </div>
             <div
-                className={`w-full rounded-t transition-colors duration-300 ${day.isCurrent ? 'bg-primary' : 'bg-primary/30 group-hover:bg-primary/60'}`}
+                className={`w-full rounded-t transition-colors duration-300 ${day.isCurrent ? theme.bgPrimary : `${theme.bgPrimary}/30 group-hover:${theme.bgPrimary}/60`}`}
                 style={{ height: `${barHeight}%` }}
                 aria-label={`Faturamento de ${day.revenue.toFixed(2)}`}
             ></div>
-            <p className={`text-xs font-bold ${day.isCurrent ? 'text-primary' : 'text-text-secondary-dark'}`}>
+            <p className={`text-xs font-bold ${day.isCurrent ? theme.primary : 'text-text-secondary-dark'}`}>
                 {day.day}
             </p>
         </div>
@@ -29,9 +31,11 @@ const Bar: React.FC<BarProps> = ({ day, maxRevenue }) => {
 interface CashFlowChartProps {
     data: CashFlowDay[];
     onDetailsClick: () => void;
+    user: User; // Adiciona user para obter o tema
 }
 
-const CashFlowChart: React.FC<CashFlowChartProps> = ({ data, onDetailsClick }) => {
+const CashFlowChart: React.FC<CashFlowChartProps> = ({ data, onDetailsClick, user }) => {
+    const theme = useTheme(user);
     const totalRevenue = data.reduce((acc, day) => acc + day.revenue, 0);
     const maxRevenue = Math.max(...data.map(day => day.revenue), 1);
 
@@ -43,11 +47,11 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data, onDetailsClick }) =
                         <p className="text-sm font-medium text-text-secondary-dark">Faturamento Total</p>
                         <p className="text-2xl font-extrabold text-white">R$ {totalRevenue.toFixed(2).replace('.', ',')}</p>
                     </div>
-                    <button onClick={onDetailsClick} className="text-sm font-semibold text-primary hover:text-yellow-400 transition-colors">Detalhes</button>
+                    <button onClick={onDetailsClick} className={`text-sm font-semibold ${theme.primary} hover:text-yellow-400 transition-colors`}>Detalhes</button>
                 </div>
                 <div className="mt-4 flex h-40 w-full items-end justify-between gap-2">
                     {data.map((day, index) => (
-                        <Bar key={index} day={day} maxRevenue={maxRevenue} />
+                        <Bar key={index} day={day} maxRevenue={maxRevenue} theme={theme} />
                     ))}
                 </div>
             </div>

@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
+import type { User } from '../../types';
+import { useTheme } from '../../hooks/useTheme';
 
 interface EditSettlementDayFormProps {
     onClose: () => void;
     onSuccess: () => void;
     shopId: number;
+    user: User;
 }
 
-const EditSettlementDayForm: React.FC<EditSettlementDayFormProps> = ({ onClose, onSuccess, shopId }) => {
+const EditSettlementDayForm: React.FC<EditSettlementDayFormProps> = ({ onClose, onSuccess, shopId, user }) => {
     const [settlementDay, setSettlementDay] = useState('1');
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -83,7 +87,7 @@ const EditSettlementDayForm: React.FC<EditSettlementDayFormProps> = ({ onClose, 
                         min="1"
                         max="28"
                         required
-                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
 
@@ -94,7 +98,7 @@ const EditSettlementDayForm: React.FC<EditSettlementDayFormProps> = ({ onClose, 
                     <button 
                         type="submit" 
                         disabled={isSaving}
-                        className="w-full rounded-full bg-primary py-3 text-center font-bold text-background-dark disabled:bg-primary/50"
+                        className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}
                     >
                         {isSaving ? 'Salvando...' : 'Salvar Dia'}
                     </button>

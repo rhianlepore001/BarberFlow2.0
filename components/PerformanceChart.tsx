@@ -1,12 +1,15 @@
 import React from 'react';
-import type { PeriodData } from '../types';
-import Tooltip from './Tooltip'; // Importa o Tooltip
+import type { PeriodData, User } from '../types';
+import Tooltip from './Tooltip';
+import { useTheme } from '../hooks/useTheme';
 
 interface PerformanceChartProps {
     data: PeriodData;
+    user: User; // Adiciona user para obter o tema
 }
 
-const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
+const PerformanceChart: React.FC<PerformanceChartProps> = ({ data, user }) => {
+    const theme = useTheme(user);
     const trendData = data.revenueTrend;
     const maxVal = Math.max(...trendData, 1);
     
@@ -43,8 +46,8 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
                     {/* Gradiente para a área sob a curva */}
                     <defs>
                         <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" style={{ stopColor: '#E5A00D', stopOpacity: 0.4 }} />
-                            <stop offset="100%" style={{ stopColor: '#E5A00D', stopOpacity: 0 }} />
+                            <stop offset="0%" style={{ stopColor: theme.themeColor, stopOpacity: 0.4 }} />
+                            <stop offset="100%" style={{ stopColor: theme.themeColor, stopOpacity: 0 }} />
                         </linearGradient>
                     </defs>
                     {/* Área sob a curva */}
@@ -53,7 +56,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
                     {/* Linha do período atual */}
                     <polyline
                         fill="none"
-                        stroke="#E5A00D"
+                        stroke={theme.themeColor}
                         strokeWidth="2"
                         points={points}
                     />
@@ -71,7 +74,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
             
              <div className="flex justify-center items-center gap-4 mt-2 text-xs">
                 <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-0.5 bg-primary rounded-full"></div>
+                    <div className={`w-3 h-0.5 ${theme.bgPrimary} rounded-full`}></div>
                     <span className="text-text-secondary-dark">Período Atual</span>
                 </div>
                 <div className="flex items-center gap-1.5">

@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { Transaction } from '../types';
-import TransactionItem from '../components/TransactionItem'; // Importa o novo componente
+import type { Transaction, User } from '../types';
+import TransactionItem from '../components/TransactionItem';
+import { useTheme } from '../hooks/useTheme';
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -25,11 +26,11 @@ const ITEMS_PER_PAGE = 10;
 
 interface CashFlowProps {
     dataVersion: number;
-    // Adicionamos refreshData para forçar a atualização do App.tsx
     refreshData: () => void; 
+    user: User; // Adiciona user para obter o tema
 }
 
-const FilterButtons: React.FC<{ activeFilter: FilterType; setFilter: (filter: FilterType) => void }> = ({ activeFilter, setFilter }) => {
+const FilterButtons: React.FC<{ activeFilter: FilterType; setFilter: (filter: FilterType) => void; theme: ReturnType<typeof useTheme> }> = ({ activeFilter, setFilter, theme }) => {
     const filters: { label: string; value: FilterType }[] = [
         { label: 'Tudo', value: 'all' },
         { label: 'Entradas', value: 'income' },
@@ -46,7 +47,7 @@ const FilterButtons: React.FC<{ activeFilter: FilterType; setFilter: (filter: Fi
                     {activeFilter === filter.value && (
                         <motion.div
                             layoutId="cashflow-filter-active"
-                            className="absolute inset-0 bg-primary rounded-full z-0"
+                            className={`absolute inset-0 ${theme.bgPrimary} rounded-full z-0`}
                         />
                     )}
                     <span className="relative z-10">{filter.label}</span>
@@ -57,11 +58,12 @@ const FilterButtons: React.FC<{ activeFilter: FilterType; setFilter: (filter: Fi
 }
 
 
-const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData }) => {
+const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) => {
     const [filter, setFilter] = useState<FilterType>('all');
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const theme = useTheme(user);
     
     useEffect(() => {
         const fetchTransactions = async () => {
@@ -107,13 +109,13 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData }) => {
 
     return (
         <div className="px-4 pt-4 pb-6">
-            <motion.div initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} className="mt-4 rounded-xl bg-gradient-to-br from-primary to-yellow-600 p-5 text-background-dark shadow-lg shadow-primary/20">
+            <motion.div initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} className={`mt-4 rounded-xl bg-gradient-to-br ${theme.gradientPrimary} p-5 text-background-dark shadow-lg ${theme.shadowPrimary}`}>
                 <p className="text-sm font-medium text-black/70">Saldo Atual</p>
                 <p className="text-4xl font-extrabold">R$ {balance.toFixed(2).replace('.', ',')}</p>
             </motion.div>
             
             <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0, transition: {delay: 0.1}}} className="my-6">
-                <FilterButtons activeFilter={filter} setFilter={setFilter} />
+                <FilterButtons activeFilter={filter} setFilter={setFilter} theme={theme} />
             </motion.div>
 
             <motion.div 
@@ -134,6 +136,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData }) => {
                         <TransactionItem 
                             transaction={t} 
                             onDeleteSuccess={refreshData} 
+                            user={user} // Passa o user
                         />
                     </motion.div>
                 ))}
@@ -144,7 +147,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData }) => {
                 <motion.div layout className="mt-6">
                     <button 
                         onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
-                        className="w-full rounded-full bg-card-dark py-3 text-center font-bold text-primary transition-colors hover:bg-primary/20"
+                        className={`w-full rounded-full bg-card-dark py-3 text-center font-bold ${theme.primary} transition-colors hover:${theme.bgPrimary}/20`}
                     >
                         Carregar Mais
                     </button>

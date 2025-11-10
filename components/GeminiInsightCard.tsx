@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from '@google/genai';
-import type { PeriodData } from '../types';
+import type { PeriodData, User } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface GeminiInsightCardProps {
     data: PeriodData;
     period: 'week' | 'month' | 'year';
+    user: User; // Adiciona user para obter o tema
 }
 
 const periodMap = {
@@ -14,10 +16,11 @@ const periodMap = {
     year: 'anual'
 };
 
-const GeminiInsightCard: React.FC<GeminiInsightCardProps> = ({ data, period }) => {
+const GeminiInsightCard: React.FC<GeminiInsightCardProps> = ({ data, period, user }) => {
     const [insight, setInsight] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     const handleGenerateInsight = async () => {
         setIsLoading(true);
@@ -28,7 +31,7 @@ const GeminiInsightCard: React.FC<GeminiInsightCardProps> = ({ data, period }) =
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
             const prompt = `
-                Você é um consultor de negócios especialista em barbearias. Analise os seguintes dados de performance ${periodMap[period]} e forneça um resumo conciso (máximo 3 parágrafos) com insights e uma recomendação prática. Seja direto e profissional.
+                Você é um consultor de negócios especialista em barbearias/salões. Analise os seguintes dados de performance ${periodMap[period]} e forneça um resumo conciso (máximo 3 parágrafos) com insights e uma recomendação prática. Seja direto e profissional.
 
                 **CONTEXTO CRÍTICO:** Os dados fornecidos refletem apenas o período de registro no sistema (BarberFlow). Se o faturamento anterior for zero ou muito baixo, **não conclua que o negócio está falido ou em crise**, mas sim que ele está em fase de **migração ou inicialização de dados** no aplicativo. Baseie sua análise na **tendência de crescimento** observada e na comparação entre os períodos.
 
@@ -62,7 +65,7 @@ const GeminiInsightCard: React.FC<GeminiInsightCardProps> = ({ data, period }) =
     return (
         <div className="bg-card-dark p-4 rounded-xl">
             <div className="flex items-center gap-2 mb-3">
-                 <span className="material-symbols-outlined text-primary text-xl">psychology</span>
+                 <span className={`material-symbols-outlined ${theme.primary} text-xl`}>psychology</span>
                  <h3 className="font-bold text-white">Insight com IA</h3>
             </div>
             
@@ -90,7 +93,7 @@ const GeminiInsightCard: React.FC<GeminiInsightCardProps> = ({ data, period }) =
                         <p className="text-sm text-text-secondary-dark mb-4">Receba uma análise inteligente do seu desempenho e dicas para crescer seu negócio.</p>
                         <button 
                             onClick={handleGenerateInsight}
-                            className="bg-primary/20 text-primary font-bold py-2 px-5 rounded-full hover:bg-primary/30 transition-colors"
+                            className={`${theme.bgPrimary}/20 ${theme.primary} font-bold py-2 px-5 rounded-full hover:${theme.bgPrimary}/30 transition-colors`}
                         >
                             Gerar Análise
                         </button>

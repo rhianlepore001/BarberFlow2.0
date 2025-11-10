@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
-import type { TeamMember } from '../../types';
+import type { TeamMember, User } from '../../types';
+import { useTheme } from '../../hooks/useTheme';
 
 interface NewTransactionFormProps {
     onClose: () => void;
     onSuccess: () => void;
     shopId: number; // Adicionado shopId
+    user: User;
 }
 
-const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSuccess, shopId }) => {
+const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSuccess, shopId, user }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [transactionType, setTransactionType] = useState<'income' | 'expense'>('income');
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [loadingMembers, setLoadingMembers] = useState(true);
+    const theme = useTheme(user);
 
     useEffect(() => {
         const fetchTeamMembers = async () => {
@@ -75,12 +78,12 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
             <form className="space-y-4" onSubmit={handleSubmit}>
                  <div>
                     <label htmlFor="description" className="block text-sm font-medium text-text-secondary-dark mb-1">Descrição</label>
-                    <input type="text" id="description" name="description" placeholder="Ex: Compra de produtos" required className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"/>
+                    <input type="text" id="description" name="description" placeholder="Ex: Compra de produtos" required className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}/>
                 </div>
                 <div className="flex gap-3">
                     <div className="w-2/3">
                         <label htmlFor="amount" className="block text-sm font-medium text-text-secondary-dark mb-1">Valor</label>
-                        <input type="number" step="0.01" id="amount" name="amount" placeholder="R$ 0,00" required className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"/>
+                        <input type="number" step="0.01" id="amount" name="amount" placeholder="R$ 0,00" required className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}/>
                     </div>
                     <div className="w-1/3">
                         <label htmlFor="type" className="block text-sm font-medium text-text-secondary-dark mb-1">Tipo</label>
@@ -89,7 +92,7 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
                             name="type" 
                             value={transactionType}
                             onChange={(e) => setTransactionType(e.target.value as 'income' | 'expense')}
-                            className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary h-[44px]"
+                            className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary h-[44px]`}
                         >
                             <option value="income">Entrada</option>
                             <option value="expense">Saída</option>
@@ -110,7 +113,7 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
                             name="barber" 
                             required={transactionType === 'income'}
                             disabled={loadingMembers}
-                            className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary disabled:opacity-50"
+                            className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary disabled:opacity-50`}
                         >
                             <option value="" disabled>Selecione o profissional</option>
                             {teamMembers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -122,7 +125,7 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
 
                 <div className="flex gap-3 pt-4">
                     <button type="button" onClick={onClose} className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white">Cancelar</button>
-                    <button type="submit" disabled={isSaving} className="w-full rounded-full bg-primary py-3 text-center font-bold text-background-dark disabled:bg-primary/50">{isSaving ? 'Adicionando...' : 'Adicionar'}</button>
+                    <button type="submit" disabled={isSaving} className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}>{isSaving ? 'Adicionando...' : 'Adicionar'}</button>
                 </div>
             </form>
         </motion.div>

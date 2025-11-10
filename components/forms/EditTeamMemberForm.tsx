@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
-import type { TeamMember } from '../../types';
+import type { TeamMember, User } from '../../types';
+import { useTheme } from '../../hooks/useTheme';
 
 interface EditTeamMemberFormProps {
     member: TeamMember;
     onClose: () => void;
     onSuccess: () => void;
+    user: User;
 }
 
-const EditTeamMemberForm: React.FC<EditTeamMemberFormProps> = ({ member, onClose, onSuccess }) => {
+const EditTeamMemberForm: React.FC<EditTeamMemberFormProps> = ({ member, onClose, onSuccess, user }) => {
     const [name, setName] = useState(member.name);
     const [role, setRole] = useState(member.role);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -50,7 +53,7 @@ const EditTeamMemberForm: React.FC<EditTeamMemberFormProps> = ({ member, onClose
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Nome do profissional" 
                         required 
-                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
                  <div>
@@ -63,7 +66,7 @@ const EditTeamMemberForm: React.FC<EditTeamMemberFormProps> = ({ member, onClose
                         onChange={(e) => setRole(e.target.value)}
                         placeholder="Ex: Barbeiro" 
                         required 
-                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
                 
@@ -74,7 +77,7 @@ const EditTeamMemberForm: React.FC<EditTeamMemberFormProps> = ({ member, onClose
                     <button 
                         type="submit" 
                         disabled={isSaving} 
-                        className="w-full rounded-full bg-primary py-3 text-center font-bold text-background-dark disabled:bg-primary/50"
+                        className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}
                     >
                         {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                     </button>

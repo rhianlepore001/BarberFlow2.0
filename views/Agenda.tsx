@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { Appointment, TeamMember } from '../types';
+import type { Appointment, TeamMember, User } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -43,9 +44,10 @@ interface DaySelectorProps {
     weekOffset: number;
     setWeekOffset: (offset: number) => void;
     startOfWeek: Date;
+    theme: ReturnType<typeof useTheme>;
 }
 
-const DaySelector: React.FC<DaySelectorProps> = ({ selectedDay, setSelectedDay, weekOffset, setWeekOffset, startOfWeek }) => {
+const DaySelector: React.FC<DaySelectorProps> = ({ selectedDay, setSelectedDay, weekOffset, setWeekOffset, startOfWeek, theme }) => {
     // 0=Seg, 5=Sab
     const days = [0, 1, 2, 3, 4, 5]; // Indices for Mon to Sat
     
@@ -83,7 +85,7 @@ const DaySelector: React.FC<DaySelectorProps> = ({ selectedDay, setSelectedDay, 
                             {selectedDay === dayIndex && (
                                 <motion.div
                                     layoutId="day-selector-active"
-                                    className="absolute inset-0 bg-primary rounded-lg z-0"
+                                    className={`absolute inset-0 ${theme.bgPrimary} rounded-lg z-0`}
                                 />
                             )}
                             <span className="relative z-10 text-xs">{dayLabel}</span>
@@ -103,9 +105,10 @@ interface AppointmentCardProps {
     appointment: Appointment;
     onClick: (appointment: Appointment) => void;
     startHour: number;
+    theme: ReturnType<typeof useTheme>;
 }
 
-const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick, startHour }) => {
+const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick, startHour, theme }) => {
     const clientName = appointment.clients?.name || 'Cliente';
     const services = appointment.services_json || [];
     const serviceNames = services.map(s => s.name).join(', ');
@@ -126,7 +129,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
             exit={{ opacity: 0, scale: 0.9 }}
             layout
             onClick={() => onClick(appointment)}
-            className="absolute w-[98%] p-2 rounded-lg flex flex-col justify-start overflow-hidden bg-card-dark border-l-4 border-primary shadow-md cursor-pointer hover:bg-card-dark/80 transition-colors z-10"
+            className={`absolute w-[98%] p-2 rounded-lg flex flex-col justify-start overflow-hidden bg-card-dark border-l-4 ${theme.borderPrimary} shadow-md cursor-pointer hover:bg-card-dark/80 transition-colors z-10`}
             style={{
                 top: `${top}px`,
                 height: `${height}px`,
@@ -137,7 +140,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
             <p className="font-bold text-white text-sm leading-tight truncate">{clientName}</p>
             
             {/* Horário e Duração */}
-            <div className={`flex items-center gap-1 text-xs font-semibold text-primary ${isSmallCard ? 'mt-0' : 'mt-auto'}`}>
+            <div className={`flex items-center gap-1 text-xs font-semibold ${theme.primary} ${isSmallCard ? 'mt-0' : 'mt-auto'}`}>
                 <span className="material-symbols-outlined text-sm">schedule</span>
                 <span>{displayTime} ({appointment.duration_minutes} min)</span>
             </div>
@@ -155,10 +158,11 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
 interface AgendaProps {
     onAppointmentSelect: (appointment: Appointment) => void;
     dataVersion: number;
-    initialAppointment: Appointment | null; // Nova prop para inicialização
+    initialAppointment: Appointment | null;
+    user: User; // Adiciona user para obter o tema
 }
 
-const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initialAppointment }) => {
+const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initialAppointment, user }) => {
     const today = new Date();
     // 0=Seg, 5=Sab. Se for Dom(0) ou Sab(6), ajusta para Seg(0)
     const currentDayOfWeek = (today.getDay() + 6) % 7; 
@@ -177,6 +181,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
     
     // Estado para controlar se a rolagem inicial já foi feita
     const initialScrollDone = useRef(false);
+    const theme = useTheme(user);
 
     // Calculate the start of the currently selected week (Monday)
     const startOfSelectedWeek = useMemo(() => {
@@ -366,6 +371,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
                     weekOffset={weekOffset}
                     setWeekOffset={setWeekOffset}
                     startOfWeek={startOfSelectedWeek}
+                    theme={theme}
                 />
             </motion.div>
             
@@ -424,6 +430,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
                                             appointment={appointment} 
                                             onClick={onAppointmentSelect}
                                             startHour={startHour}
+                                            theme={theme}
                                         />
                                     ))}
                                 </AnimatePresence>

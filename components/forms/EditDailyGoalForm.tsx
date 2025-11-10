@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
+import type { User } from '../../types';
+import { useTheme } from '../../hooks/useTheme';
 
 interface EditDailyGoalFormProps {
     onClose: () => void;
     onSuccess: () => void;
     shopId: number;
     currentGoal: number;
+    user: User;
 }
 
-const EditDailyGoalForm: React.FC<EditDailyGoalFormProps> = ({ onClose, onSuccess, shopId, currentGoal }) => {
+const EditDailyGoalForm: React.FC<EditDailyGoalFormProps> = ({ onClose, onSuccess, shopId, currentGoal, user }) => {
     const [dailyGoal, setDailyGoal] = useState(currentGoal.toString());
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -62,7 +66,7 @@ const EditDailyGoalForm: React.FC<EditDailyGoalFormProps> = ({ onClose, onSucces
                         onChange={(e) => setDailyGoal(e.target.value)}
                         placeholder="Ex: 500.00" 
                         required
-                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
 
@@ -73,7 +77,7 @@ const EditDailyGoalForm: React.FC<EditDailyGoalFormProps> = ({ onClose, onSucces
                     <button 
                         type="submit" 
                         disabled={isSaving}
-                        className="w-full rounded-full bg-primary py-3 text-center font-bold text-background-dark disabled:bg-primary/50"
+                        className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}
                     >
                         {isSaving ? 'Salvando...' : 'Salvar Meta'}
                     </button>

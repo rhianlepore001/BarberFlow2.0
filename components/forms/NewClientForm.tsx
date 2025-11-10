@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
+import type { User } from '../../types';
+import { useTheme } from '../../hooks/useTheme';
 
 interface NewClientFormProps {
     onClose: () => void;
     onSuccess: () => void;
     shopId: number; // Adicionado shopId
+    user: User;
 }
 
-const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopId }) => {
+const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopId, user }) => {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -26,7 +30,7 @@ const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopI
                 name,
                 phone,
                 last_visit: new Date().toISOString(),
-                image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=random`,
+                image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${theme.themeColor.substring(1)}`,
                 shop_id: shopId, // Adicionado shop_id
             }]);
 
@@ -57,7 +61,7 @@ const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopI
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Nome do cliente" 
                         required
-                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
                  <div>
@@ -68,7 +72,7 @@ const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopI
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="(99) 99999-9999" 
-                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
 
@@ -79,7 +83,7 @@ const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopI
                     <button 
                         type="submit" 
                         disabled={isSaving}
-                        className="w-full rounded-full bg-primary py-3 text-center font-bold text-background-dark disabled:bg-primary/50"
+                        className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}
                     >
                         {isSaving ? 'Salvando...' : 'Salvar'}
                     </button>

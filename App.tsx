@@ -5,6 +5,7 @@ import { Session } from '@supabase/supabase-js';
 import type { View, Appointment, User, TeamMember, Client } from './types';
 import { navItems } from './data';
 import { supabase } from './lib/supabaseClient';
+import { useTheme } from './hooks/useTheme';
 
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -28,7 +29,7 @@ import EditCommissionForm from './components/forms/EditCommissionForm';
 import AppointmentDetailsModal from './components/AppointmentDetailsModal';
 import EditDailyGoalForm from './components/forms/EditDailyGoalForm';
 import ClientDetailsModal from './components/ClientDetailsModal';
-import EditSettlementDayForm from './components/forms/EditSettlementDayForm'; // NOVO
+import EditSettlementDayForm from './components/forms/EditSettlementDayForm';
 
 type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails' | 'editSettlementDay';
 
@@ -48,6 +49,8 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [profileLoadAttempts, setProfileLoadAttempts] = useState(0);
     const [dailyGoal, setDailyGoal] = useState(500);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
+    
+    const theme = useTheme(user); // Inicializa o hook de tema
 
     const refreshData = () => setDataVersion(v => v + 1);
 
@@ -76,6 +79,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             let name = session.user.email?.split('@')[0] || "Usuário";
             let imageUrl = "";
             let shopId: number | null = null;
+            let shopType: 'barbearia' | 'salao' = 'barbearia'; // Default
 
             if (memberError) {
                 // PGRST116: No rows found (pode ser um novo usuário que o trigger ainda não processou)
@@ -101,12 +105,14 @@ const App: React.FC<AppProps> = ({ session }) => {
             // 2. Fetch shop name and Daily Goal if shopId exists
             if (shopId) {
                 const [shopRes, settingsRes] = await Promise.all([
-                    supabase.from('shops').select('name').eq('id', shopId).limit(1).single(),
+                    // Adiciona 'type' na busca da loja
+                    supabase.from('shops').select('name, type').eq('id', shopId).limit(1).single(),
                     supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
                 ]);
                 
                 if (shopRes.data) {
                     shopName = shopRes.data.name;
+                    shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia'; // Captura o tipo
                 }
                 
                 if (settingsRes.data && settingsRes.data.daily_goal !== null) {
@@ -132,7 +138,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
 
-            const finalUser: User = { name, imageUrl, shopName, shopId };
+            const finalUser: User = { name, imageUrl, shopName, shopId, shopType }; // Adiciona shopType
             setUser(finalUser);
             setProfileLoadAttempts(0); // Reset attempts on success
             setIsInitialLoading(false);
@@ -203,15 +209,16 @@ const App: React.FC<AppProps> = ({ session }) => {
                             onAppointmentSelect={handleAppointmentSelect} 
                             dataVersion={dataVersion} 
                             initialAppointment={editingAppointment}
+                            user={user}
                         />;
             case 'clientes':
-                return <Clients dataVersion={dataVersion} onClientSelect={handleClientSelect} />;
+                return <Clients dataVersion={dataVersion} onClientSelect={handleClientSelect} user={user} />;
             case 'caixa':
-                return <CashFlow dataVersion={dataVersion} refreshData={refreshData} />;
+                return <CashFlow dataVersion={dataVersion} refreshData={refreshData} user={user} />;
             case 'gestao':
                 return <Management user={user} openModal={openModal} dataVersion={dataVersion} refreshData={refreshData} />;
             case 'analise':
-                return <Analysis dataVersion={dataVersion} />;
+                return <Analysis dataVersion={dataVersion} user={user} />;
             default:
                 return <Home 
                             user={user} 
@@ -228,9 +235,9 @@ const App: React.FC<AppProps> = ({ session }) => {
         
         switch (modalContent) {
             case 'newAppointment':
-                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
+                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
             case 'editAppointment':
-                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} shopId={user.shopId} />;
+                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} shopId={user.shopId} user={user} />;
             case 'appointmentDetails':
                 if (!editingAppointment) return null;
                 return <AppointmentDetailsModal 
@@ -239,30 +246,31 @@ const App: React.FC<AppProps> = ({ session }) => {
                             onSuccess={handleSuccess} 
                             shopId={user.shopId} 
                             onEditClick={handleEditAppointment}
+                            user={user}
                         />;
              case 'newClient':
-                return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
+                return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
             case 'clientDetails':
                 if (!selectedClient) return null;
-                return <ClientDetailsModal client={selectedClient} onClose={closeModal} onSuccess={handleSuccess} />;
+                return <ClientDetailsModal client={selectedClient} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'newTransaction':
-                return <NewTransactionForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
+                return <NewTransactionForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
             case 'newTeamMember':
-                return <NewTeamMemberForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
+                return <NewTeamMemberForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
             case 'newService':
-                return <NewServiceForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
+                return <NewServiceForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
             case 'editProfile':
                 return <EditProfileForm user={user} session={session} onClose={closeModal} onSuccess={handleSuccess} />;
             case 'editHours':
-                return <EditWorkingHoursForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
+                return <EditWorkingHoursForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
             case 'editTeamMember':
-                return <EditTeamMemberForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
+                return <EditTeamMemberForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'editCommission':
-                return <EditCommissionForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} />;
+                return <EditCommissionForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'editDailyGoal':
-                return <EditDailyGoalForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} currentGoal={dailyGoal} />;
+                return <EditDailyGoalForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} currentGoal={dailyGoal} user={user} />;
             case 'editSettlementDay': // NOVO
-                return <EditSettlementDayForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} />;
+                return <EditSettlementDayForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
             default:
                 return null;
         }
@@ -345,7 +353,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                     >
                         <button 
                             onClick={handleFabClick}
-                            className="flex h-16 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-primary text-background-dark shadow-lg shadow-primary/30"
+                            className={`flex h-16 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-full ${theme.bgPrimary} text-background-dark shadow-lg ${theme.shadowPrimary}`}
                             aria-label="Adicionar novo item"
                         >
                             <span className="material-symbols-outlined text-4xl">add</span>
@@ -354,7 +362,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                 )}
                 </AnimatePresence>
                 
-                <BottomNav items={navItems} activeView={activeView} setActiveView={setActiveView} />
+                <BottomNav items={navItems} activeView={activeView} setActiveView={setActiveView} user={user} />
 
                 <Modal isOpen={isModalOpen} onClose={closeModal}>
                     {getModalContent()}

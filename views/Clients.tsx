@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { Client } from '../types';
-import Tooltip from '../components/Tooltip'; // Importa o Tooltip
+import type { Client, User } from '../types';
+import Tooltip from '../components/Tooltip';
+import { useTheme } from '../hooks/useTheme';
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -24,6 +25,7 @@ type ClientFilter = 'all' | 'vips' | 'recent' | 'at_risk';
 interface ClientsProps {
     dataVersion: number;
     onClientSelect: (client: Client) => void; // Nova prop para selecionar cliente
+    user: User; // Adiciona user para obter o tema
 }
 
 const getFilterTooltipContent = (filter: ClientFilter) => {
@@ -39,7 +41,7 @@ const getFilterTooltipContent = (filter: ClientFilter) => {
     }
 }
 
-const FilterButtons: React.FC<{ activeFilter: ClientFilter; setFilter: (filter: ClientFilter) => void }> = ({ activeFilter, setFilter }) => {
+const FilterButtons: React.FC<{ activeFilter: ClientFilter; setFilter: (filter: ClientFilter) => void; theme: ReturnType<typeof useTheme> }> = ({ activeFilter, setFilter, theme }) => {
     const filters: { label: string; value: ClientFilter }[] = [
         { label: 'Todos', value: 'all' },
         { label: 'VIPs', value: 'vips' },
@@ -57,7 +59,7 @@ const FilterButtons: React.FC<{ activeFilter: ClientFilter; setFilter: (filter: 
                     {activeFilter === filter.value && (
                         <motion.div
                             layoutId="client-filter-active"
-                            className="absolute inset-0 bg-primary rounded-full z-0"
+                            className={`absolute inset-0 ${theme.bgPrimary} rounded-full z-0`}
                         />
                     )}
                     <span className="relative z-10 flex items-center justify-center gap-1">
@@ -90,11 +92,12 @@ const getRelativeDate = (dateString: string | null): string => {
     return `Há ${diffMonths} ${diffMonths > 1 ? 'meses' : 'mês'}`;
 };
 
-const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect }) => {
+const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect, user }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeFilter, setActiveFilter] = useState<ClientFilter>('all');
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
+    const theme = useTheme(user);
 
     // Lógica para determinar o status do cliente
     const getClientStatus = (client: Client): 'vip' | 'at_risk' | 'recent' | null => {
@@ -177,13 +180,13 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect }) => {
                         placeholder="Buscar cliente..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-card-dark border-none rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 focus:ring-primary focus:border-primary"
+                        className={`w-full bg-card-dark border-none rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
                     />
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">
                         search
                     </span>
                 </div>
-                <FilterButtons activeFilter={activeFilter} setFilter={setActiveFilter} />
+                <FilterButtons activeFilter={activeFilter} setFilter={setActiveFilter} theme={theme} />
             </motion.div>
             
             <motion.div 
@@ -202,7 +205,7 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect }) => {
                                     <p className="font-bold text-white truncate">{client.name}</p>
                                     {/* Ícones de status na lista (sem tooltip, apenas visual) */}
                                     {status === 'vip' && (
-                                        <span title="Cliente VIP" className="material-symbols-outlined text-primary text-base">workspace_premium</span>
+                                        <span title="Cliente VIP" className={`material-symbols-outlined ${theme.primary} text-base`}>workspace_premium</span>
                                     )}
                                     {status === 'recent' && (
                                         <span title="Cliente Recente" className="material-symbols-outlined text-green-400 text-base">schedule</span>
