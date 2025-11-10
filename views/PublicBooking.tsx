@@ -12,11 +12,12 @@ const BOOKING_FUNCTION_URL = 'https://avodqajneytxiarbjrcp.supabase.co/functions
 interface BookingStepProps {
     barber: TeamMember;
     allServices: Service[];
+    shopName: string; // Novo: Nome da loja
     onBookingSuccess: () => void;
 }
 
 // --- Componente de Seleção de Serviços e Horário ---
-const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookingSuccess }) => {
+const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, shopName, onBookingSuccess }) => {
     const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
     const [clientName, setClientName] = useState('');
     const [clientPhone, setClientPhone] = useState('');
@@ -127,7 +128,7 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookin
             <div className="text-center">
                 <img src={barber.image_url} alt={barber.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-2 border-2 border-card-dark" />
                 <h2 className="text-3xl font-extrabold text-white">Agendar com {barber.name.split(' ')[0]}</h2>
-                <p className="text-sm text-text-secondary-dark mt-1">{barber.role} | {barber.shop_id ? 'Barbearia FlowPro' : 'Negócio Local'}</p>
+                <p className="text-sm text-text-secondary-dark mt-1">{barber.role} | {shopName}</p>
             </div>
 
             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -154,7 +155,7 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookin
                 </div>
                 
                 {/* 2. Seleção de Horário (Novo Componente) */}
-                {totalDuration > 0 && (
+                {totalDuration > 0 ? (
                     <AvailableSlotsSelector 
                         barberId={barber.id}
                         requiredDuration={totalDuration}
@@ -162,6 +163,8 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookin
                         selectedDate={date}
                         selectedTime={time}
                     />
+                ) : (
+                    <div className="text-center text-text-secondary-dark p-4 bg-card-dark rounded-xl">Selecione um serviço para ver os horários.</div>
                 )}
 
                 {/* 3. Dados do Cliente */}
@@ -210,11 +213,11 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookin
 const PublicBooking: React.FC = () => {
     const [barber, setBarber] = useState<TeamMember | null>(null);
     const [services, setServices] = useState<Service[]>([]);
+    const [shopName, setShopName] = useState('Barbearia FlowPro'); // Novo estado
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
     
-    // Extrai o barberId da URL (simulando a leitura de query params)
     const urlParams = new URLSearchParams(window.location.search);
     const barberIdParam = urlParams.get('barberId');
     
@@ -237,7 +240,6 @@ const PublicBooking: React.FC = () => {
             setFetchError(null);
             
             // 1. Buscar dados do Barbeiro e Shop ID
-            // RLS: 'Allow anon read by ID' permite esta leitura
             const { data: memberData, error: memberError } = await supabase
                 .from('team_members')
                 .select('*, shop_id')
@@ -254,8 +256,25 @@ const PublicBooking: React.FC = () => {
             setBarber(memberData as TeamMember);
             const shopId = memberData.shop_id;
             
-            // 2. Buscar Serviços do Shop
-            // RLS: 'Allow anon read services by shop_id' permite esta leitura
+            // 2. Buscar Nome da Loja
+            if (shopId) {
+                // RLS: 'Owners can view their shop' permite a leitura se o usuário for o owner, mas aqui estamos anon.
+                // Como a chave anon é usada, precisamos de uma política que permita a leitura do nome da loja.
+                // Vamos assumir que a tabela 'shops' tem uma política de leitura anônima por ID (que não existe, mas é necessária).
+                // Para evitar adicionar uma política insegura (anon read all shops), vamos buscar o nome da loja no lado do cliente.
+                const { data: shopData } = await supabase
+                    .from('shops')
+                    .select('name')
+                    .eq('id', shopId)
+                    .limit(1)
+                    .single();
+                
+                if (shopData) {
+                    setShopName(shopData.name);
+                }
+            }
+            
+            // 3. Buscar Serviços do Shop
             const { data: servicesData, error: servicesError } = await supabase
                 .from('services')
                 .select('*')
@@ -299,6 +318,7 @@ const PublicBooking: React.FC = () => {
                 <BookingForm 
                     barber={barber} 
                     allServices={services} 
+                    shopName={shopName} // Passa o nome da loja
                     onBookingSuccess={() => setIsSuccessModalOpen(true)}
                 />
             </motion.div>

@@ -31,8 +31,14 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
     const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
     const theme = useTheme(null); // Tema estático
 
-    const startHour = settings?.start_time ? parseInt(settings.start_time.split(':')[0]) : 8;
-    const endHour = settings?.end_time ? parseInt(settings.end_time.split(':')[0]) : 20;
+    // Fallbacks
+    const DEFAULT_START_HOUR = 9;
+    const DEFAULT_END_HOUR = 18;
+    const DEFAULT_OPEN_DAYS = ["seg", "ter", "qua", "qui", "sex", "sab"]; // Seg a Sáb
+
+    const startHour = settings?.start_time ? parseInt(settings.start_time.split(':')[0]) : DEFAULT_START_HOUR;
+    const endHour = settings?.end_time ? parseInt(settings.end_time.split(':')[0]) : DEFAULT_END_HOUR;
+    const openDays = settings?.open_days && settings.open_days.length > 0 ? settings.open_days : DEFAULT_OPEN_DAYS;
     
     const dayLabels = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
 
@@ -41,7 +47,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
         const fetchData = async () => {
             setLoading(true);
             
-            // 1. Fetch Shop ID (needed if we don't trust the RLS on settings)
+            // 1. Fetch Shop ID
             const { data: memberData } = await supabase.from('team_members').select('shop_id').eq('id', barberId).single();
             const shopId = memberData?.shop_id;
             
@@ -50,7 +56,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 return;
             }
 
-            // 2. Fetch Shop Settings (RLS allows anon read by shop_id if needed, but we rely on the existing policy)
+            // 2. Fetch Shop Settings
             const { data: settingsData } = await supabase
                 .from('shop_settings')
                 .select('start_time, end_time, open_days')
@@ -86,14 +92,14 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
 
     // 2. Calculate Available Slots
     const availableSlots = useMemo(() => {
-        if (loading || !settings) return [];
+        if (loading) return [];
 
         const slots: { time: string; isAvailable: boolean; isPast: boolean }[] = [];
         const selectedDayIndex = currentDate.getDay(); // 0=Sun, 6=Sat
         const selectedDayLabel = dayLabels[selectedDayIndex];
         
-        // Verifica se a barbearia está aberta neste dia
-        if (!settings.open_days.includes(selectedDayLabel)) {
+        // Verifica se a barbearia está aberta neste dia (usando o fallback se settings for null)
+        if (!openDays.includes(selectedDayLabel)) {
             return [];
         }
 
@@ -113,6 +119,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                 
                 const slotEnd = new Date(slotStart.getTime() + requiredDuration * 60000);
                 
+                // Verifica se o slot já passou
                 const isPast = isCurrentDay && slotStart < today;
                 
                 // Verifica se o slot de término ultrapassa o horário de fechamento
@@ -127,12 +134,10 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                     const apptStart = new Date(appt.startTime);
                     const apptEnd = new Date(apptStart.getTime() + appt.duration_minutes * 60000);
                     
-                    // Conflito se:
-                    // 1. O slot começar durante um agendamento existente
-                    // 2. O agendamento existente começar durante o slot
+                    // Conflito se: (Novo.start < Existente.end) AND (Novo.end > Existente.start)
                     if (
-                        (slotStart >= apptStart && slotStart < apptEnd) ||
-                        (apptStart >= slotStart && apptStart < slotEnd)
+                        (slotStart < apptEnd) &&
+                        (slotEnd > apptStart)
                     ) {
                         isConflict = true;
                         break;
@@ -148,7 +153,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
         }
         
         return slots;
-    }, [currentDate, appointments, requiredDuration, startHour, endHour, settings]);
+    }, [currentDate, appointments, requiredDuration, startHour, endHour, openDays, loading]);
     
     // 3. Date Selector Logic
     const daysInWeek = useMemo(() => {
@@ -163,6 +168,11 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
     }, [currentDate]);
     
     const handleDateChange = (date: Date) => {
+        // Garante que não podemos selecionar datas passadas
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (date < today) return;
+        
         setCurrentDate(date);
         onSelectSlot(date.toISOString().split('T')[0], ''); // Limpa o horário selecionado
     };
@@ -184,6 +194,9 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
     };
 
     const currentMonthYear = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    
+    // Verifica se a semana anterior é passada
+    const isPrevWeekDisabled = getStartOfWeek(currentDate).getTime() <= getStartOfWeek(new Date()).getTime();
 
     return (
         <div className="space-y-4">
@@ -191,7 +204,8 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
             <div className="flex items-center justify-between px-2">
                 <button 
                     onClick={handlePrevWeek}
-                    className="p-2 text-text-secondary-dark hover:text-white transition-colors"
+                    disabled={isPrevWeekDisabled}
+                    className={`p-2 transition-colors ${isPrevWeekDisabled ? 'text-gray-600 cursor-not-allowed' : 'text-text-secondary-dark hover:text-white'}`}
                     aria-label="Semana Anterior"
                 >
                     <span className="material-symbols-outlined">chevron_left</span>
@@ -214,12 +228,20 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                     const isSelected = date.toDateString() === currentDate.toDateString();
                     const isToday = date.toDateString() === new Date().toDateString();
                     
+                    // Desabilita dias passados
+                    const isPastDay = date < new Date(new Date().setHours(0, 0, 0, 0));
+                    
+                    // Verifica se o dia está aberto
+                    const isOpen = openDays.includes(dayLabels[date.getDay()]);
+
                     return (
                         <button 
                             type="button"
                             key={index}
                             onClick={() => handleDateChange(date)}
-                            className={`relative w-full flex flex-col items-center text-sm font-bold py-2 rounded-lg transition-colors ${isSelected ? 'text-background-dark' : 'text-text-secondary-dark'}`}
+                            disabled={isPastDay || !isOpen}
+                            className={`relative w-full flex flex-col items-center text-sm font-bold py-2 rounded-lg transition-colors 
+                                ${isPastDay || !isOpen ? 'text-gray-600 cursor-not-allowed' : isSelected ? 'text-background-dark' : 'text-text-secondary-dark hover:bg-gray-700/50'}`}
                         >
                             {isSelected && (
                                 <motion.div
@@ -227,7 +249,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                                     className={`absolute inset-0 ${theme.bgPrimary} rounded-lg z-0`}
                                 />
                             )}
-                            <span className={`relative z-10 text-xs ${isToday && !isSelected ? theme.primary : ''}`}>{dayLabel}</span>
+                            <span className={`relative z-10 text-xs ${isToday && !isSelected && isOpen ? theme.primary : ''}`}>{dayLabel}</span>
                             <span className="relative z-10 text-sm font-extrabold">{dateLabel}</span>
                         </button>
                     );
@@ -242,7 +264,7 @@ const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberI
                     <div className="text-center text-text-secondary-dark">Carregando horários...</div>
                 ) : availableSlots.length === 0 ? (
                     <div className="text-center text-text-secondary-dark">
-                        {settings && !settings.open_days.includes(dayLabels[currentDate.getDay()]) 
+                        {!openDays.includes(dayLabels[currentDate.getDay()]) 
                             ? 'Barbearia fechada neste dia.' 
                             : 'Nenhum horário disponível para esta duração.'}
                     </div>
