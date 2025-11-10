@@ -45,18 +45,39 @@ serve(async (req) => {
     
     const shopId = memberData.shop_id;
 
-    // 2. Validação de Conflito de Horário (Simplificada: verifica se há agendamentos no intervalo)
-    const endTime = new Date(new Date(startTime).getTime() + durationMinutes * 60000).toISOString();
+    // 2. Validação de Conflito de Horário (Mais robusta: busca agendamentos do dia e verifica sobreposição)
+    const newSlotStart = new Date(startTime);
+    const newSlotEnd = new Date(newSlotStart.getTime() + durationMinutes * 60000);
     
-    const { count: conflictCount, error: conflictError } = await supabase
+    // Define o início e fim do dia para a busca
+    const dayStart = new Date(newSlotStart);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(newSlotStart);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const { data: existingAppointments, error: conflictError } = await supabase
         .from('appointments')
-        .select('id', { count: 'exact' })
+        .select('start_time, duration_minutes')
         .eq('barber_id', barberId)
-        .or(`and(start_time.lte.${startTime},start_time.gte.${startTime}),and(start_time.lt.${endTime},start_time.gt.${startTime})`)
-        .limit(1);
+        .gte('start_time', dayStart.toISOString())
+        .lte('start_time', dayEnd.toISOString());
 
     if (conflictError) throw conflictError;
-    if (conflictCount && conflictCount > 0) {
+    
+    let isConflict = false;
+    
+    for (const appt of existingAppointments || []) {
+        const apptStart = new Date(appt.start_time);
+        const apptEnd = new Date(apptStart.getTime() + appt.duration_minutes * 60000);
+        
+        // Verifica sobreposição: (A.start < B.end) AND (A.end > B.start)
+        if (newSlotStart < apptEnd && newSlotEnd > apptStart) {
+            isConflict = true;
+            break;
+        }
+    }
+
+    if (isConflict) {
         return new Response(JSON.stringify({ error: 'Conflito de horário. Este horário já está ocupado.' }), {
             status: 409,
             headers: corsHeaders,

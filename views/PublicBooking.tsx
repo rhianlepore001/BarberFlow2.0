@@ -4,14 +4,10 @@ import { supabase } from '../lib/supabaseClient';
 import type { Service, TeamMember } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import Modal from '../components/Modal';
-import { getPublicBookingUrl } from '../utils/booking';
+import AvailableSlotsSelector from '../components/AvailableSlotsSelector'; // Importa o novo componente
 
 // Define a URL da Edge Function (usando o ID do projeto Supabase)
 const BOOKING_FUNCTION_URL = 'https://avodqajneytxiarbjrcp.supabase.co/functions/v1/book-appointment';
-
-interface PublicBookingProps {
-    barberId: number;
-}
 
 interface BookingStepProps {
     barber: TeamMember;
@@ -25,8 +21,11 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookin
     const [clientName, setClientName] = useState('');
     const [clientPhone, setClientPhone] = useState('');
     const [clientEmail, setClientEmail] = useState('');
+    
+    // Estado para data e hora selecionadas (usadas pelo AvailableSlotsSelector)
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [time, setTime] = useState('10:00');
+    const [time, setTime] = useState(''); // Começa vazio, forçando a seleção
+    
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
@@ -52,6 +51,11 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookin
     const totalPrice = useMemo(() => {
         return selectedServices.reduce((sum, s) => sum + s.price, 0);
     }, [selectedServices]);
+    
+    const handleSlotSelection = (newDate: string, newTime: string) => {
+        setDate(newDate);
+        setTime(newTime);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -60,6 +64,12 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookin
         
         if (selectedServices.length === 0) {
             setError("Selecione pelo menos um serviço.");
+            setIsSaving(false);
+            return;
+        }
+        
+        if (!time) {
+            setError("Selecione um horário disponível.");
             setIsSaving(false);
             return;
         }
@@ -88,7 +98,6 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookin
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // Não precisa de Authorization header, pois a RLS permite anon insert
                 },
                 body: JSON.stringify(bookingData),
             });
@@ -96,7 +105,12 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookin
             const result = await response.json();
 
             if (!response.ok) {
-                setError(result.error || 'Erro desconhecido ao agendar.');
+                // Se houver conflito de horário (código 409 da Edge Function)
+                if (response.status === 409) {
+                    setError(result.error || 'Conflito de horário. Por favor, selecione outro slot.');
+                } else {
+                    setError(result.error || 'Falha ao registrar o agendamento.');
+                }
             } else {
                 onBookingSuccess();
             }
@@ -110,82 +124,82 @@ const BookingForm: React.FC<BookingStepProps> = ({ barber, allServices, onBookin
 
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <h2 className="text-2xl font-bold text-center text-white">Agendar com {barber.name.split(' ')[0]}</h2>
-            <p className="text-sm text-text-secondary-dark text-center">Selecione os serviços e o horário desejado.</p>
+            <div className="text-center">
+                <img src={barber.image_url} alt={barber.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-2 border-2 border-card-dark" />
+                <h2 className="text-3xl font-extrabold text-white">Agendar com {barber.name.split(' ')[0]}</h2>
+                <p className="text-sm text-text-secondary-dark mt-1">{barber.role} | {barber.shop_id ? 'Barbearia FlowPro' : 'Negócio Local'}</p>
+            </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
-                {/* Serviços */}
-                <div className="bg-card-dark border-2 border-gray-700 rounded-xl p-4 max-h-60 overflow-y-auto">
-                    <p className="text-sm font-medium text-text-secondary-dark mb-3">Serviços ({totalDuration} min | {totalPrice.toFixed(2).replace('.', ',')})</p>
-                    {allServices.map(s => (
-                        <div key={s.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-b-0">
-                            <label htmlFor={`service-${s.id}`} className="flex items-center gap-2 text-white text-sm cursor-pointer flex-1">
-                                <input 
-                                    type="checkbox" 
-                                    id={`service-${s.id}`} 
-                                    checked={selectedServiceIds.includes(s.id)}
-                                    onChange={() => handleServiceToggle(s.id)}
-                                    className={`form-checkbox h-4 w-4 ${theme.primary} bg-background-dark border-gray-600 rounded ${theme.ringPrimary}`}
-                                />
-                                {s.name}
-                            </label>
-                            <span className="text-xs text-text-secondary-dark">R$ {s.price.toFixed(2)}</span>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Data e Hora */}
-                <div className="flex gap-3">
-                    <input 
-                        type="date" 
-                        name="date" 
-                        required 
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
-                    />
-                    <input 
-                        type="time" 
-                        name="time" 
-                        required 
-                        value={time}
-                        onChange={(e) => setTime(e.target.value)}
-                        className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
-                    />
+            <form className="space-y-6" onSubmit={handleSubmit}>
+                {/* 1. Seleção de Serviços */}
+                <div className="bg-card-dark rounded-xl p-4 shadow-lg">
+                    <p className="text-lg font-bold text-white mb-3">Serviços ({totalDuration} min | R$ {totalPrice.toFixed(2).replace('.', ',')})</p>
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                        {allServices.map(s => (
+                            <div key={s.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-b-0">
+                                <label htmlFor={`service-${s.id}`} className="flex items-center gap-3 text-white text-base cursor-pointer flex-1">
+                                    <input 
+                                        type="checkbox" 
+                                        id={`service-${s.id}`} 
+                                        checked={selectedServiceIds.includes(s.id)}
+                                        onChange={() => handleServiceToggle(s.id)}
+                                        className={`form-checkbox h-5 w-5 ${theme.primary} bg-background-dark border-gray-600 rounded ${theme.ringPrimary}`}
+                                    />
+                                    {s.name}
+                                </label>
+                                <span className="text-sm font-semibold text-text-secondary-dark">R$ {s.price.toFixed(2)}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
                 
-                {/* Dados do Cliente */}
-                <input 
-                    type="text" 
-                    placeholder="Seu Nome Completo" 
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    required
-                    className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
-                />
-                <input 
-                    type="tel" 
-                    placeholder="Seu Telefone (WhatsApp)" 
-                    value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
-                    className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
-                />
-                <input 
-                    type="email" 
-                    placeholder="Seu Email (Opcional)" 
-                    value={clientEmail}
-                    onChange={(e) => setClientEmail(e.target.value)}
-                    className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
-                />
+                {/* 2. Seleção de Horário (Novo Componente) */}
+                {totalDuration > 0 && (
+                    <AvailableSlotsSelector 
+                        barberId={barber.id}
+                        requiredDuration={totalDuration}
+                        onSelectSlot={handleSlotSelection}
+                        selectedDate={date}
+                        selectedTime={time}
+                    />
+                )}
+
+                {/* 3. Dados do Cliente */}
+                <div className="space-y-3 pt-4">
+                    <h4 className="text-lg font-bold text-white">Seus Dados</h4>
+                    <input 
+                        type="text" 
+                        placeholder="Seu Nome Completo" 
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        required
+                        className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
+                    />
+                    <input 
+                        type="tel" 
+                        placeholder="Seu Telefone (WhatsApp)" 
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        required
+                        className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
+                    />
+                    <input 
+                        type="email" 
+                        placeholder="Seu Email (Opcional)" 
+                        value={clientEmail}
+                        onChange={(e) => setClientEmail(e.target.value)}
+                        className={`w-full bg-card-dark border-2 border-gray-700 rounded-lg py-3 px-3 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
+                    />
+                </div>
 
                 {error && <p className="text-red-400 text-xs text-center pt-1">{error}</p>}
 
                 <button 
                     type="submit" 
-                    disabled={isSaving || selectedServices.length === 0}
+                    disabled={isSaving || selectedServices.length === 0 || !time}
                     className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark hover:${theme.bgPrimary}/80 transition-colors disabled:opacity-50`}
                 >
-                    {isSaving ? 'Solicitando Agendamento...' : `Agendar (${totalPrice.toFixed(2).replace('.', ',')})`}
+                    {isSaving ? 'Solicitando Agendamento...' : `Agendar (R$ ${totalPrice.toFixed(2).replace('.', ',')})`}
                 </button>
             </form>
         </motion.div>
@@ -223,6 +237,7 @@ const PublicBooking: React.FC = () => {
             setFetchError(null);
             
             // 1. Buscar dados do Barbeiro e Shop ID
+            // RLS: 'Allow anon read by ID' permite esta leitura
             const { data: memberData, error: memberError } = await supabase
                 .from('team_members')
                 .select('*, shop_id')
@@ -240,6 +255,7 @@ const PublicBooking: React.FC = () => {
             const shopId = memberData.shop_id;
             
             // 2. Buscar Serviços do Shop
+            // RLS: 'Allow anon read services by shop_id' permite esta leitura
             const { data: servicesData, error: servicesError } = await supabase
                 .from('services')
                 .select('*')

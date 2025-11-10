@@ -1,0 +1,273 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { supabase } from '../lib/supabaseClient';
+import type { Appointment, User } from '../types';
+import { useTheme } from '../hooks/useTheme';
+
+interface AvailableSlotsSelectorProps {
+    barberId: number;
+    requiredDuration: number; // Duração total dos serviços selecionados
+    onSelectSlot: (date: string, time: string) => void;
+    selectedDate: string;
+    selectedTime: string;
+}
+
+const TIME_STEP = 30; // Intervalo de 30 minutos
+
+// Helper para obter o início da semana (Segunda)
+const getStartOfWeek = (date: Date): Date => {
+    const d = new Date(date);
+    const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+};
+
+const AvailableSlotsSelector: React.FC<AvailableSlotsSelectorProps> = ({ barberId, requiredDuration, onSelectSlot, selectedDate, selectedTime }) => {
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [settings, setSettings] = useState<{ start_time: string, end_time: string, open_days: string[] } | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
+    const theme = useTheme(null); // Tema estático
+
+    const startHour = settings?.start_time ? parseInt(settings.start_time.split(':')[0]) : 8;
+    const endHour = settings?.end_time ? parseInt(settings.end_time.split(':')[0]) : 20;
+    
+    const dayLabels = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
+
+    // 1. Fetch Settings and Appointments
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            
+            // 1. Fetch Shop ID (needed if we don't trust the RLS on settings)
+            const { data: memberData } = await supabase.from('team_members').select('shop_id').eq('id', barberId).single();
+            const shopId = memberData?.shop_id;
+            
+            if (!shopId) {
+                setLoading(false);
+                return;
+            }
+
+            // 2. Fetch Shop Settings (RLS allows anon read by shop_id if needed, but we rely on the existing policy)
+            const { data: settingsData } = await supabase
+                .from('shop_settings')
+                .select('start_time, end_time, open_days')
+                .eq('shop_id', shopId)
+                .limit(1)
+                .single();
+            
+            if (settingsData) {
+                setSettings(settingsData);
+            }
+
+            // 3. Fetch Appointments for the current week (to allow easy date switching)
+            const startOfWeek = getStartOfWeek(currentDate);
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            endOfWeek.setHours(23, 59, 59, 999);
+
+            const { data: appointmentsData } = await supabase
+                .from('appointments')
+                .select('start_time, duration_minutes')
+                .eq('barber_id', barberId)
+                .gte('start_time', startOfWeek.toISOString())
+                .lte('start_time', endOfWeek.toISOString());
+
+            if (appointmentsData) {
+                setAppointments(appointmentsData as unknown as Appointment[]);
+            }
+            
+            setLoading(false);
+        };
+        fetchData();
+    }, [barberId, currentDate]);
+
+    // 2. Calculate Available Slots
+    const availableSlots = useMemo(() => {
+        if (loading || !settings) return [];
+
+        const slots: { time: string; isAvailable: boolean; isPast: boolean }[] = [];
+        const selectedDayIndex = currentDate.getDay(); // 0=Sun, 6=Sat
+        const selectedDayLabel = dayLabels[selectedDayIndex];
+        
+        // Verifica se a barbearia está aberta neste dia
+        if (!settings.open_days.includes(selectedDayLabel)) {
+            return [];
+        }
+
+        const today = new Date();
+        const isCurrentDay = currentDate.toDateString() === today.toDateString();
+        
+        const appointmentsToday = appointments.filter(a => 
+            new Date(a.startTime).toDateString() === currentDate.toDateString()
+        );
+
+        // Gera todos os slots possíveis (a cada 30 minutos)
+        for (let h = startHour; h < endHour; h++) {
+            for (let m = 0; m < 60; m += TIME_STEP) {
+                const slotTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                const slotStart = new Date(currentDate);
+                slotStart.setHours(h, m, 0, 0);
+                
+                const slotEnd = new Date(slotStart.getTime() + requiredDuration * 60000);
+                
+                const isPast = isCurrentDay && slotStart < today;
+                
+                // Verifica se o slot de término ultrapassa o horário de fechamento
+                const endHourLimit = new Date(currentDate);
+                endHourLimit.setHours(endHour, 0, 0, 0);
+                if (slotEnd > endHourLimit) continue;
+
+                let isConflict = false;
+                
+                // Verifica conflito com agendamentos existentes
+                for (const appt of appointmentsToday) {
+                    const apptStart = new Date(appt.startTime);
+                    const apptEnd = new Date(apptStart.getTime() + appt.duration_minutes * 60000);
+                    
+                    // Conflito se:
+                    // 1. O slot começar durante um agendamento existente
+                    // 2. O agendamento existente começar durante o slot
+                    if (
+                        (slotStart >= apptStart && slotStart < apptEnd) ||
+                        (apptStart >= slotStart && apptStart < slotEnd)
+                    ) {
+                        isConflict = true;
+                        break;
+                    }
+                }
+
+                slots.push({
+                    time: slotTime,
+                    isAvailable: !isConflict && !isPast,
+                    isPast: isPast
+                });
+            }
+        }
+        
+        return slots;
+    }, [currentDate, appointments, requiredDuration, startHour, endHour, settings]);
+    
+    // 3. Date Selector Logic
+    const daysInWeek = useMemo(() => {
+        const startOfWeek = getStartOfWeek(currentDate);
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(startOfWeek);
+            date.setDate(startOfWeek.getDate() + i);
+            days.push(date);
+        }
+        return days;
+    }, [currentDate]);
+    
+    const handleDateChange = (date: Date) => {
+        setCurrentDate(date);
+        onSelectSlot(date.toISOString().split('T')[0], ''); // Limpa o horário selecionado
+    };
+    
+    const handleSlotClick = (time: string) => {
+        onSelectSlot(currentDate.toISOString().split('T')[0], time);
+    };
+    
+    const handleNextWeek = () => {
+        const nextWeek = new Date(currentDate);
+        nextWeek.setDate(currentDate.getDate() + 7);
+        handleDateChange(nextWeek);
+    };
+    
+    const handlePrevWeek = () => {
+        const prevWeek = new Date(currentDate);
+        prevWeek.setDate(currentDate.getDate() - 7);
+        handleDateChange(prevWeek);
+    };
+
+    const currentMonthYear = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+    return (
+        <div className="space-y-4">
+            {/* Week Navigation */}
+            <div className="flex items-center justify-between px-2">
+                <button 
+                    onClick={handlePrevWeek}
+                    className="p-2 text-text-secondary-dark hover:text-white transition-colors"
+                    aria-label="Semana Anterior"
+                >
+                    <span className="material-symbols-outlined">chevron_left</span>
+                </button>
+                <h3 className="text-lg font-bold text-white capitalize">{currentMonthYear}</h3>
+                <button 
+                    onClick={handleNextWeek}
+                    className="p-2 text-text-secondary-dark hover:text-white transition-colors"
+                    aria-label="Próxima Semana"
+                >
+                    <span className="material-symbols-outlined">chevron_right</span>
+                </button>
+            </div>
+            
+            {/* Day Selector */}
+            <div className="flex justify-between items-center bg-card-dark p-1 rounded-xl">
+                {daysInWeek.map((date, index) => {
+                    const dayLabel = dayLabels[date.getDay()].toUpperCase();
+                    const dateLabel = date.toLocaleDateString('pt-BR', { day: '2-digit' });
+                    const isSelected = date.toDateString() === currentDate.toDateString();
+                    const isToday = date.toDateString() === new Date().toDateString();
+                    
+                    return (
+                        <button 
+                            type="button"
+                            key={index}
+                            onClick={() => handleDateChange(date)}
+                            className={`relative w-full flex flex-col items-center text-sm font-bold py-2 rounded-lg transition-colors ${isSelected ? 'text-background-dark' : 'text-text-secondary-dark'}`}
+                        >
+                            {isSelected && (
+                                <motion.div
+                                    layoutId="day-selector-active-public"
+                                    className={`absolute inset-0 ${theme.bgPrimary} rounded-lg z-0`}
+                                />
+                            )}
+                            <span className={`relative z-10 text-xs ${isToday && !isSelected ? theme.primary : ''}`}>{dayLabel}</span>
+                            <span className="relative z-10 text-sm font-extrabold">{dateLabel}</span>
+                        </button>
+                    );
+                })}
+            </div>
+            
+            {/* Slots Grid */}
+            <div className="pt-4">
+                <h4 className="text-lg font-bold text-white mb-3">Horários Disponíveis ({requiredDuration} min)</h4>
+                
+                {loading ? (
+                    <div className="text-center text-text-secondary-dark">Carregando horários...</div>
+                ) : availableSlots.length === 0 ? (
+                    <div className="text-center text-text-secondary-dark">
+                        {settings && !settings.open_days.includes(dayLabels[currentDate.getDay()]) 
+                            ? 'Barbearia fechada neste dia.' 
+                            : 'Nenhum horário disponível para esta duração.'}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto p-1">
+                        {availableSlots.map(slot => (
+                            <button
+                                type="button"
+                                key={slot.time}
+                                onClick={() => handleSlotClick(slot.time)}
+                                disabled={!slot.isAvailable}
+                                className={`py-2 rounded-lg font-semibold transition-colors text-sm 
+                                    ${slot.isAvailable 
+                                        ? (slot.time === selectedTime ? `${theme.bgPrimary} text-background-dark` : 'bg-card-dark text-white hover:bg-gray-700')
+                                        : 'bg-card-dark/50 text-text-secondary-dark/50 cursor-not-allowed'
+                                    }`}
+                            >
+                                {slot.time}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default AvailableSlotsSelector;
