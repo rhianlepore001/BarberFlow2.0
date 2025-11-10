@@ -12,7 +12,7 @@ interface EditWorkingHoursFormProps {
 }
 
 const ALL_DAYS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
-const DAY_LABELS: Record<string, string> = { seg: 'S', ter: 'T', qua: 'Q', qui: 'Q', sex: 'S', sab: 'S', dom: 'D' };
+const DAY_LABELS: Record<string, string> = { seg: 'S', ter: 'T', qua: 'Q', qui: 'Q', sex: 'S', sab: 'D' }; // Corrigido: D para Dom
 
 const EditWorkingHoursForm: React.FC<EditWorkingHoursFormProps> = ({ onClose, onSuccess, shopId, user }) => {
     const [openDays, setOpenDays] = useState<string[]>([]);

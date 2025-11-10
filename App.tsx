@@ -324,7 +324,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             />
             
             <div className="relative flex flex-col w-full md:ml-64">
-                <Header activeViewLabel={navItems.find(item => item.id === activeView)?.label || 'BarberFlow'}/>
+                <Header activeViewLabel={navItems.find(item => item.id === activeView)?.label || 'FlowPro'}/>
                 
                 <div className="flex-grow overflow-y-auto pb-20 md:pb-4">
                     <AnimatePresence mode="wait">

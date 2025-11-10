@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { Session } from '@supabase/supabase-js';
+import { useTheme } from '../../hooks/useTheme';
 
 interface EditProfileFormProps {
     user: User;
@@ -17,6 +18,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ user, session, onClos
     const [previewUrl, setPreviewUrl] = useState<string | null>(user.imageUrl);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -79,7 +81,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ user, session, onClos
             <form className="space-y-4" onSubmit={handleSubmit}>
                 <div className="flex justify-center my-4">
                     <label htmlFor="avatar-upload" className="relative cursor-pointer group">
-                        <img src={previewUrl || `https://ui-avatars.com/api/?name=${name}&background=E5A00D&color=101012`} alt="Avatar" className="w-28 h-28 rounded-full object-cover border-2 border-card-dark group-hover:border-primary transition-colors" />
+                        <img src={previewUrl || `https://ui-avatars.com/api/?name=${name}&background=${theme.themeColor.substring(1)}&color=101012`} alt="Avatar" className={`w-28 h-28 rounded-full object-cover border-2 border-card-dark group-hover:${theme.borderPrimary} transition-colors`} />
                         <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <span className="material-symbols-outlined text-white text-3xl">edit</span>
                         </div>
@@ -96,7 +98,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ user, session, onClos
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Seu nome" 
                         required
-                        className="w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary focus:border-primary"
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
 
@@ -107,7 +109,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ user, session, onClos
                     <button 
                         type="submit" 
                         disabled={isSaving}
-                        className="w-full rounded-full bg-primary py-3 text-center font-bold text-background-dark disabled:bg-primary/50"
+                        className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}
                     >
                         {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                     </button>
