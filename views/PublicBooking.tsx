@@ -60,7 +60,15 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
 
             if (barberError || !barberData) {
                 console.error("[PublicBooking] Erro ao buscar barbeiro:", barberError || "Dados vazios.");
-                setError("Barbeiro não encontrado ou link inválido.");
+                
+                if (barberError?.code === 'PGRST116') {
+                    setError("Barbeiro não encontrado. Verifique se o ID do link está correto.");
+                } else if (barberError?.code === '406') {
+                    setError("Erro de segurança (RLS). Tente novamente ou contate o suporte.");
+                } else {
+                    setError("Falha ao carregar o barbeiro. Tente novamente.");
+                }
+                
                 setLoading(false);
                 return;
             }
