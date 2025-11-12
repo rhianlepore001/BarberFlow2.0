@@ -50,14 +50,16 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
             setLoading(true);
             
             // 1. Fetch Barber details (including shop_id and shop name)
+            // Ajuste: Selecionar apenas campos públicos para segurança RLS
             const { data: barberData, error: barberError } = await supabase
                 .from('team_members')
-                .select('*, shop_id, shops(name, type)') // Faz JOIN com shops para pegar nome e tipo
+                .select('id, name, role, image_url, shop_id, shops(name, type)') // Seleção explícita
                 .eq('id', barberId)
                 .limit(1)
                 .single();
 
             if (barberError || !barberData) {
+                console.error("Barber fetch error:", barberError);
                 setError("Barbeiro não encontrado ou link inválido.");
                 setLoading(false);
                 return;
@@ -71,6 +73,8 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 ...(barberData as TeamMember),
                 shopName: shopName, 
                 shopType: shopType, // Adiciona shopType ao objeto barber
+                // Garantir que commissionRate exista, mesmo que não seja lido aqui (RLS anon não permite ler)
+                commissionRate: 0.5, 
             };
             
             setBarber(fullBarberData);
