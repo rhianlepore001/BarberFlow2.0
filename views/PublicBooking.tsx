@@ -49,6 +49,13 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
         const fetchBarberAndServices = async () => {
             console.log(`[PublicBooking] Iniciando busca para Barber ID: ${barberId}`);
             setLoading(true);
+            setError(null); // Limpa erros anteriores
+
+            if (isNaN(barberId) || barberId <= 0) {
+                setError("ID do barbeiro inválido na URL.");
+                setLoading(false);
+                return;
+            }
             
             // 1. Fetch Barber details (sem JOIN)
             const { data: barberData, error: barberError } = await supabase
@@ -62,11 +69,11 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 console.error("[PublicBooking] Erro ao buscar barbeiro:", barberError || "Dados vazios.");
                 
                 if (barberError?.code === 'PGRST116') {
-                    setError("Barbeiro não encontrado. Verifique se o ID do link está correto.");
+                    setError("Barbeiro não encontrado. Verifique se o ID do link está correto ou se o barbeiro foi removido.");
                 } else if (barberError?.code === '406') {
-                    setError("Erro de segurança (RLS). Tente novamente ou contate o suporte.");
+                    setError("Erro de segurança (RLS) ao buscar barbeiro. Tente novamente ou contate o suporte.");
                 } else {
-                    setError("Falha ao carregar o barbeiro. Tente novamente.");
+                    setError(`Falha ao carregar o barbeiro: ${barberError?.message || 'Erro desconhecido'}.`);
                 }
                 
                 setLoading(false);
@@ -114,7 +121,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 
             if (servicesError) {
                 console.error("[PublicBooking] Erro ao carregar serviços:", servicesError);
-                setError("Erro ao carregar serviços.");
+                setError(`Erro ao carregar serviços: ${servicesError.message}.`);
                 setLoading(false);
                 return;
             }
@@ -212,7 +219,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
     }
     
     if (error) {
-        return <div className="flex justify-center items-center h-screen text-red-400">{error}</div>;
+        return <div className="flex justify-center items-center h-screen text-red-400 text-center p-4">{error}</div>;
     }
     
     // Determina o emoji com base no shopType (agora disponível no objeto barber)
