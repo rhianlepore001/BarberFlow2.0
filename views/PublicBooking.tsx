@@ -56,30 +56,29 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 return;
             }
             
+            console.log("[PublicBooking] Fetching barber with ID:", barberId); // Adicionado console log
             // 1. Buscar o barbeiro específico
             const { data: barberData, error: barberError } = await supabase
                 .from('team_members')
                 .select('id, name, role, image_url, shop_id')
                 .eq('id', barberId)
-                .limit(1)
-                .single();
+                .limit(1); // Removido .single()
 
-            if (barberError || !barberData) {
-                console.error("[PublicBooking] Erro ao buscar barbeiro específico:", barberError || "Dados vazios.");
-                
-                if (barberError?.code === 'PGRST116') {
-                    setError("Barbeiro não encontrado. Verifique se o ID do link está correto ou se o barbeiro foi removido.");
-                } else if (barberError?.code === '406') {
-                    setError("Erro de segurança (RLS) ao buscar barbeiro. Tente novamente ou contate o suporte.");
-                } else {
-                    setError(`Falha ao carregar o barbeiro: ${barberError?.message || 'Erro desconhecido'}.`);
-                }
-                
+            if (barberError) {
+                console.error("[PublicBooking] Erro ao buscar barbeiro específico:", barberError);
+                setError(`Falha ao carregar o barbeiro: ${barberError.message || 'Erro desconhecido'}.`);
                 setLoading(false);
                 return;
             }
             
-            const shopId = barberData.shop_id;
+            if (!barberData || barberData.length === 0) {
+                setError("Barbeiro não encontrado. Verifique se o ID do link está correto ou se o barbeiro foi removido.");
+                setLoading(false);
+                return;
+            }
+            
+            const barber = barberData[0]; // Pega o primeiro item do array
+            const shopId = barber.shop_id;
             
             // 2. Fetch Shop details (separadamente)
             let shopName = 'Barbearia';
@@ -100,7 +99,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
             }
             
             const fullBarberData: TeamMember = {
-                ...(barberData as TeamMember),
+                ...(barber as TeamMember), // Cast barber to TeamMember
                 shopName: shopName, 
                 shopType: shopType,
                 commissionRate: 0.5, // Default, não usado na tela pública
