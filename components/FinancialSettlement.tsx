@@ -50,7 +50,7 @@ const FinancialSettlement: React.FC<FinancialSettlementProps> = ({ financials, t
                                     </div>
                                     <div className="flex justify-between">
                                         <p className="text-text-secondary-dark">Valor a Pagar ({barberPercentage}%)</p>
-                                        <p className={`font-bold text-lg ${theme.primary}`}>{formatCurrency(barberPayment)}</p>
+                                        <p className="font-bold text-lg text-green-400">{formatCurrency(barberPayment)}</p>
                                     </div>
                                 </div>
                             </div>
