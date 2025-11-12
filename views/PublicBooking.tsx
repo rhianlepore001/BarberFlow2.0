@@ -49,10 +49,10 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
         const fetchBarberAndServices = async () => {
             setLoading(true);
             
-            // 1. Fetch Barber details (including shop_id)
+            // 1. Fetch Barber details (including shop_id and shop name)
             const { data: barberData, error: barberError } = await supabase
                 .from('team_members')
-                .select('*, shop_id')
+                .select('*, shop_id, shops(name)') // Faz JOIN com shops para pegar o nome
                 .eq('id', barberId)
                 .limit(1)
                 .single();
@@ -63,7 +63,14 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 return;
             }
             
-            setBarber(barberData as TeamMember);
+            // Mapeia o nome da loja para o objeto barber
+            const shopName = (barberData.shops as { name: string } | null)?.name || 'Barbearia';
+            const fullBarberData: TeamMember = {
+                ...(barberData as TeamMember),
+                shopName: shopName, // Adiciona shopName ao objeto barber
+            };
+            
+            setBarber(fullBarberData);
             
             // 2. Fetch Services for the shop
             const { data: servicesData, error: servicesError } = await supabase
@@ -184,6 +191,10 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                     <img src={barber?.image_url} alt={barber?.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-2 border-2 border-white/10" />
                     <h1 className="text-2xl font-extrabold text-white">Agende com {barber?.name}</h1>
                     <p className="text-sm text-text-secondary-dark">{barber?.role} em {barber?.shopName || 'Barbearia'}</p>
+                    
+                    {/* NOVO: Nome da Barbearia e Frase de Impacto */}
+                    <h2 className={`text-xl font-bold mt-4 ${theme.primary}`}>{barber?.shopName}</h2>
+                    <p className="text-sm text-text-secondary-dark">Transformando seu estilo, um corte de cada vez.</p>
                 </div>
                 
                 {renderStep()}
