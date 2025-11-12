@@ -56,13 +56,13 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 return;
             }
             
-            console.log("[PublicBooking] Fetching barber with ID:", barberId); // Adicionado console log
+            console.log("[PublicBooking] Fetching barber with ID:", barberId);
             // 1. Buscar o barbeiro específico
             const { data: barberData, error: barberError } = await supabase
                 .from('team_members')
                 .select('id, name, role, image_url, shop_id')
                 .eq('id', barberId)
-                .limit(1); // Removido .single()
+                .limit(1);
 
             if (barberError) {
                 console.error("[PublicBooking] Erro ao buscar barbeiro específico:", barberError);
@@ -77,8 +77,10 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 return;
             }
             
-            const barber = barberData[0]; // Pega o primeiro item do array
+            const barber = barberData[0];
             const shopId = barber.shop_id;
+            console.log("[PublicBooking] Barber fetched:", barber); // Log do barbeiro
+            console.log("[PublicBooking] Shop ID:", shopId); // Log do shopId
             
             // 2. Fetch Shop details (separadamente)
             let shopName = 'Barbearia';
@@ -99,7 +101,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
             }
             
             const fullBarberData: TeamMember = {
-                ...(barber as TeamMember), // Cast barber to TeamMember
+                ...(barber as TeamMember),
                 shopName: shopName, 
                 shopType: shopType,
                 commissionRate: 0.5, // Default, não usado na tela pública
@@ -122,6 +124,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
             }
             
             setServices(servicesData as Service[]);
+            console.log("[PublicBooking] Services fetched:", servicesData); // Log dos serviços
             
             // 4. Check client session
             await checkSessionAndSetStep();
