@@ -47,6 +47,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
 
     useEffect(() => {
         const fetchBarberAndServices = async () => {
+            console.log(`[PublicBooking] Iniciando busca para Barber ID: ${barberId}`);
             setLoading(true);
             
             // 1. Fetch Barber details (sem JOIN)
@@ -58,11 +59,13 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 .single();
 
             if (barberError || !barberData) {
-                console.error("Barber fetch error:", barberError);
+                console.error("[PublicBooking] Erro ao buscar barbeiro:", barberError || "Dados vazios.");
                 setError("Barbeiro não encontrado ou link inválido.");
                 setLoading(false);
                 return;
             }
+            
+            console.log("[PublicBooking] Barbeiro encontrado:", barberData);
             
             const shopId = barberData.shop_id;
             
@@ -78,10 +81,11 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 .single();
                 
             if (shopError) {
-                console.warn("Shop details fetch error (using default):", shopError);
+                console.warn("[PublicBooking] Erro ao buscar detalhes da loja (usando default):", shopError);
             } else if (shopData) {
                 shopName = shopData.name;
                 shopType = (shopData.type as 'barbearia' | 'salao') || 'barbearia';
+                console.log("[PublicBooking] Detalhes da loja encontrados:", shopData);
             }
             
             const fullBarberData: TeamMember = {
@@ -101,11 +105,13 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 .order('name');
                 
             if (servicesError) {
+                console.error("[PublicBooking] Erro ao carregar serviços:", servicesError);
                 setError("Erro ao carregar serviços.");
                 setLoading(false);
                 return;
             }
             
+            console.log(`[PublicBooking] Serviços carregados: ${servicesData.length}`);
             setServices(servicesData as Service[]);
             
             // 4. Check client session
