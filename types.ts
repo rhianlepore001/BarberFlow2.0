@@ -40,6 +40,7 @@ export interface TeamMember {
     commissionRate: number; // Taxa de comissão (0.0 a 1.0)
     shop_id: number; // Adicionado shop_id para uso no agendamento público
     shopName?: string; // NOVO: Nome da loja para a tela pública
+    shopType?: 'barbearia' | 'salao'; // NOVO: Tipo da loja para a tela pública
 }
 
 // O tipo Appointment agora reflete os dados obtidos com JOINs do Supabase.

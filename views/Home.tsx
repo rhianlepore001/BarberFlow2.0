@@ -221,7 +221,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
         >
             <motion.div variants={itemVariants} className="px-4 pb-4 pt-4">
                 <h2 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
-                    {user.shopName} {user.shopType === 'barbearia' ? '💈' : '💅'}
+                    {user.shopName} {user.shopType === 'barbearia' ? '💈' : '✂️'}
                 </h2>
                 <p className="text-base text-text-secondary-dark">Bem-vindo(a) ao seu painel de gestão. Foco total nos resultados de hoje!</p>
             </motion.div>

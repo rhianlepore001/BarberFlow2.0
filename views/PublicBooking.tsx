@@ -52,7 +52,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
             // 1. Fetch Barber details (including shop_id and shop name)
             const { data: barberData, error: barberError } = await supabase
                 .from('team_members')
-                .select('*, shop_id, shops(name)') // Faz JOIN com shops para pegar o nome
+                .select('*, shop_id, shops(name, type)') // Faz JOIN com shops para pegar nome e tipo
                 .eq('id', barberId)
                 .limit(1)
                 .single();
@@ -63,11 +63,14 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 return;
             }
             
-            // Mapeia o nome da loja para o objeto barber
+            // Mapeia o nome e tipo da loja para o objeto barber
             const shopName = (barberData.shops as { name: string } | null)?.name || 'Barbearia';
+            const shopType = (barberData.shops as { type: 'barbearia' | 'salao' } | null)?.type || 'barbearia';
+            
             const fullBarberData: TeamMember = {
                 ...(barberData as TeamMember),
-                shopName: shopName, // Adiciona shopName ao objeto barber
+                shopName: shopName, 
+                shopType: shopType, // Adiciona shopType ao objeto barber
             };
             
             setBarber(fullBarberData);
@@ -179,6 +182,9 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
     if (error) {
         return <div className="flex justify-center items-center h-screen text-red-400">{error}</div>;
     }
+    
+    // Determina o emoji com base no shopType (agora disponível no objeto barber)
+    const shopEmoji = barber?.shopType === 'barbearia' ? '💈' : '✂️';
 
     return (
         <div className="min-h-screen bg-background-dark p-4 flex flex-col items-center">
@@ -193,7 +199,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                     <p className="text-sm text-text-secondary-dark">{barber?.role} em {barber?.shopName || 'Barbearia'}</p>
                     
                     {/* NOVO: Nome da Barbearia e Frase de Impacto */}
-                    <h2 className={`text-xl font-bold mt-4 ${theme.primary}`}>{barber?.shopName} 💈</h2>
+                    <h2 className={`text-xl font-bold mt-4 ${theme.primary}`}>{barber?.shopName} {shopEmoji}</h2>
                     <p className="text-sm text-text-secondary-dark">Seja bem-vindo(a)! Encontre o horário perfeito e faça seu agendamento.</p>
                 </div>
                 
