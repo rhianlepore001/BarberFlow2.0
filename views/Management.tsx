@@ -153,13 +153,13 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     };
     
     const handleCopyLink = (memberId: number, memberName: string) => {
-        const baseUrl = window.location.origin;
-        const link = `${baseUrl}/book/${memberId}`;
+        // Gera o caminho relativo. O usuário deve combiná-lo com o domínio real da aplicação.
+        const linkPath = `/book/${memberId}`;
         
-        navigator.clipboard.writeText(link).then(() => {
-            setCopyMessage({ id: memberId, message: `Link de ${memberName.split(' ')[0]} copiado!` });
+        navigator.clipboard.writeText(linkPath).then(() => {
+            setCopyMessage({ id: memberId, message: `Caminho de agendamento copiado: ${linkPath}` });
             setActiveMenu(null);
-            setTimeout(() => setCopyMessage(null), 3000);
+            setTimeout(() => setCopyMessage(null), 5000);
         }).catch(err => {
             console.error('Failed to copy link:', err);
             setCopyMessage({ id: memberId, message: 'Falha ao copiar.' });
@@ -297,7 +297,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                                 className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
                                             >
                                                 <span className="material-symbols-outlined text-base">link</span>
-                                                Copiar Link de Agendamento
+                                                Copiar Caminho de Agendamento
                                             </button>
                                             <button
                                                 onClick={() => {
