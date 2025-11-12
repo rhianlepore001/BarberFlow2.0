@@ -47,7 +47,6 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
 
     useEffect(() => {
         const fetchBarberAndServices = async () => {
-            console.log(`[PublicBooking] Received barberId from URL: ${barberId}`); // Log do ID recebido
             setLoading(true);
             setError(null); // Limpa erros anteriores
 
@@ -57,27 +56,13 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 return;
             }
             
-            // --- INÍCIO DA MODIFICAÇÃO PARA DIAGNÓSTICO DE RLS ---
-            // 1. Tentar buscar TODOS os membros da equipe para testar a política RLS de leitura anônima
-            const { data: allTeamMembersData, error: allTeamMembersError } = await supabase
+            // 1. Buscar o barbeiro específico
+            const { data: barberData, error: barberError } = await supabase
                 .from('team_members')
-                .select('id, name, role, image_url, shop_id');
-            
-            console.log("[PublicBooking] Resultado da busca de TODOS os membros da equipe (RLS Test):", allTeamMembersData);
-            console.error("[PublicBooking] Erro na busca de TODOS os membros da equipe (RLS Test):", allTeamMembersError);
-
-            // 2. Encontrar o barbeiro específico a partir dos dados retornados (se houver)
-            const barberData = allTeamMembersData?.find(b => b.id === barberId);
-            let barberError = allTeamMembersError; // Usamos o erro da consulta geral por enquanto
-
-            // Se o barbeiro específico não foi encontrado, mas a consulta geral não deu erro,
-            // significa que a política RLS permitiu a leitura, mas o ID não existe ou não foi encontrado.
-            if (!barberData && !barberError) {
-                setError(`Barbeiro com ID ${barberId} não encontrado na lista de membros da equipe. Verifique o ID.`);
-                setLoading(false);
-                return;
-            }
-            // --- FIM DA MODIFICAÇÃO PARA DIAGNÓSTICO DE RLS ---
+                .select('id, name, role, image_url, shop_id')
+                .eq('id', barberId)
+                .limit(1)
+                .single();
 
             if (barberError || !barberData) {
                 console.error("[PublicBooking] Erro ao buscar barbeiro específico:", barberError || "Dados vazios.");
@@ -93,8 +78,6 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 setLoading(false);
                 return;
             }
-            
-            console.log("[PublicBooking] Barbeiro encontrado:", barberData);
             
             const shopId = barberData.shop_id;
             
@@ -114,7 +97,6 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
             } else if (shopData) {
                 shopName = shopData.name;
                 shopType = (shopData.type as 'barbearia' | 'salao') || 'barbearia';
-                console.log("[PublicBooking] Detalhes da loja encontrados:", shopData);
             }
             
             const fullBarberData: TeamMember = {
@@ -140,7 +122,6 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 return;
             }
             
-            console.log(`[PublicBooking] Serviços carregados: ${servicesData.length}`);
             setServices(servicesData as Service[]);
             
             // 4. Check client session
