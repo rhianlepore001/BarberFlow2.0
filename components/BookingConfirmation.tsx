@@ -51,10 +51,10 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             duration_minutes: s.duration_minutes
         }));
         
-        // 1. Obter o client_id do cliente logado
+        // 1. Obter o client_id e o shop_id atual do cliente logado
         const { data: clientData, error: clientError } = await supabase
             .from('clients')
-            .select('id')
+            .select('id, shop_id')
             .eq('auth_user_id', clientSession.user.id)
             .limit(1)
             .single();
@@ -66,6 +66,19 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             return;
         }
         
+        // 2. Se o cliente não tiver um shop_id associado, atualiza com o shop_id do barbeiro
+        if (!clientData.shop_id) {
+            const { error: updateClientError } = await supabase
+                .from('clients')
+                .update({ shop_id: barber.shop_id })
+                .eq('id', clientData.id);
+                
+            if (updateClientError) {
+                console.error("Error updating client shop_id:", updateClientError);
+                // Não é um erro fatal, mas logamos
+            }
+        }
+        
         const appointmentData = {
             start_time: start_time,
             barber_id: barber.id,
@@ -75,7 +88,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             shop_id: barber.shop_id,
         };
         
-        // 2. Inserir Agendamento
+        // 3. Inserir Agendamento
         const { error: dbError } = await supabase.from('appointments').insert([appointmentData]);
         
         if (dbError) {
