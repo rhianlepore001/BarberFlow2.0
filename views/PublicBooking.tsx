@@ -49,11 +49,10 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
         const fetchBarberAndServices = async () => {
             setLoading(true);
             
-            // 1. Fetch Barber details (including shop_id and shop name)
-            // Ajuste: Selecionar apenas campos públicos para segurança RLS
+            // 1. Fetch Barber details (sem JOIN)
             const { data: barberData, error: barberError } = await supabase
                 .from('team_members')
-                .select('id, name, role, image_url, shop_id, shops(name, type)') // Seleção explícita
+                .select('id, name, role, image_url, shop_id') // Apenas campos da tabela team_members
                 .eq('id', barberId)
                 .limit(1)
                 .single();
@@ -65,25 +64,40 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 return;
             }
             
-            // Mapeia o nome e tipo da loja para o objeto barber
-            const shopName = (barberData.shops as { name: string } | null)?.name || 'Barbearia';
-            const shopType = (barberData.shops as { type: 'barbearia' | 'salao' } | null)?.type || 'barbearia';
+            const shopId = barberData.shop_id;
+            
+            // 2. Fetch Shop details (separadamente)
+            let shopName = 'Barbearia';
+            let shopType: 'barbearia' | 'salao' = 'barbearia';
+            
+            const { data: shopData, error: shopError } = await supabase
+                .from('shops')
+                .select('name, type')
+                .eq('id', shopId)
+                .limit(1)
+                .single();
+                
+            if (shopError) {
+                console.warn("Shop details fetch error (using default):", shopError);
+            } else if (shopData) {
+                shopName = shopData.name;
+                shopType = (shopData.type as 'barbearia' | 'salao') || 'barbearia';
+            }
             
             const fullBarberData: TeamMember = {
                 ...(barberData as TeamMember),
                 shopName: shopName, 
-                shopType: shopType, // Adiciona shopType ao objeto barber
-                // Garantir que commissionRate exista, mesmo que não seja lido aqui (RLS anon não permite ler)
-                commissionRate: 0.5, 
+                shopType: shopType,
+                commissionRate: 0.5, // Default, não usado na tela pública
             };
             
             setBarber(fullBarberData);
             
-            // 2. Fetch Services for the shop
+            // 3. Fetch Services for the shop
             const { data: servicesData, error: servicesError } = await supabase
                 .from('services')
                 .select('*')
-                .eq('shop_id', barberData.shop_id)
+                .eq('shop_id', shopId)
                 .order('name');
                 
             if (servicesError) {
@@ -94,7 +108,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
             
             setServices(servicesData as Service[]);
             
-            // 3. Check client session
+            // 4. Check client session
             await checkSessionAndSetStep();
             
             setLoading(false);
@@ -102,7 +116,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
         
         fetchBarberAndServices();
         
-        // 4. Listener para mudanças de autenticação (para reagir a logins/logouts)
+        // 5. Listener para mudanças de autenticação (para reagir a logins/logouts)
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
                 // Quando o estado muda, reavalia a sessão e o passo
