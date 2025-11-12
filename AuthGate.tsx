@@ -14,7 +14,9 @@ const AuthGate: React.FC = () => {
         // Verifica a URL para a rota pública
         const path = window.location.pathname;
         const match = path.match(/^\/book\/(\d+)$/);
-        if (match) {
+        const isPublicRoute = !!match;
+        
+        if (isPublicRoute) {
             setPublicBarberId(parseInt(match[1]));
         } else {
             setPublicBarberId(null);
@@ -30,14 +32,14 @@ const AuthGate: React.FC = () => {
 
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
-            // Removido: window.location.reload() para rotas públicas.
-            // O componente PublicBooking deve reagir à mudança de 'session' internamente.
+            // Se estiver em uma rota pública, não faz nada além de atualizar a sessão.
+            // Se não estiver em uma rota pública, o App.tsx ou AuthScreen reagirão à sessão.
         });
 
         return () => {
             authListener?.subscription.unsubscribe();
         };
-    }, [publicBarberId]);
+    }, []); // Dependência vazia para rodar apenas uma vez na montagem
 
     if (loading) {
         return (
