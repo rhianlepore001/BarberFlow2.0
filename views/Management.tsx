@@ -153,16 +153,19 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     };
     
     const handleCopyLink = (memberId: number, memberName: string) => {
-        // Gera o caminho relativo. O usuário deve combiná-lo com o domínio real da aplicação.
-        const linkPath = `/book/${memberId}`;
+        // Gera o URL completo usando o domínio atual (que pode ser localhost ou o domínio do AI Studio)
+        const baseUrl = window.location.origin;
+        const link = `${baseUrl}/book/${memberId}`;
         
-        navigator.clipboard.writeText(linkPath).then(() => {
-            setCopyMessage({ id: memberId, message: `Caminho de agendamento copiado: ${linkPath}` });
+        navigator.clipboard.writeText(link).then(() => {
+            // Mensagem mais clara para o usuário
+            const message = `Link de ${memberName.split(' ')[0]} copiado! (Use este link completo)`;
+            setCopyMessage({ id: memberId, message });
             setActiveMenu(null);
             setTimeout(() => setCopyMessage(null), 5000);
         }).catch(err => {
             console.error('Failed to copy link:', err);
-            setCopyMessage({ id: memberId, message: 'Falha ao copiar.' });
+            setCopyMessage({ id: memberId, message: 'Falha ao copiar o link.' });
             setActiveMenu(null);
             setTimeout(() => setCopyMessage(null), 3000);
         });
@@ -297,7 +300,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                                 className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
                                             >
                                                 <span className="material-symbols-outlined text-base">link</span>
-                                                Copiar Caminho de Agendamento
+                                                Copiar Link de Agendamento
                                             </button>
                                             <button
                                                 onClick={() => {
