@@ -64,6 +64,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     const [settings, setSettings] = useState<ShopSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
+    const [copyMessage, setCopyMessage] = useState<{ id: number, message: string } | null>(null);
     const theme = useTheme(user); // Usa o hook de tema
 
     useEffect(() => {
@@ -149,6 +150,22 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                 refreshData();
             }
         }
+    };
+    
+    const handleCopyLink = (memberId: number, memberName: string) => {
+        const baseUrl = window.location.origin;
+        const link = `${baseUrl}/book/${memberId}`;
+        
+        navigator.clipboard.writeText(link).then(() => {
+            setCopyMessage({ id: memberId, message: `Link de ${memberName.split(' ')[0]} copiado!` });
+            setActiveMenu(null);
+            setTimeout(() => setCopyMessage(null), 3000);
+        }).catch(err => {
+            console.error('Failed to copy link:', err);
+            setCopyMessage({ id: memberId, message: 'Falha ao copiar.' });
+            setActiveMenu(null);
+            setTimeout(() => setCopyMessage(null), 3000);
+        });
     };
 
     const dayMap: { [key: string]: string } = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
@@ -273,8 +290,15 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: -10, scale: 0.95 }}
                                             transition={{ duration: 0.15, ease: 'easeOut' }}
-                                            className="absolute top-full right-0 mt-1 w-40 bg-background-dark rounded-lg shadow-lg border border-white/10 z-20"
+                                            className="absolute top-full right-0 mt-1 w-48 bg-background-dark rounded-lg shadow-lg border border-white/10 z-20"
                                         >
+                                            <button
+                                                onClick={() => handleCopyLink(member.id, member.name)}
+                                                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
+                                            >
+                                                <span className="material-symbols-outlined text-base">link</span>
+                                                Copiar Link de Agendamento
+                                            </button>
                                             <button
                                                 onClick={() => {
                                                     openModal('editCommission', member);
@@ -312,6 +336,19 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                         </motion.div>
                     ))}
                 </div>
+                <AnimatePresence>
+                    {copyMessage && (
+                        <motion.div
+                            key="copy-toast"
+                            initial={{ opacity: 0, y: 50 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 50 }}
+                            className="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-xl z-50 text-sm font-semibold"
+                        >
+                            {copyMessage.message}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </motion.div>
 
             <motion.div variants={itemVariants}>
