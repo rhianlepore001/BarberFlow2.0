@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { User, Service, TeamMember, BarberFinancials } from '../types';
 import FinancialSettlement from '../components/FinancialSettlement';
-import { useTheme } from '../hooks/useTheme';
-import { getPublicBookingUrl } from '../utils/booking'; // Importa o utilitário
+import { useTheme } from '../hooks/useTheme'; // Importa o hook
 
 interface ManagementProps {
     user: User;
@@ -65,7 +64,6 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     const [settings, setSettings] = useState<ShopSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
-    const [copiedMemberId, setCopiedMemberId] = useState<number | null>(null);
     const theme = useTheme(user); // Usa o hook de tema
 
     useEffect(() => {
@@ -152,14 +150,6 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             }
         }
     };
-    
-    const handleCopyLink = (memberId: number) => {
-        const link = getPublicBookingUrl(memberId);
-        navigator.clipboard.writeText(link).then(() => {
-            setCopiedMemberId(memberId);
-            setTimeout(() => setCopiedMemberId(null), 2000);
-        });
-    };
 
     const dayMap: { [key: string]: string } = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
 
@@ -211,14 +201,14 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                 <img src={user.imageUrl || `https://ui-avatars.com/api/?name=${user.name}&background=E5A00D&color=101012`} alt={user.name} className="w-16 h-16 rounded-full object-cover"/>
                 <div>
                     <h3 className="text-xl font-bold">{user.name}</h3>
-                    <button onClick={() => openModal('editProfile')} className={`text-sm font-semibold ${theme.primary} hover:text-primary/80 transition-colors`}>Editar perfil</button>
+                    <button onClick={() => openModal('editProfile')} className={`text-sm font-semibold ${theme.primary} hover:text-yellow-400 transition-colors`}>Editar perfil</button>
                 </div>
             </motion.div>
 
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
                     <h4 className="text-lg font-bold">Horário de Funcionamento</h4>
-                    <button onClick={() => openModal('editHours')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-primary/80 transition-colors`}>
+                    <button onClick={() => openModal('editHours')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">edit</span>
                         Editar
                     </button>
@@ -236,7 +226,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
                     <h4 className="text-lg font-bold">Acerto Mensal</h4>
-                    <button onClick={() => openModal('editSettlementDay')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-primary/80 transition-colors`}>
+                    <button onClick={() => openModal('editSettlementDay')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">calendar_month</span>
                         Dia de Acerto: {settings?.settlement_day || 1}
                     </button>
@@ -251,7 +241,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
                     <h4 className="text-lg font-bold">Equipe</h4>
-                    <button onClick={() => openModal('newTeamMember')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-primary/80 transition-colors`}>
+                    <button onClick={() => openModal('newTeamMember')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">add</span>
                         Adicionar
                     </button>
@@ -269,13 +259,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                 <p className="font-semibold text-white">{member.name}</p>
                                 <p className="text-sm text-text-secondary-dark">{member.role} ({Math.round(member.commissionRate * 100)}%)</p>
                             </div>
-                            <div className="relative flex items-center gap-2">
-                                <button
-                                    onClick={() => handleCopyLink(member.id)}
-                                    className={`text-sm font-semibold px-3 py-1 rounded-full transition-colors ${copiedMemberId === member.id ? 'bg-green-500/20 text-green-400' : `${theme.primary} hover:${theme.bgPrimary}/20`}`}
-                                >
-                                    {copiedMemberId === member.id ? 'Copiado!' : 'Link'}
-                                </button>
+                            <div className="relative">
                                 <button
                                     onClick={() => setActiveMenu(activeMenu === member.id ? null : member.id)}
                                     className="text-text-secondary-dark hover:text-white transition-colors p-1 rounded-full"
@@ -333,7 +317,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
                     <h4 className="text-lg font-bold">Serviços</h4>
-                    <button onClick={() => openModal('newService')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-primary/80 transition-colors`}>
+                    <button onClick={() => openModal('newService')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">add</span>
                         Adicionar
                     </button>
