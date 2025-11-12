@@ -30,10 +30,8 @@ const AuthGate: React.FC = () => {
 
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
-            // Se a sessão mudar e estivermos em uma rota pública, recarrega a página para reavaliar o fluxo de agendamento
-            if (publicBarberId !== null) {
-                 window.location.reload();
-            }
+            // Removido: window.location.reload() para rotas públicas.
+            // O componente PublicBooking deve reagir à mudança de 'session' internamente.
         });
 
         return () => {

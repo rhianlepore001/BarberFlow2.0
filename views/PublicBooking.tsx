@@ -32,6 +32,19 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
     const totalDuration = useMemo(() => selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0), [selectedServices]);
     const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + s.price, 0), [selectedServices]);
 
+    // Função para verificar a sessão e definir o passo inicial
+    const checkSessionAndSetStep = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            setClientSession(session);
+            // Se já estiver logado, pula para a seleção de serviços
+            setStep('services');
+        } else {
+            setClientSession(null);
+            setStep('auth');
+        }
+    };
+
     useEffect(() => {
         const fetchBarberAndServices = async () => {
             setLoading(true);
@@ -68,18 +81,24 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
             setServices(servicesData as Service[]);
             
             // 3. Check client session
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                setClientSession(session);
-                setStep('services');
-            } else {
-                setStep('auth');
-            }
+            await checkSessionAndSetStep();
             
             setLoading(false);
         };
         
         fetchBarberAndServices();
+        
+        // 4. Listener para mudanças de autenticação (para reagir a logins/logouts)
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+                // Quando o estado muda, reavalia a sessão e o passo
+                checkSessionAndSetStep();
+            }
+        });
+
+        return () => {
+            authListener?.subscription.unsubscribe();
+        };
     }, [barberId]);
     
     const handleAuthSuccess = (session: any) => {
