@@ -194,7 +194,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                     
                     {/* NOVO: Nome da Barbearia e Frase de Impacto */}
                     <h2 className={`text-xl font-bold mt-4 ${theme.primary}`}>{barber?.shopName} 💈</h2>
-                    <p className="text-sm text-text-secondary-dark">Transformando seu estilo, um corte de cada vez.</p>
+                    <p className="text-sm text-text-secondary-dark">Seja bem-vindo(a)! Encontre o horário perfeito e faça seu agendamento.</p>
                 </div>
                 
                 {renderStep()}
