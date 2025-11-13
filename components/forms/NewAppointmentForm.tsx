@@ -81,6 +81,11 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
             setIsSaving(false);
             return;
         }
+        if (totalDuration === 0) {
+            setError("A duração total do serviço não pode ser zero.");
+            setIsSaving(false);
+            return;
+        }
 
         const start_time = new Date(`${date}T${time}:00`).toISOString();
         
@@ -106,8 +111,15 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
             : await supabase.from('appointments').insert([appointmentData]);
         
         if (dbError) {
+            let errorMessage = `Falha ao salvar o agendamento: ${dbError.message}`;
+            
+            // Verifica se é o erro de conflito do trigger
+            if (dbError.message.includes('Conflito de agendamento')) {
+                 errorMessage = "Conflito de horário! O barbeiro já tem um agendamento neste período.";
+            }
+            
             console.error('Error saving appointment:', dbError);
-            setError(`Falha ao salvar o agendamento: ${dbError.message}`);
+            setError(errorMessage);
         } else {
             onSuccess();
         }

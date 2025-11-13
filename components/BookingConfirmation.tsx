@@ -74,7 +74,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
                 .eq('id', clientData.id);
                 
             if (updateClientError) {
-                console.error("Error updating client shop_id:", updateClientError);
+                console.warn("Warning: Error updating client shop_id:", updateClientError);
                 // Não é um erro fatal, mas logamos
             }
         }
@@ -92,8 +92,15 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
         const { error: dbError } = await supabase.from('appointments').insert([appointmentData]);
         
         if (dbError) {
+            let errorMessage = `Falha ao agendar: ${dbError.message}. Tente outro horário.`;
+            
+            // Verifica se é o erro de conflito do trigger
+            if (dbError.message.includes('Conflito de agendamento')) {
+                 errorMessage = "Conflito de horário! Este horário foi reservado por outro cliente. Por favor, selecione outro slot.";
+            }
+            
             console.error('Error saving appointment:', dbError);
-            setError(`Falha ao agendar: ${dbError.message}. Tente outro horário.`);
+            setError(errorMessage);
         } else {
             onSuccess();
         }
