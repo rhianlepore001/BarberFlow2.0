@@ -143,8 +143,8 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     }, [settings, loading, weekOffset, weekDays]);
 
 
-    // --- Lógica de Cálculo de Slots Disponíveis (Otimizada) ---
-    const availableSlots = useMemo(() => {
+    // --- Lógica de Cálculo de Slots Disponíveis (Gerando todos os slots) ---
+    const allPossibleSlots = useMemo(() => {
         if (!settings || totalDuration === 0 || !selectedDate) return [];
         
         const selectedDayIndex = selectedDate.getDay();
@@ -159,13 +159,27 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
         const workEndMinutes = endHour * 60 + endMinute;
         
         const slots: string[] = [];
-        const now = new Date();
-        const isToday = selectedDate.toDateString() === now.toDateString();
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-        // 1. Create a timeline of every minute of the day, marking it as busy or free.
-        // A timeline deve cobrir o dia inteiro (0 a 24*60)
-        const dayTimeline = new Array(24 * 60).fill(false); // false = free, true = busy
+        // Gera todos os slots de 30 minutos que começam dentro do horário de trabalho
+        for (let m = workStartMinutes; m < workEndMinutes; m += MINUTE_INTERVAL) {
+            const slotStartMinutes = m;
+            const slotEndMinutes = m + totalDuration;
+
+            // Verifica se o slot termina dentro do horário de trabalho
+            if (slotEndMinutes > workEndMinutes) continue;
+            
+            const hour = Math.floor(slotStartMinutes / 60);
+            const minute = slotStartMinutes % 60;
+            slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+        }
+
+        return slots;
+    }, [selectedDate, settings, totalDuration]);
+    
+    // 1. Create a timeline of busy minutes for the selected day
+    const dayTimeline = useMemo(() => {
+        const timeline = new Array(24 * 60).fill(false); // false = free, true = busy
+        if (!selectedDate) return timeline;
 
         appointments
             .filter(a => new Date(a.startTime).toDateString() === selectedDate.toDateString())
@@ -174,43 +188,40 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
                 const start = apptDate.getHours() * 60 + apptDate.getMinutes();
                 const end = start + a.duration_minutes;
                 
-                // Marca o período do agendamento como ocupado
                 for (let i = start; i < end; i++) {
-                    if (i < dayTimeline.length) {
-                        dayTimeline[i] = true;
+                    if (i < timeline.length) {
+                        timeline[i] = true;
                     }
                 }
             });
-
-        // 2. Iterate through possible slots (starting at workStartMinutes) and check against the timeline
-        for (let m = workStartMinutes; m < workEndMinutes; m += MINUTE_INTERVAL) {
-            const slotStartMinutes = m;
-            const slotEndMinutes = m + totalDuration;
-
-            // Verifica se o slot termina dentro do horário de trabalho
-            if (slotEndMinutes > workEndMinutes) continue;
-            
-            // Verifica se o slot já passou (se for hoje)
-            if (isToday && slotStartMinutes < currentMinutes) continue;
-
-            let isConflict = false;
-            // Verifica se o período necessário para o serviço está livre na timeline
-            for (let i = slotStartMinutes; i < slotEndMinutes; i++) {
-                if (dayTimeline[i]) {
-                    isConflict = true;
-                    break;
-                }
-            }
-            
-            if (!isConflict) {
-                const hour = Math.floor(slotStartMinutes / 60);
-                const minute = slotStartMinutes % 60;
-                slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
-            }
+        return timeline;
+    }, [selectedDate, appointments]);
+    
+    // 2. Function to check if a specific slot is available
+    const getSlotStatus = (time: string): 'available' | 'past' | 'conflict' => {
+        const [slotHour, slotMinute] = time.split(':').map(Number);
+        const slotStartMinutes = slotHour * 60 + slotMinute;
+        const slotEndMinutes = slotStartMinutes + totalDuration;
+        
+        const now = new Date();
+        const isToday = selectedDate.toDateString() === now.toDateString();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        
+        // Check if slot is in the past
+        if (isToday && slotStartMinutes < currentMinutes) {
+            return 'past';
         }
 
-        return slots;
-    }, [selectedDate, appointments, settings, totalDuration]);
+        // Check for conflict using the timeline
+        for (let i = slotStartMinutes; i < slotEndMinutes; i++) {
+            if (dayTimeline[i]) {
+                return 'conflict';
+            }
+        }
+        
+        return 'available';
+    };
+
 
     if (loading) {
         return <div className="text-center p-8 text-text-secondary-dark">Carregando agenda...</div>;
@@ -285,19 +296,37 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
                 
                 {!isDayOpen ? (
                     <p className="text-center text-red-400 font-semibold">Fechado neste dia.</p>
-                ) : availableSlots.length === 0 ? (
+                ) : allPossibleSlots.length === 0 ? (
                     <p className="text-center text-text-secondary-dark">Nenhum horário disponível para {totalDuration} min.</p>
                 ) : (
                     <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto pr-2">
-                        {availableSlots.map(time => (
-                            <button
-                                key={time}
-                                onClick={() => onTimeSelect(selectedDate, time)}
-                                className={`py-2 rounded-full font-bold transition-colors border-2 border-card-dark hover:${theme.bgPrimary} hover:text-background-dark text-white`}
-                            >
-                                {time}
-                            </button>
-                        ))}
+                        {allPossibleSlots.map(time => {
+                            const status = getSlotStatus(time);
+                            const isAvailable = status === 'available';
+                            const isConflict = status === 'conflict';
+                            const isPast = status === 'past';
+                            
+                            let buttonClasses = 'py-2 rounded-full font-bold transition-colors border-2';
+                            
+                            if (isAvailable) {
+                                buttonClasses += ` ${theme.bgPrimary} text-background-dark hover:${theme.bgPrimary}/80`;
+                            } else if (isConflict) {
+                                buttonClasses += ' bg-red-900/50 text-red-400 border-red-900/80 cursor-not-allowed opacity-70';
+                            } else if (isPast) {
+                                buttonClasses += ' bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed opacity-50';
+                            }
+
+                            return (
+                                <button
+                                    key={time}
+                                    onClick={() => isAvailable && onTimeSelect(selectedDate, time)}
+                                    disabled={!isAvailable}
+                                    className={buttonClasses}
+                                >
+                                    {time}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>
