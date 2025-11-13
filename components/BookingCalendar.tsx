@@ -106,7 +106,6 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     useEffect(() => {
         if (settings && !loading) {
             const today = new Date();
-            let initialDay = today;
             
             // Se a semana atual for a de hoje (offset 0), tentamos selecionar hoje ou o próximo dia aberto
             if (weekOffset === 0) {
@@ -144,58 +143,55 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     }, [settings, loading, weekOffset, weekDays]);
 
 
-    // --- Lógica de Cálculo de Slots Disponíveis ---
+    // --- Lógica de Cálculo de Slots Disponíveis (Otimizada) ---
     const availableSlots = useMemo(() => {
         if (!settings || totalDuration === 0) return [];
         
         const selectedDayIndex = selectedDate.getDay();
         const selectedDayStr = dayMap[selectedDayIndex];
         
-        // 1. Verificar se o dia está aberto
         if (!settings.open_days.includes(selectedDayStr)) return [];
         
         const [startHour, startMinute] = settings.start_time.split(':').map(Number);
         const [endHour, endMinute] = settings.end_time.split(':').map(Number);
         
-        const totalStartMinutes = startHour * 60 + startMinute;
-        const totalEndMinutes = endHour * 60 + endMinute;
+        const workStartMinutes = startHour * 60 + startMinute;
+        const workEndMinutes = endHour * 60 + endMinute;
         
         const slots: string[] = [];
         const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
-        const selectedDateStr = selectedDate.toISOString().split('T')[0];
-        
-        // 2. Mapear horários ocupados
-        const occupiedSlots: { start: number, end: number }[] = appointments
-            .filter(a => a.startTime.split('T')[0] === selectedDateStr)
-            .map(a => {
+        const isToday = selectedDate.toDateString() === now.toDateString();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+        // 1. Create a timeline of every minute of the day, marking it as busy or free.
+        const dayTimeline = new Array(24 * 60).fill(false); // false = free, true = busy
+
+        appointments
+            .filter(a => new Date(a.startTime).toDateString() === selectedDate.toDateString())
+            .forEach(a => {
                 const apptDate = new Date(a.startTime);
-                const apptStartMinutes = apptDate.getHours() * 60 + apptDate.getMinutes();
-                return {
-                    start: apptStartMinutes,
-                    end: apptStartMinutes + a.duration_minutes
-                };
+                const start = apptDate.getHours() * 60 + apptDate.getMinutes();
+                const end = start + a.duration_minutes;
+                for (let i = start; i < end; i++) {
+                    dayTimeline[i] = true;
+                }
             });
-            
-        // 3. Gerar slots e verificar disponibilidade
-        for (let m = totalStartMinutes; m < totalEndMinutes; m += MINUTE_INTERVAL) {
+
+        // 2. Iterate through possible slots and check against the timeline
+        for (let m = workStartMinutes; m < workEndMinutes; m += MINUTE_INTERVAL) {
             const slotStartMinutes = m;
             const slotEndMinutes = m + totalDuration;
-            
-            // Se o serviço ultrapassar o horário de fechamento, pare
-            if (slotEndMinutes > totalEndMinutes) continue;
-            
-            // Se for hoje, ignore horários passados
-            if (selectedDateStr === todayStr) {
-                const slotTime = new Date(selectedDate);
-                slotTime.setHours(Math.floor(m / 60), m % 60, 0, 0);
-                if (slotTime <= now) continue;
-            }
 
-            // Verificar conflito com agendamentos existentes
-            const isConflict = occupiedSlots.some(occupied => 
-                (slotStartMinutes < occupied.end && slotEndMinutes > occupied.start)
-            );
+            if (slotEndMinutes > workEndMinutes) continue;
+            if (isToday && slotStartMinutes < currentMinutes) continue;
+
+            let isConflict = false;
+            for (let i = slotStartMinutes; i < slotEndMinutes; i++) {
+                if (dayTimeline[i]) {
+                    isConflict = true;
+                    break;
+                }
+            }
             
             if (!isConflict) {
                 const hour = Math.floor(slotStartMinutes / 60);
