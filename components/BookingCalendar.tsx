@@ -181,13 +181,17 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
         const timeline = new Array(24 * 60).fill(false); // false = free, true = busy
         if (!selectedDate) return timeline;
 
+        // Formata a data selecionada para comparação de string (YYYY-MM-DD)
+        const selectedDateStr = selectedDate.toISOString().split('T')[0];
+
         appointments
-            .filter(a => new Date(a.startTime).toDateString() === selectedDate.toDateString())
+            .filter(a => a.startTime.split('T')[0] === selectedDateStr)
             .forEach(a => {
                 const apptDate = new Date(a.startTime);
                 const start = apptDate.getHours() * 60 + apptDate.getMinutes();
                 const end = start + a.duration_minutes;
                 
+                // Marca o período do agendamento como ocupado
                 for (let i = start; i < end; i++) {
                     if (i < timeline.length) {
                         timeline[i] = true;
@@ -309,10 +313,13 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
                             let buttonClasses = 'py-2 rounded-full font-bold transition-colors border-2';
                             
                             if (isAvailable) {
-                                buttonClasses += ` ${theme.bgPrimary} text-background-dark hover:${theme.bgPrimary}/80`;
+                                // Verde para disponível
+                                buttonClasses += ` bg-green-600 text-white hover:bg-green-700 border-green-700`;
                             } else if (isConflict) {
+                                // Vermelho para conflito
                                 buttonClasses += ' bg-red-900/50 text-red-400 border-red-900/80 cursor-not-allowed opacity-70';
                             } else if (isPast) {
+                                // Cinza para passado
                                 buttonClasses += ' bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed opacity-50';
                             }
 
