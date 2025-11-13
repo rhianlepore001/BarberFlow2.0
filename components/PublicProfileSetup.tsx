@@ -40,7 +40,7 @@ const PublicProfileSetup: React.FC<PublicProfileSetupProps> = ({ session, onSucc
         setError(null);
         
         if (!name.trim() || !phone.trim()) {
-            setError("Nome e Telefone são obrigatórios.");
+            setError("Apelido e Telefone são obrigatórios.");
             setIsSaving(false);
             return;
         }
@@ -119,7 +119,7 @@ const PublicProfileSetup: React.FC<PublicProfileSetupProps> = ({ session, onSucc
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <h2 className="text-xl font-bold text-center text-white">Complete seu Perfil</h2>
-            <p className="text-sm text-text-secondary-dark text-center">Precisamos de seu nome e telefone para confirmar o agendamento.</p>
+            <p className="text-sm text-text-secondary-dark text-center">Precisamos de seu apelido e telefone para confirmar o agendamento.</p>
             
             <form className="space-y-4" onSubmit={handleSubmit}>
                 <div className="flex justify-center my-4">
@@ -139,7 +139,7 @@ const PublicProfileSetup: React.FC<PublicProfileSetupProps> = ({ session, onSucc
                 <AuthInput 
                     icon="person" 
                     type="text" 
-                    placeholder="Seu Nome Completo" 
+                    placeholder="Seu Apelido" 
                     value={name} 
                     onChange={e => setName(e.target.value)} 
                     required 
