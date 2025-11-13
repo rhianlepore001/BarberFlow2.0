@@ -143,7 +143,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     }, [settings, loading, weekOffset, weekDays]);
 
 
-    // --- Lógica de Cálculo de Slots Disponíveis (Otimizada) ---
+    // --- Lógica de Cálculo de Slots Disponíveis (Otimizada e Reforçada) ---
     const availableSlots = useMemo(() => {
         if (!settings || totalDuration === 0) return [];
         
@@ -163,52 +163,49 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
         const isToday = selectedDate.toDateString() === now.toDateString();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-        // 1. Create a timeline of every minute of the day, marking it as busy or free.
-        const dayTimeline = new Array(24 * 60).fill(false); // false = free, true = busy
+        // 1. Obter agendamentos do barbeiro para o dia selecionado
+        const appointmentsForSelectedDay = appointments.filter(a => 
+            new Date(a.startTime).toDateString() === selectedDate.toDateString()
+        );
+        
+        // console.log("Appointments for selected day:", appointmentsForSelectedDay);
 
-        appointments
-            .filter(a => new Date(a.startTime).toDateString() === selectedDate.toDateString())
-            .forEach(a => {
-                const apptDate = new Date(a.startTime);
-                const start = apptDate.getHours() * 60 + apptDate.getMinutes();
-                const end = start + a.duration_minutes;
-                
-                // Mark the entire duration as busy
-                for (let i = start; i < end; i++) {
-                    // Ensure we don't go past the 24*60 limit
-                    if (i < 24 * 60) {
-                        dayTimeline[i] = true;
-                    }
-                }
-            });
-
-        // 2. Iterate through possible slots and check against the timeline
-        for (let m = workStartMinutes; m < workEndMinutes; m += MINUTE_INTERVAL) {
+        // 2. Iterar por todos os possíveis slots de início
+        for (let m = workStartMinutes; m <= workEndMinutes - totalDuration; m += MINUTE_INTERVAL) {
             const slotStartMinutes = m;
             const slotEndMinutes = m + totalDuration;
-
-            // Check if the required duration exceeds working hours
-            if (slotEndMinutes > workEndMinutes) continue;
             
-            // Check if the slot is in the past (only for today)
+            // Verificar se o slot está no passado (apenas para hoje)
             if (isToday && slotStartMinutes < currentMinutes) continue;
 
-            let isConflict = false;
-            // Check every minute required for the service duration
-            for (let i = slotStartMinutes; i < slotEndMinutes; i++) {
-                if (dayTimeline[i]) {
-                    isConflict = true;
-                    break;
+            let isSlotAvailable = true;
+            
+            // 3. Verificar conflito com cada agendamento existente
+            for (const appt of appointmentsForSelectedDay) {
+                const apptDate = new Date(appt.startTime);
+                const apptStartMinutes = apptDate.getHours() * 60 + apptDate.getMinutes();
+                const apptEndMinutes = apptStartMinutes + appt.duration_minutes;
+                
+                // console.log(`Checking slot ${slotStartMinutes}-${slotEndMinutes} against appt ${apptStartMinutes}-${apptEndMinutes}`);
+                
+                // Verificar se há sobreposição
+                // Sobreposição ocorre se: (SlotStart < ApptEnd) AND (SlotEnd > ApptStart)
+                if (slotStartMinutes < apptEndMinutes && slotEndMinutes > apptStartMinutes) {
+                    // console.log("Conflict found!");
+                    isSlotAvailable = false;
+                    break; // Sai do loop interno assim que encontra um conflito
                 }
             }
             
-            if (!isConflict) {
+            // 4. Se não houver conflito, adicionar o slot à lista
+            if (isSlotAvailable) {
                 const hour = Math.floor(slotStartMinutes / 60);
                 const minute = slotStartMinutes % 60;
                 slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
             }
         }
 
+        // console.log("Available slots:", slots);
         return slots;
     }, [selectedDate, appointments, settings, totalDuration]);
 
