@@ -167,12 +167,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     
     const handleSelectBarber = (barber: TeamMember) => {
         setSelectedBarber(barber);
-        // Se já houver serviços selecionados, pula para o calendário
-        if (selectedServices.length > 0) {
-            setStep('calendar');
-        } else {
-            setStep('services');
-        }
+        setStep('services');
     };
 
     const handleServiceSelect = (services: Service[]) => {
@@ -211,11 +206,8 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                             theme={theme} 
                         />;
             case 'services':
-                // Se o barbeiro não estiver selecionado, volta para a seleção de barbeiro
-                if (!selectedBarber) {
-                    setStep('selectBarber');
-                    return null;
-                }
+                // Só mostra os serviços se um barbeiro foi selecionado
+                if (!selectedBarber) return null; 
                 return <BookingServiceSelector 
                             services={services} 
                             onNext={handleServiceSelect} 
@@ -223,11 +215,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                         />;
             case 'calendar':
                 // Só mostra o calendário se um barbeiro e serviços foram selecionados
-                if (!selectedBarber || selectedServices.length === 0) {
-                    // Se faltar algo, volta para a seleção de serviços
-                    setStep('services');
-                    return null;
-                }
+                if (!selectedBarber || selectedServices.length === 0) return null;
                 return <BookingCalendar 
                             selectedBarber={selectedBarber} // Passa o barbeiro selecionado
                             selectedServices={selectedServices}
@@ -238,10 +226,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                         />;
             case 'confirm':
                 // Só mostra a confirmação se todos os dados foram selecionados
-                if (!selectedBarber || !clientSession || selectedServices.length === 0 || !selectedDate || !selectedTime) {
-                    setStep('calendar');
-                    return null;
-                }
+                if (!selectedBarber || !clientSession || selectedServices.length === 0 || !selectedDate || !selectedTime) return null;
                 return <BookingConfirmation 
                             selectedBarber={selectedBarber} // Passa o barbeiro selecionado
                             clientSession={clientSession}

@@ -143,7 +143,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     }, [settings, loading, weekOffset, weekDays]);
 
 
-    // --- Lógica de Cálculo de Slots Disponíveis (Verificação de Conflito de Intervalos) ---
+    // --- Lógica de Cálculo de Slots Disponíveis (Otimizada) ---
     const availableSlots = useMemo(() => {
         if (!settings || totalDuration === 0) return [];
         
@@ -163,39 +163,37 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
         const isToday = selectedDate.toDateString() === now.toDateString();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-        // 1. Obter agendamentos do barbeiro para o dia selecionado
-        const appointmentsForSelectedDay = appointments.filter(a => {
-            // Compara apenas a parte da data (YYYY-MM-DD) para evitar problemas de fuso horário
-            return a.startTime.split('T')[0] === selectedDate.toISOString().split('T')[0];
-        });
-        
-        // 2. Iterar por todos os possíveis slots de início
-        for (let m = workStartMinutes; m <= workEndMinutes - totalDuration; m += MINUTE_INTERVAL) {
+        // 1. Create a timeline of every minute of the day, marking it as busy or free.
+        const dayTimeline = new Array(24 * 60).fill(false); // false = free, true = busy
+
+        appointments
+            .filter(a => new Date(a.startTime).toDateString() === selectedDate.toDateString())
+            .forEach(a => {
+                const apptDate = new Date(a.startTime);
+                const start = apptDate.getHours() * 60 + apptDate.getMinutes();
+                const end = start + a.duration_minutes;
+                for (let i = start; i < end; i++) {
+                    dayTimeline[i] = true;
+                }
+            });
+
+        // 2. Iterate through possible slots and check against the timeline
+        for (let m = workStartMinutes; m < workEndMinutes; m += MINUTE_INTERVAL) {
             const slotStartMinutes = m;
             const slotEndMinutes = m + totalDuration;
-            
-            // Verificar se o slot está no passado (apenas para hoje)
+
+            if (slotEndMinutes > workEndMinutes) continue;
             if (isToday && slotStartMinutes < currentMinutes) continue;
 
-            let isSlotAvailable = true;
-            
-            // 3. Verificar conflito com cada agendamento existente
-            for (const appt of appointmentsForSelectedDay) {
-                const apptDate = new Date(appt.startTime);
-                
-                // *** CORREÇÃO CRÍTICA: Usar getUTCHours/Minutes para garantir que o tempo seja o mesmo do BD (que é UTC) ***
-                const apptStartMinutes = apptDate.getUTCHours() * 60 + apptDate.getUTCMinutes();
-                const apptEndMinutes = apptStartMinutes + appt.duration_minutes;
-                
-                // Conflito ocorre se: (SlotStart < ApptEnd) AND (SlotEnd > ApptStart)
-                if (slotStartMinutes < apptEndMinutes && slotEndMinutes > apptStartMinutes) {
-                    isSlotAvailable = false;
-                    break; 
+            let isConflict = false;
+            for (let i = slotStartMinutes; i < slotEndMinutes; i++) {
+                if (dayTimeline[i]) {
+                    isConflict = true;
+                    break;
                 }
             }
             
-            // 4. Se não houver conflito, adicionar o slot à lista
-            if (isSlotAvailable) {
+            if (!isConflict) {
                 const hour = Math.floor(slotStartMinutes / 60);
                 const minute = slotStartMinutes % 60;
                 slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);

@@ -101,16 +101,8 @@ const DaySelector: React.FC<DaySelectorProps> = ({ selectedDay, setSelectedDay, 
 const MINUTE_HEIGHT = 2.5; // pixels per minute (150px per hour) - Aumentado para 2.5
 const HOUR_HEIGHT = MINUTE_HEIGHT * 60; // 150 pixels per hour
 
-// Interface para o agendamento com dados de layout calculados
-interface AppointmentWithLayout extends Appointment {
-    top: number;
-    height: number;
-    left: number;
-    width: number;
-}
-
 interface AppointmentCardProps {
-    appointment: AppointmentWithLayout; // Usa o tipo com layout
+    appointment: Appointment;
     onClick: (appointment: Appointment) => void;
     startHour: number;
     theme: ReturnType<typeof useTheme>;
@@ -122,9 +114,13 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
     const serviceNames = services.map(s => s.name).join(', ');
     const displayTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
+    const startMinutes = new Date(appointment.startTime).getHours() * 60 + new Date(appointment.startTime).getMinutes();
+    const top = (startMinutes - startHour * 60) * MINUTE_HEIGHT;
+    const height = appointment.duration_minutes * MINUTE_HEIGHT - 2;
+    
     // Novo limite: 30 minutos (73px) é o mínimo para exibir nome e horário/duração
-    const isSmallCard = appointment.height < 70; 
-    const hasSpaceForServices = appointment.height > 90; // Reajustado para 90px (36 minutos)
+    const isSmallCard = height < 70; 
+    const hasSpaceForServices = height > 90; // Reajustado para 90px (36 minutos)
 
     return (
         <motion.div
@@ -133,12 +129,11 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
             exit={{ opacity: 0, scale: 0.9 }}
             layout
             onClick={() => onClick(appointment)}
-            className={`absolute p-2 rounded-lg flex flex-col justify-start overflow-hidden bg-card-dark border-l-4 ${theme.borderPrimary} shadow-md cursor-pointer hover:bg-card-dark/80 transition-colors z-10`}
+            className={`absolute w-[98%] p-2 rounded-lg flex flex-col justify-start overflow-hidden bg-card-dark border-l-4 ${theme.borderPrimary} shadow-md cursor-pointer hover:bg-card-dark/80 transition-colors z-10`}
             style={{
-                top: `${appointment.top}px`,
-                height: `${appointment.height}px`,
-                left: `${appointment.left}%`, // Usa left calculado
-                width: `${appointment.width}%`, // Usa width calculado
+                top: `${top}px`,
+                height: `${height}px`,
+                left: '1%',
             }}
         >
             {/* Nome do Cliente (Sempre no topo) */}
@@ -159,81 +154,6 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
         </motion.div>
     );
 };
-
-// Função para calcular o layout de agendamentos sobrepostos
-const calculateAppointmentLayout = (appointments: Appointment[], startHour: number): AppointmentWithLayout[] => {
-    if (appointments.length === 0) return [];
-
-    // 1. Calcular posições verticais iniciais
-    const appointmentsWithPos = appointments.map(appt => {
-        const startMinutes = new Date(appt.startTime).getHours() * 60 + new Date(appt.startTime).getMinutes();
-        const top = (startMinutes - startHour * 60) * MINUTE_HEIGHT;
-        const height = appt.duration_minutes * MINUTE_HEIGHT - 2;
-        
-        return { ...appt, top, height, left: 0, width: 100 };
-    });
-
-    // 2. Detectar e resolver colisões
-    const resolvedAppointments: AppointmentWithLayout[] = [];
-    
-    // Ordena por horário de início para processamento sequencial
-    appointmentsWithPos.sort((a, b) => a.top - b.top);
-
-    for (let i = 0; i < appointmentsWithPos.length; i++) {
-        const current = appointmentsWithPos[i];
-        const overlappingGroup: AppointmentWithLayout[] = [current];
-
-        // Encontra todos os agendamentos que colidem com o atual
-        for (let j = i + 1; j < appointmentsWithPos.length; j++) {
-            const next = appointmentsWithPos[j];
-            
-            // Colisão ocorre se: (CurrentStart < NextEnd) AND (CurrentEnd > NextStart)
-            if (current.top < next.top + next.height && current.top + current.height > next.top) {
-                overlappingGroup.push(next);
-            }
-        }
-        
-        // Se houver sobreposição, resolve o layout para o grupo
-        if (overlappingGroup.length > 1) {
-            const groupSize = overlappingGroup.length;
-            const width = 100 / groupSize;
-            
-            // Atribui largura e posição horizontal para cada item do grupo
-            overlappingGroup.forEach((appt, index) => {
-                appt.width = width - 1; // Subtrai um pouco para espaçamento
-                appt.left = width * index + 0.5; // Adiciona 0.5% de margem
-                
-                // Marca os itens resolvidos para não processá-los novamente
-                if (!resolvedAppointments.includes(appt)) {
-                    resolvedAppointments.push(appt);
-                }
-            });
-            
-            // Pula os itens já processados no loop externo
-            i += groupSize - 1; 
-        } else {
-            // Sem sobreposição, usa 100% da largura
-            current.width = 98;
-            current.left = 1;
-            resolvedAppointments.push(current);
-        }
-    }
-    
-    // Nota: A lógica acima é simplificada e pode ter problemas com colisões complexas (A colide com B, B colide com C, mas A não colide com C).
-    // Para este caso, vamos usar uma abordagem mais simples de "coluna" que funciona bem para a maioria dos cenários de barbearia.
-    
-    // Vamos reverter para a lógica simples de 100% de largura, mas garantir que a verificação de conflito no BookingCalendar funcione.
-    // O problema aqui é apenas visual. A lógica de colisão é complexa e pode ser overkill.
-    // Vamos garantir que a lógica de layout seja simples (98% de largura) e focar na correção do BookingCalendar.
-    
-    // Revertendo para layout simples (98% de largura) e confiando na correção do BookingCalendar para evitar sobreposição.
-    return appointmentsWithPos.map(appt => ({
-        ...appt,
-        width: 98,
-        left: 1,
-    }));
-};
-
 
 interface AgendaProps {
     onAppointmentSelect: (appointment: Appointment) => void;
@@ -419,15 +339,15 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
         });
 
         const grouped = teamMembers.reduce((acc, member) => {
-            const memberAppointments = filteredAppointments.filter(a => a.barberId === member.id);
-            
-            // Calcula o layout para os agendamentos deste barbeiro
-            acc[member.id] = calculateAppointmentLayout(memberAppointments, startHour);
+            acc[member.id] = filteredAppointments.filter(a => a.barberId === member.id);
             return acc;
-        }, {} as Record<number, AppointmentWithLayout[]>);
+        }, {} as Record<number, Appointment[]>);
 
         return grouped;
-    }, [selectedDay, appointments, teamMembers, startOfSelectedWeek, startHour]);
+    }, [selectedDay, appointments, teamMembers, startOfSelectedWeek]);
+
+    // A variável isToday não é mais usada para o indicador, mas pode ser útil para outras lógicas
+    // const isToday = selectedDay === currentDayOfWeek && weekOffset === 0;
 
     if (loading) {
         return <div className="text-center p-10">Carregando agenda...</div>;
@@ -497,6 +417,8 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
                         );
                     })}
                     
+                    {/* Current Time Indicator (Removido) */}
+
                     {/* Appointment Columns */}
                     <div className="absolute inset-0 flex">
                         {teamMembers.map(member => (
