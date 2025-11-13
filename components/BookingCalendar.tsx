@@ -145,7 +145,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
 
     // --- Lógica de Cálculo de Slots Disponíveis (Otimizada) ---
     const availableSlots = useMemo(() => {
-        if (!settings || totalDuration === 0) return [];
+        if (!settings || totalDuration === 0 || !selectedDate) return [];
         
         const selectedDayIndex = selectedDate.getDay();
         const selectedDayStr = dayMap[selectedDayIndex];
@@ -164,6 +164,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
         // 1. Create a timeline of every minute of the day, marking it as busy or free.
+        // A timeline deve cobrir o dia inteiro (0 a 24*60)
         const dayTimeline = new Array(24 * 60).fill(false); // false = free, true = busy
 
         appointments
@@ -172,20 +173,28 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
                 const apptDate = new Date(a.startTime);
                 const start = apptDate.getHours() * 60 + apptDate.getMinutes();
                 const end = start + a.duration_minutes;
+                
+                // Marca o período do agendamento como ocupado
                 for (let i = start; i < end; i++) {
-                    dayTimeline[i] = true;
+                    if (i < dayTimeline.length) {
+                        dayTimeline[i] = true;
+                    }
                 }
             });
 
-        // 2. Iterate through possible slots and check against the timeline
+        // 2. Iterate through possible slots (starting at workStartMinutes) and check against the timeline
         for (let m = workStartMinutes; m < workEndMinutes; m += MINUTE_INTERVAL) {
             const slotStartMinutes = m;
             const slotEndMinutes = m + totalDuration;
 
+            // Verifica se o slot termina dentro do horário de trabalho
             if (slotEndMinutes > workEndMinutes) continue;
+            
+            // Verifica se o slot já passou (se for hoje)
             if (isToday && slotStartMinutes < currentMinutes) continue;
 
             let isConflict = false;
+            // Verifica se o período necessário para o serviço está livre na timeline
             for (let i = slotStartMinutes; i < slotEndMinutes; i++) {
                 if (dayTimeline[i]) {
                     isConflict = true;
@@ -243,6 +252,8 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
                     const isToday = day.toDateString() === new Date().toDateString();
                     const isSelected = day.toDateString() === selectedDate.toDateString();
                     const isOpen = settings?.open_days.includes(dayStr);
+                    
+                    // Verifica se o dia está no passado (apenas se não for hoje)
                     const isPast = day < new Date() && !isToday;
 
                     return (
