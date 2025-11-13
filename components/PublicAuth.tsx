@@ -44,6 +44,12 @@ const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme }) => {
         setError(null);
         
         if (mode === 'signup') {
+            if (!name.trim() || !phone.trim()) {
+                setError("Nome e Telefone são obrigatórios para o cadastro.");
+                setLoading(false);
+                return;
+            }
+            
             const { data, error } = await supabase.auth.signUp({ 
                 email, 
                 password,
@@ -109,8 +115,8 @@ const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme }) => {
             <form onSubmit={handleEmailAuth} className="space-y-4">
                 {mode === 'signup' && (
                     <>
-                        <AuthInput icon="person" type="text" placeholder="Seu Nome" value={name} onChange={e => setName(e.target.value)} required focusRingClass={theme.ringPrimary} />
-                        <AuthInput icon="phone" type="tel" placeholder="Telefone (Opcional)" value={phone} onChange={e => setPhone(e.target.value)} focusRingClass={theme.ringPrimary} />
+                        <AuthInput icon="person" type="text" placeholder="Seu Nome (Obrigatório)" value={name} onChange={e => setName(e.target.value)} required focusRingClass={theme.ringPrimary} />
+                        <AuthInput icon="phone" type="tel" placeholder="Telefone (Obrigatório)" value={phone} onChange={e => setPhone(e.target.value)} required focusRingClass={theme.ringPrimary} />
                     </>
                 )}
                 <AuthInput icon="mail" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={theme.ringPrimary} />
