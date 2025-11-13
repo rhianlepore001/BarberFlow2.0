@@ -86,6 +86,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
             console.log("[PublicBooking] Shop details fetched:", shopData);
             
             // 2. Fetch todos os membros da equipe para esta loja
+            console.log(`[PublicBooking] Attempting to fetch team members for shopId: ${shopId}`); // Log do shopId
             const { data: teamMembersData, error: teamMembersError } = await supabase
                 .from('team_members')
                 .select('id, name, role, image_url, shop_id')
@@ -99,7 +100,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                 return;
             }
             setAllTeamMembers(teamMembersData as TeamMember[]);
-            console.log("[PublicBooking] Team members fetched:", teamMembersData);
+            console.log("[PublicBooking] Team members fetched:", teamMembersData); // Log do resultado da busca
             
             // 3. Fetch Services para a loja
             const { data: servicesData, error: servicesError } = await supabase
