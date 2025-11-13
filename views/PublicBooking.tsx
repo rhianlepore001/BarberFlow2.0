@@ -7,10 +7,11 @@ import PublicAuth from '../components/PublicAuth';
 import BookingCalendar from '../components/BookingCalendar';
 import BookingServiceSelector from '../components/BookingServiceSelector';
 import BookingConfirmation from '../components/BookingConfirmation';
-import BookingBarberSelector from '../components/BookingBarberSelector'; // Importa o novo componente
+import BookingBarberSelector from '../components/BookingBarberSelector';
+import PublicProfileSetup from '../components/PublicProfileSetup'; // Importa o novo componente
 
 // Define os passos do fluxo de agendamento
-type BookingStep = 'auth' | 'selectBarber' | 'services' | 'calendar' | 'confirm'; // Adicionado 'selectBarber'
+type BookingStep = 'auth' | 'profileSetup' | 'selectBarber' | 'services' | 'calendar' | 'confirm'; // Adicionado 'profileSetup'
 
 interface PublicBookingProps {
     shopId: number; // Alterado de barberId para shopId
@@ -38,10 +39,21 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     // Função para verificar a sessão e definir o passo inicial
     const checkSessionAndSetStep = async () => {
         const { data: { session } } = await supabase.auth.getSession();
+        
         if (session) {
             setClientSession(session);
-            // Se já estiver logado, pula para a seleção de barbeiro
-            setStep('selectBarber');
+            
+            // Verifica se o perfil está completo (nome e telefone)
+            const name = session.user.user_metadata?.name;
+            const phone = session.user.user_metadata?.phone;
+            
+            if (!name || !phone) {
+                // Se faltar nome ou telefone, vai para a configuração de perfil
+                setStep('profileSetup');
+            } else {
+                // Se estiver completo, pula para a seleção de barbeiro
+                setStep('selectBarber');
+            }
         } else {
             setClientSession(null);
             setStep('auth');
@@ -58,8 +70,6 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                 setLoading(false);
                 return;
             }
-            
-            console.log("[PublicBooking] Fetching shop details for ID:", shopId);
             
             // 1. Buscar detalhes da loja
             const { data: shopData, error: shopError } = await supabase
@@ -83,10 +93,8 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
             }
             
             setShopDetails(shopData);
-            console.log("[PublicBooking] Shop details fetched:", shopData);
             
             // 2. Fetch todos os membros da equipe para esta loja
-            console.log(`[PublicBooking] Attempting to fetch team members for shopId: ${shopId}`); // Log do shopId
             const { data: teamMembersData, error: teamMembersError } = await supabase
                 .from('team_members')
                 .select('id, name, role, image_url, shop_id')
@@ -100,7 +108,6 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                 return;
             }
             setAllTeamMembers(teamMembersData as TeamMember[]);
-            console.log("[PublicBooking] Team members fetched:", teamMembersData); // Log do resultado da busca
             
             // 3. Fetch Services para a loja
             const { data: servicesData, error: servicesError } = await supabase
@@ -117,7 +124,6 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
             }
             
             setServices(servicesData as Service[]);
-            console.log("[PublicBooking] Services fetched:", servicesData);
             
             // 4. Check client session
             await checkSessionAndSetStep();
@@ -129,7 +135,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
         
         // 5. Listener para mudanças de autenticação (para reagir a logins/logouts)
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
                 // Quando o estado muda, reavalia a sessão e o passo
                 checkSessionAndSetStep();
             }
@@ -142,7 +148,21 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
 
     const handleAuthSuccess = (session: any) => {
         setClientSession(session);
-        setStep('selectBarber'); // Após o login, vai para a seleção de barbeiro
+        // Após o login, verifica se o perfil está completo
+        const name = session.user.user_metadata?.name;
+        const phone = session.user.user_metadata?.phone;
+        
+        if (!name || !phone) {
+            setStep('profileSetup');
+        } else {
+            setStep('selectBarber');
+        }
+    };
+    
+    const handleProfileSetupSuccess = () => {
+        // Força a atualização da sessão para garantir que os metadados estejam atualizados
+        supabase.auth.refreshSession(); 
+        setStep('selectBarber');
     };
     
     const handleSelectBarber = (barber: TeamMember) => {
@@ -176,6 +196,9 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
         switch (step) {
             case 'auth':
                 return <PublicAuth onAuthSuccess={handleAuthSuccess} theme={theme} />;
+            case 'profileSetup':
+                if (!clientSession) return null;
+                return <PublicProfileSetup session={clientSession} onSuccess={handleProfileSetupSuccess} theme={theme} />;
             case 'selectBarber':
                 return <BookingBarberSelector 
                             teamMembers={allTeamMembers} 
@@ -232,6 +255,11 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     // Determina o emoji com base no shopType (agora disponível no objeto shopDetails)
     const shopEmoji = shopDetails?.type === 'barbearia' ? '💈' : '✂️';
 
+    // Determina a imagem de perfil a ser exibida no topo
+    const profileImageUrl = selectedBarber?.image_url || clientSession?.user.user_metadata?.image_url || `https://ui-avatars.com/api/?name=${shopDetails?.name || 'FlowPro'}&background=${theme.themeColor}&color=101012`;
+    const profileName = selectedBarber ? `Agende com ${selectedBarber.name}` : `Agende em ${shopDetails?.name}`;
+    const profileSubtitle = selectedBarber ? `${selectedBarber.role} em ${shopDetails?.name}` : 'Seja bem-vindo(a)! Encontre o horário perfeito e faça seu agendamento.';
+
     return (
         <div className="min-h-screen bg-background-dark p-4 flex flex-col items-center">
             <motion.div 
@@ -240,18 +268,13 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                 className="w-full max-w-md bg-card-dark rounded-xl shadow-2xl p-6 space-y-6"
             >
                 <div className="text-center">
-                    {/* Se um barbeiro foi selecionado, mostra a imagem dele, senão, um ícone genérico */}
-                    {selectedBarber ? (
-                        <img src={selectedBarber.image_url} alt={selectedBarber.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-2 border-2 border-white/10" />
-                    ) : (
-                        <span className={`material-symbols-outlined ${theme.primary} text-6xl mx-auto mb-2`}>store</span>
-                    )}
+                    <img src={profileImageUrl} alt={profileName} className="w-20 h-20 rounded-full object-cover mx-auto mb-2 border-2 border-white/10" />
                     
                     <h1 className="text-2xl font-extrabold text-white">
-                        {selectedBarber ? `Agende com ${selectedBarber.name}` : `Agende em ${shopDetails?.name}`}
+                        {profileName}
                     </h1>
                     <p className="text-sm text-text-secondary-dark">
-                        {selectedBarber ? `${selectedBarber.role} em ${shopDetails?.name}` : 'Seja bem-vindo(a)! Encontre o horário perfeito e faça seu agendamento.'}
+                        {profileSubtitle}
                     </p>
                     
                     {/* Nome da Barbearia e Frase de Impacto */}

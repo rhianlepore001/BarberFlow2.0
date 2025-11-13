@@ -16,8 +16,9 @@ const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme }) => {
     const [error, setError] = useState<string | null>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
+    // Nome e telefone não são mais necessários aqui, pois serão coletados no PublicProfileSetup
+    // const [name, setName] = useState('');
+    // const [phone, setPhone] = useState('');
 
     const handleSocialAuth = async (provider: 'google' | 'facebook') => {
         setLoading(true);
@@ -44,22 +45,13 @@ const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme }) => {
         setError(null);
         
         if (mode === 'signup') {
-            if (!name.trim() || !phone.trim()) {
-                setError("Nome e Telefone são obrigatórios para o cadastro.");
-                setLoading(false);
-                return;
-            }
+            // A coleta de nome/telefone foi movida para o passo 'profileSetup'
             
             const { data, error } = await supabase.auth.signUp({ 
                 email, 
                 password,
-                options: {
-                    data: {
-                        name: name,
-                        phone: phone,
-                        // O trigger handle_client_signup cuidará de criar o registro na tabela clients
-                    }
-                }
+                // Não passamos mais 'name' e 'phone' aqui, pois o trigger handle_client_signup
+                // usará o email como fallback e o passo 'profileSetup' atualizará os dados.
             });
             
             if (error) {
@@ -113,19 +105,14 @@ const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme }) => {
             </div>
 
             <form onSubmit={handleEmailAuth} className="space-y-4">
-                {mode === 'signup' && (
-                    <>
-                        <AuthInput icon="person" type="text" placeholder="Seu Nome (Obrigatório)" value={name} onChange={e => setName(e.target.value)} required focusRingClass={theme.ringPrimary} />
-                        <AuthInput icon="phone" type="tel" placeholder="Telefone (Obrigatório)" value={phone} onChange={e => setPhone(e.target.value)} required focusRingClass={theme.ringPrimary} />
-                    </>
-                )}
+                {/* Campos de Nome e Telefone removidos daqui, serão coletados no passo 'profileSetup' */}
                 <AuthInput icon="mail" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={theme.ringPrimary} />
                 <AuthInput icon="lock" type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required focusRingClass={theme.ringPrimary} />
                 
                 {error && <p className="text-red-400 text-xs text-center">{error}</p>}
 
                 <button type="submit" disabled={loading} className={`w-full ${theme.bgPrimary} text-background-dark font-bold py-3 rounded-full hover:${theme.bgPrimary}/80 transition-colors disabled:opacity-50`}>
-                    {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar' : 'Cadastrar e Agendar')}
+                    {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar' : 'Cadastrar e Continuar')}
                 </button>
             </form>
             
