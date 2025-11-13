@@ -143,7 +143,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     }, [settings, loading, weekOffset, weekDays]);
 
 
-    // --- Lógica de Cálculo de Slots Disponíveis (Otimizada e Reforçada) ---
+    // --- Lógica de Cálculo de Slots Disponíveis (Verificação de Conflito de Intervalos) ---
     const availableSlots = useMemo(() => {
         if (!settings || totalDuration === 0) return [];
         
@@ -168,8 +168,6 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
             new Date(a.startTime).toDateString() === selectedDate.toDateString()
         );
         
-        // console.log("Appointments for selected day:", appointmentsForSelectedDay);
-
         // 2. Iterar por todos os possíveis slots de início
         for (let m = workStartMinutes; m <= workEndMinutes - totalDuration; m += MINUTE_INTERVAL) {
             const slotStartMinutes = m;
@@ -186,14 +184,10 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
                 const apptStartMinutes = apptDate.getHours() * 60 + apptDate.getMinutes();
                 const apptEndMinutes = apptStartMinutes + appt.duration_minutes;
                 
-                // console.log(`Checking slot ${slotStartMinutes}-${slotEndMinutes} against appt ${apptStartMinutes}-${apptEndMinutes}`);
-                
-                // Verificar se há sobreposição
-                // Sobreposição ocorre se: (SlotStart < ApptEnd) AND (SlotEnd > ApptStart)
+                // Conflito ocorre se: (SlotStart < ApptEnd) AND (SlotEnd > ApptStart)
                 if (slotStartMinutes < apptEndMinutes && slotEndMinutes > apptStartMinutes) {
-                    // console.log("Conflict found!");
                     isSlotAvailable = false;
-                    break; // Sai do loop interno assim que encontra um conflito
+                    break; 
                 }
             }
             
@@ -205,7 +199,6 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
             }
         }
 
-        // console.log("Available slots:", slots);
         return slots;
     }, [selectedDate, appointments, settings, totalDuration]);
 
