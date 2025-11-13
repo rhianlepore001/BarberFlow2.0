@@ -164,9 +164,10 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
         // 1. Obter agendamentos do barbeiro para o dia selecionado
-        const appointmentsForSelectedDay = appointments.filter(a => 
-            new Date(a.startTime).toDateString() === selectedDate.toDateString()
-        );
+        const appointmentsForSelectedDay = appointments.filter(a => {
+            // Compara apenas a parte da data (YYYY-MM-DD) para evitar problemas de fuso horário
+            return a.startTime.split('T')[0] === selectedDate.toISOString().split('T')[0];
+        });
         
         // 2. Iterar por todos os possíveis slots de início
         for (let m = workStartMinutes; m <= workEndMinutes - totalDuration; m += MINUTE_INTERVAL) {
@@ -181,7 +182,9 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
             // 3. Verificar conflito com cada agendamento existente
             for (const appt of appointmentsForSelectedDay) {
                 const apptDate = new Date(appt.startTime);
-                const apptStartMinutes = apptDate.getHours() * 60 + apptDate.getMinutes();
+                
+                // *** CORREÇÃO CRÍTICA: Usar getUTCHours/Minutes para garantir que o tempo seja o mesmo do BD (que é UTC) ***
+                const apptStartMinutes = apptDate.getUTCHours() * 60 + apptDate.getUTCMinutes();
                 const apptEndMinutes = apptStartMinutes + appt.duration_minutes;
                 
                 // Conflito ocorre se: (SlotStart < ApptEnd) AND (SlotEnd > ApptStart)
