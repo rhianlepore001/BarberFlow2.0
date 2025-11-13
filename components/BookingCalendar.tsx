@@ -172,8 +172,13 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
                 const apptDate = new Date(a.startTime);
                 const start = apptDate.getHours() * 60 + apptDate.getMinutes();
                 const end = start + a.duration_minutes;
+                
+                // Mark the entire duration as busy
                 for (let i = start; i < end; i++) {
-                    dayTimeline[i] = true;
+                    // Ensure we don't go past the 24*60 limit
+                    if (i < 24 * 60) {
+                        dayTimeline[i] = true;
+                    }
                 }
             });
 
@@ -182,10 +187,14 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
             const slotStartMinutes = m;
             const slotEndMinutes = m + totalDuration;
 
+            // Check if the required duration exceeds working hours
             if (slotEndMinutes > workEndMinutes) continue;
+            
+            // Check if the slot is in the past (only for today)
             if (isToday && slotStartMinutes < currentMinutes) continue;
 
             let isConflict = false;
+            // Check every minute required for the service duration
             for (let i = slotStartMinutes; i < slotEndMinutes; i++) {
                 if (dayTimeline[i]) {
                     isConflict = true;
