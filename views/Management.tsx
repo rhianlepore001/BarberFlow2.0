@@ -64,7 +64,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     const [settings, setSettings] = useState<ShopSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
-    const [copyMessage, setCopyMessage] = useState<{ id: number, message: string } | null>(null);
+    const [copyMessage, setCopyMessage] = useState<string | null>(null); // Alterado para mensagem única
     const theme = useTheme(user); // Usa o hook de tema
 
     useEffect(() => {
@@ -152,21 +152,16 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
         }
     };
     
-    const handleCopyLink = (memberId: number, memberName: string) => {
-        // Gera o URL completo usando o domínio atual (que pode ser localhost ou o domínio do AI Studio)
+    const handleCopyGeneralLink = () => {
         const baseUrl = window.location.origin;
-        const link = `${baseUrl}/book/${memberId}`;
+        const link = `${baseUrl}/public-booking/${user.shopId}`;
         
         navigator.clipboard.writeText(link).then(() => {
-            // Mensagem mais clara para o usuário
-            const message = `Link de ${memberName.split(' ')[0]} copiado! (Use este link completo)`;
-            setCopyMessage({ id: memberId, message });
-            setActiveMenu(null);
+            setCopyMessage('Link de agendamento geral copiado!');
             setTimeout(() => setCopyMessage(null), 5000);
         }).catch(err => {
             console.error('Failed to copy link:', err);
-            setCopyMessage({ id: memberId, message: 'Falha ao copiar o link.' });
-            setActiveMenu(null);
+            setCopyMessage('Falha ao copiar o link.');
             setTimeout(() => setCopyMessage(null), 3000);
         });
     };
@@ -243,6 +238,32 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                 </div>
             </motion.div>
 
+            {/* NOVO: Seção de Link de Agendamento Geral */}
+            <motion.div variants={itemVariants}>
+                <div className="flex justify-between items-center mb-3 px-1">
+                    <h4 className="text-lg font-bold">Agendamento Online</h4>
+                </div>
+                <div className="rounded-xl bg-card-dark p-4">
+                    <p className="text-sm text-text-secondary-dark mb-3">
+                        Compartilhe este link com seus clientes para que eles possam agendar online e escolher o profissional.
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="text" 
+                            readOnly 
+                            value={`${window.location.origin}/public-booking/${user.shopId}`} 
+                            className="flex-grow bg-background-dark border border-gray-700 rounded-lg py-2 px-3 text-white text-sm truncate"
+                        />
+                        <button 
+                            onClick={handleCopyGeneralLink}
+                            className={`flex-shrink-0 ${theme.bgPrimary} text-background-dark font-bold py-2 px-4 rounded-lg hover:${theme.bgPrimary}/80 transition-colors`}
+                        >
+                            Copiar
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
                     <h4 className="text-lg font-bold">Acerto Mensal</h4>
@@ -295,13 +316,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                             transition={{ duration: 0.15, ease: 'easeOut' }}
                                             className="absolute top-full right-0 mt-1 w-48 bg-background-dark rounded-lg shadow-lg border border-white/10 z-20"
                                         >
-                                            <button
-                                                onClick={() => handleCopyLink(member.id, member.name)}
-                                                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
-                                            >
-                                                <span className="material-symbols-outlined text-base">link</span>
-                                                Copiar Link de Agendamento
-                                            </button>
+                                            {/* Removido o botão de copiar link individual */}
                                             <button
                                                 onClick={() => {
                                                     openModal('editCommission', member);
@@ -348,7 +363,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                             exit={{ opacity: 0, y: 50 }}
                             className="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-xl z-50 text-sm font-semibold"
                         >
-                            {copyMessage.message}
+                            {copyMessage}
                         </motion.div>
                     )}
                 </AnimatePresence>

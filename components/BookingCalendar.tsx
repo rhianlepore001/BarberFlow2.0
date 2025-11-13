@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { TeamMember, Service } from '../types';
+import type { TeamMember, Service, Appointment } from '../types';
 import { useTheme } from '../hooks/useTheme';
 
 interface BookingCalendarProps {
-    barber: TeamMember;
+    selectedBarber: TeamMember; // Alterado de 'barber' para 'selectedBarber'
     selectedServices: Service[];
     totalDuration: number;
     onTimeSelect: (date: Date, time: string) => void;
@@ -24,7 +24,7 @@ const getStartOfWeek = (date: Date): Date => {
     return d;
 };
 
-const BookingCalendar: React.FC<BookingCalendarProps> = ({ barber, totalDuration, onTimeSelect, onBack, theme }) => {
+const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, totalDuration, onTimeSelect, onBack, theme }) => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -32,7 +32,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ barber, totalDuration
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const shopId = barber.shop_id;
+    const shopId = selectedBarber.shop_id; // Pega o shopId do barbeiro selecionado
     
     // Mapeamento de dias da semana (0=Dom, 6=Sáb) para strings do BD
     const dayMap: Record<number, string> = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' };
@@ -85,7 +85,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ barber, totalDuration
             const { data: appointmentsData, error: appointmentsError } = await supabase
                 .from('appointments')
                 .select('*')
-                .eq('barber_id', barber.id) // Filtra apenas os agendamentos deste barbeiro
+                .eq('barber_id', selectedBarber.id) // Filtra apenas os agendamentos deste barbeiro
                 .gte('start_time', startOfWeekISO)
                 .lte('start_time', endOfWeekISO)
                 .order('start_time');
@@ -100,7 +100,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ barber, totalDuration
             setLoading(false);
         };
         fetchData();
-    }, [shopId, barber.id, currentWeekStart]);
+    }, [shopId, selectedBarber.id, currentWeekStart]); // Depende de selectedBarber.id e shopId
     
     // Define o dia selecionado como o primeiro dia aberto da semana atual
     useEffect(() => {

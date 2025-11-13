@@ -7,17 +7,20 @@ import PublicAuth from '../components/PublicAuth';
 import BookingCalendar from '../components/BookingCalendar';
 import BookingServiceSelector from '../components/BookingServiceSelector';
 import BookingConfirmation from '../components/BookingConfirmation';
+import BookingBarberSelector from '../components/BookingBarberSelector'; // Importa o novo componente
 
 // Define os passos do fluxo de agendamento
-type BookingStep = 'auth' | 'services' | 'calendar' | 'confirm';
+type BookingStep = 'auth' | 'selectBarber' | 'services' | 'calendar' | 'confirm'; // Adicionado 'selectBarber'
 
 interface PublicBookingProps {
-    barberId: number;
+    shopId: number; // Alterado de barberId para shopId
 }
 
-const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
+const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const [step, setStep] = useState<BookingStep>('auth');
-    const [barber, setBarber] = useState<TeamMember | null>(null);
+    const [shopDetails, setShopDetails] = useState<{ name: string, type: 'barbearia' | 'salao' } | null>(null);
+    const [allTeamMembers, setAllTeamMembers] = useState<TeamMember[]>([]); // Todos os membros da equipe
+    const [selectedBarber, setSelectedBarber] = useState<TeamMember | null>(null); // Barbeiro selecionado pelo cliente
     const [services, setServices] = useState<Service[]>([]);
     const [selectedServices, setSelectedServices] = useState<Service[]>([]);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -37,8 +40,8 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
             setClientSession(session);
-            // Se já estiver logado, pula para a seleção de serviços
-            setStep('services');
+            // Se já estiver logado, pula para a seleção de barbeiro
+            setStep('selectBarber');
         } else {
             setClientSession(null);
             setStep('auth');
@@ -46,46 +49,19 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
     };
 
     useEffect(() => {
-        const fetchBarberAndServices = async () => {
+        const fetchShopDetailsAndData = async () => {
             setLoading(true);
             setError(null); // Limpa erros anteriores
 
-            if (isNaN(barberId) || barberId <= 0) {
-                setError("ID do barbeiro inválido na URL.");
+            if (isNaN(shopId) || shopId <= 0) {
+                setError("ID da loja inválido na URL.");
                 setLoading(false);
                 return;
             }
             
-            console.log("[PublicBooking] Fetching barber with ID:", barberId);
-            // 1. Buscar o barbeiro específico
-            const { data: barberData, error: barberError } = await supabase
-                .from('team_members')
-                .select('id, name, role, image_url, shop_id')
-                .eq('id', barberId)
-                .limit(1);
-
-            if (barberError) {
-                console.error("[PublicBooking] Erro ao buscar barbeiro específico:", barberError);
-                setError(`Falha ao carregar o barbeiro: ${barberError.message || 'Erro desconhecido'}.`);
-                setLoading(false);
-                return;
-            }
+            console.log("[PublicBooking] Fetching shop details for ID:", shopId);
             
-            if (!barberData || barberData.length === 0) {
-                setError("Barbeiro não encontrado. Verifique se o ID do link está correto ou se o barbeiro foi removido.");
-                setLoading(false);
-                return;
-            }
-            
-            const barber = barberData[0];
-            const shopId = barber.shop_id;
-            console.log("[PublicBooking] Barber fetched:", barber); // Log do barbeiro
-            console.log("[PublicBooking] Shop ID:", shopId); // Log do shopId
-            
-            // 2. Fetch Shop details (separadamente)
-            let shopName = 'Barbearia';
-            let shopType: 'barbearia' | 'salao' = 'barbearia';
-            
+            // 1. Buscar detalhes da loja
             const { data: shopData, error: shopError } = await supabase
                 .from('shops')
                 .select('name, type')
@@ -94,22 +70,38 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 .single();
                 
             if (shopError) {
-                console.warn("[PublicBooking] Erro ao buscar detalhes da loja (usando default):", shopError);
-            } else if (shopData) {
-                shopName = shopData.name;
-                shopType = (shopData.type as 'barbearia' | 'salao') || 'barbearia';
+                console.error("[PublicBooking] Erro ao buscar detalhes da loja:", shopError);
+                setError(`Falha ao carregar a loja: ${shopError.message || 'Erro desconhecido'}.`);
+                setLoading(false);
+                return;
             }
             
-            const fullBarberData: TeamMember = {
-                ...(barber as TeamMember),
-                shopName: shopName, 
-                shopType: shopType,
-                commissionRate: 0.5, // Default, não usado na tela pública
-            };
+            if (!shopData) {
+                setError("Loja não encontrada. Verifique se o ID do link está correto ou se a loja foi removida.");
+                setLoading(false);
+                return;
+            }
             
-            setBarber(fullBarberData);
+            setShopDetails(shopData);
+            console.log("[PublicBooking] Shop details fetched:", shopData);
             
-            // 3. Fetch Services for the shop
+            // 2. Fetch todos os membros da equipe para esta loja
+            const { data: teamMembersData, error: teamMembersError } = await supabase
+                .from('team_members')
+                .select('id, name, role, image_url, shop_id')
+                .eq('shop_id', shopId)
+                .order('name');
+
+            if (teamMembersError) {
+                console.error("[PublicBooking] Erro ao buscar membros da equipe:", teamMembersError);
+                setError(`Falha ao carregar a equipe: ${teamMembersError.message || 'Erro desconhecido'}.`);
+                setLoading(false);
+                return;
+            }
+            setAllTeamMembers(teamMembersData as TeamMember[]);
+            console.log("[PublicBooking] Team members fetched:", teamMembersData);
+            
+            // 3. Fetch Services para a loja
             const { data: servicesData, error: servicesError } = await supabase
                 .from('services')
                 .select('*')
@@ -124,7 +116,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
             }
             
             setServices(servicesData as Service[]);
-            console.log("[PublicBooking] Services fetched:", servicesData); // Log dos serviços
+            console.log("[PublicBooking] Services fetched:", servicesData);
             
             // 4. Check client session
             await checkSessionAndSetStep();
@@ -132,7 +124,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
             setLoading(false);
         };
         
-        fetchBarberAndServices();
+        fetchShopDetailsAndData();
         
         // 5. Listener para mudanças de autenticação (para reagir a logins/logouts)
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -145,13 +137,18 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
         return () => {
             authListener?.subscription.unsubscribe();
         };
-    }, [barberId]);
-    
+    }, [shopId]); // Depende de shopId
+
     const handleAuthSuccess = (session: any) => {
         setClientSession(session);
-        setStep('services');
+        setStep('selectBarber'); // Após o login, vai para a seleção de barbeiro
     };
     
+    const handleSelectBarber = (barber: TeamMember) => {
+        setSelectedBarber(barber);
+        setStep('services');
+    };
+
     const handleServiceSelect = (services: Service[]) => {
         setSelectedServices(services);
         setStep('calendar');
@@ -164,29 +161,39 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
     };
     
     const handleBookingSuccess = () => {
-        // Redirecionar ou mostrar mensagem de sucesso
         alert("Agendamento realizado com sucesso!");
-        setStep('services'); // Volta para o início do fluxo de agendamento
+        setStep('selectBarber'); // Volta para a seleção de barbeiro para um novo agendamento
         setSelectedServices([]);
         setSelectedDate(null);
         setSelectedTime(null);
+        setSelectedBarber(null); // Limpa o barbeiro selecionado
     };
     
     const renderStep = () => {
-        if (!barber) return null;
+        if (!shopDetails) return null; // Garante que os detalhes da loja foram carregados
         
         switch (step) {
             case 'auth':
                 return <PublicAuth onAuthSuccess={handleAuthSuccess} theme={theme} />;
+            case 'selectBarber':
+                return <BookingBarberSelector 
+                            teamMembers={allTeamMembers} 
+                            onSelectBarber={handleSelectBarber} 
+                            theme={theme} 
+                        />;
             case 'services':
+                // Só mostra os serviços se um barbeiro foi selecionado
+                if (!selectedBarber) return null; 
                 return <BookingServiceSelector 
                             services={services} 
                             onNext={handleServiceSelect} 
                             theme={theme}
                         />;
             case 'calendar':
+                // Só mostra o calendário se um barbeiro e serviços foram selecionados
+                if (!selectedBarber || selectedServices.length === 0) return null;
                 return <BookingCalendar 
-                            barber={barber}
+                            selectedBarber={selectedBarber} // Passa o barbeiro selecionado
                             selectedServices={selectedServices}
                             totalDuration={totalDuration}
                             onTimeSelect={handleTimeSelect}
@@ -194,8 +201,10 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                             theme={theme}
                         />;
             case 'confirm':
+                // Só mostra a confirmação se todos os dados foram selecionados
+                if (!selectedBarber || !clientSession || selectedServices.length === 0 || !selectedDate || !selectedTime) return null;
                 return <BookingConfirmation 
-                            barber={barber}
+                            selectedBarber={selectedBarber} // Passa o barbeiro selecionado
                             clientSession={clientSession}
                             selectedServices={selectedServices}
                             totalDuration={totalDuration}
@@ -219,8 +228,8 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
         return <div className="flex justify-center items-center h-screen text-red-400 text-center p-4">{error}</div>;
     }
     
-    // Determina o emoji com base no shopType (agora disponível no objeto barber)
-    const shopEmoji = barber?.shopType === 'barbearia' ? '💈' : '✂️';
+    // Determina o emoji com base no shopType (agora disponível no objeto shopDetails)
+    const shopEmoji = shopDetails?.type === 'barbearia' ? '💈' : '✂️';
 
     return (
         <div className="min-h-screen bg-background-dark p-4 flex flex-col items-center">
@@ -230,13 +239,24 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ barberId }) => {
                 className="w-full max-w-md bg-card-dark rounded-xl shadow-2xl p-6 space-y-6"
             >
                 <div className="text-center">
-                    <img src={barber?.image_url} alt={barber?.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-2 border-2 border-white/10" />
-                    <h1 className="text-2xl font-extrabold text-white">Agende com {barber?.name}</h1>
-                    <p className="text-sm text-text-secondary-dark">{barber?.role} em {barber?.shopName || 'Barbearia'}</p>
+                    {/* Se um barbeiro foi selecionado, mostra a imagem dele, senão, um ícone genérico */}
+                    {selectedBarber ? (
+                        <img src={selectedBarber.image_url} alt={selectedBarber.name} className="w-20 h-20 rounded-full object-cover mx-auto mb-2 border-2 border-white/10" />
+                    ) : (
+                        <span className={`material-symbols-outlined ${theme.primary} text-6xl mx-auto mb-2`}>store</span>
+                    )}
                     
-                    {/* NOVO: Nome da Barbearia e Frase de Impacto */}
-                    <h2 className={`text-xl font-bold mt-4 ${theme.primary}`}>{barber?.shopName} {shopEmoji}</h2>
-                    <p className="text-sm text-text-secondary-dark">Seja bem-vindo(a)! Encontre o horário perfeito e faça seu agendamento.</p>
+                    <h1 className="text-2xl font-extrabold text-white">
+                        {selectedBarber ? `Agende com ${selectedBarber.name}` : `Agende em ${shopDetails?.name}`}
+                    </h1>
+                    <p className="text-sm text-text-secondary-dark">
+                        {selectedBarber ? `${selectedBarber.role} em ${shopDetails?.name}` : 'Seja bem-vindo(a)! Encontre o horário perfeito e faça seu agendamento.'}
+                    </p>
+                    
+                    {/* Nome da Barbearia e Frase de Impacto */}
+                    {!selectedBarber && ( // Só mostra se nenhum barbeiro foi selecionado ainda
+                        <h2 className={`text-xl font-bold mt-4 ${theme.primary}`}>{shopDetails?.name} {shopEmoji}</h2>
+                    )}
                 </div>
                 
                 {renderStep()}

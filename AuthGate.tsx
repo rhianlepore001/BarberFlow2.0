@@ -8,18 +8,19 @@ import PublicBooking from './views/PublicBooking'; // Importa a nova view
 const AuthGate: React.FC = () => {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
-    const [publicBarberId, setPublicBarberId] = useState<number | null>(null);
+    const [publicShopId, setPublicShopId] = useState<number | null>(null); // Alterado de publicBarberId para publicShopId
 
     useEffect(() => {
         // Verifica a URL para a rota pública
         const path = window.location.pathname;
-        const match = path.match(/^\/book\/(\d+)$/);
+        // Nova regex para /public-booking/:shopId
+        const match = path.match(/^\/public-booking\/(\d+)$/);
         const isPublicRoute = !!match;
         
         if (isPublicRoute) {
-            setPublicBarberId(parseInt(match[1]));
+            setPublicShopId(parseInt(match[1]));
         } else {
-            setPublicBarberId(null);
+            setPublicShopId(null);
         }
         
         const getSession = async () => {
@@ -50,8 +51,8 @@ const AuthGate: React.FC = () => {
     }
     
     // Se for uma rota pública, renderiza o PublicBooking
-    if (publicBarberId !== null) {
-        return <PublicBooking barberId={publicBarberId} />;
+    if (publicShopId !== null) {
+        return <PublicBooking shopId={publicShopId} />; // Passa shopId para PublicBooking
     }
 
     // Se não for rota pública, segue o fluxo normal de autenticação do dashboard

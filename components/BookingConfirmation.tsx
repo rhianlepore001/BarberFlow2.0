@@ -5,7 +5,7 @@ import type { TeamMember, Service } from '../types';
 import { useTheme } from '../hooks/useTheme';
 
 interface BookingConfirmationProps {
-    barber: TeamMember;
+    selectedBarber: TeamMember; // Alterado de 'barber' para 'selectedBarber'
     clientSession: any;
     selectedServices: Service[];
     totalDuration: number;
@@ -20,7 +20,7 @@ interface BookingConfirmationProps {
 const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
 const BookingConfirmation: React.FC<BookingConfirmationProps> = ({ 
-    barber, 
+    selectedBarber, // Usa selectedBarber
     clientSession, 
     selectedServices, 
     totalDuration, 
@@ -70,7 +70,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
         if (!clientData.shop_id) {
             const { error: updateClientError } = await supabase
                 .from('clients')
-                .update({ shop_id: barber.shop_id })
+                .update({ shop_id: selectedBarber.shop_id }) // Usa selectedBarber.shop_id
                 .eq('id', clientData.id);
                 
             if (updateClientError) {
@@ -81,11 +81,11 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
         
         const appointmentData = {
             start_time: start_time,
-            barber_id: barber.id,
+            barber_id: selectedBarber.id, // Usa selectedBarber.id
             client_id: clientData.id, // Usamos o ID da tabela clients
             duration_minutes: totalDuration, 
             services_json: servicesToSave,
-            shop_id: barber.shop_id,
+            shop_id: selectedBarber.shop_id, // Usa selectedBarber.shop_id
         };
         
         // 3. Inserir Agendamento
@@ -120,7 +120,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
                 <div className="flex items-center gap-3">
                     <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>content_cut</span>
                     <div>
-                        <p className="font-bold text-white">{barber.name}</p>
+                        <p className="font-bold text-white">{selectedBarber.name}</p> {/* Usa selectedBarber.name */}
                         <p className="text-sm text-text-secondary-dark">Seu profissional</p>
                     </div>
                 </div>
