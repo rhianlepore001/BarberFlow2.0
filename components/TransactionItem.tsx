@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { Transaction, User } from '../types';
@@ -7,7 +7,7 @@ import { useTheme } from '../hooks/useTheme';
 interface TransactionItemProps {
     transaction: Transaction;
     onDeleteSuccess: () => void;
-    user: User; // Adiciona user para obter o tema
+    user: User;
 }
 
 const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDeleteSuccess, user }) => {
@@ -38,7 +38,6 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
         setError(null);
         setIsMenuOpen(false);
 
-        // RLS garante que apenas membros do shop possam deletar
         const { error: deleteError } = await supabase.from('transactions').delete().eq('id', transaction.id);
 
         if (deleteError) {
@@ -105,4 +104,4 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
     );
 };
 
-export default TransactionItem;
+export default memo(TransactionItem);

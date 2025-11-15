@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Session } from '@supabase/supabase-js';
 
@@ -10,32 +10,43 @@ import { useTheme } from '@/hooks/useTheme';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
-import Home from './views/Home';
-import Agenda from './views/Agenda';
-import Clients from './views/Clients';
-import CashFlow from './views/CashFlow';
-import Management from './views/Management';
-import Analysis from './views/Analysis';
 import Modal from './components/Modal';
-import NewAppointmentForm from './components/forms/NewAppointmentForm';
-import NewClientForm from './components/forms/NewClientForm';
-import NewTransactionForm from './components/forms/NewTransactionForm';
-import NewTeamMemberForm from './components/forms/NewTeamMemberForm';
-import NewServiceForm from './components/forms/NewServiceForm';
-import EditProfileForm from './components/forms/EditProfileForm';
-import EditWorkingHoursForm from './components/forms/EditWorkingHoursForm';
-import EditTeamMemberForm from './components/forms/EditTeamMemberForm';
-import EditCommissionForm from './components/forms/EditCommissionForm';
-import AppointmentDetailsModal from './components/AppointmentDetailsModal';
-import EditDailyGoalForm from './components/forms/EditDailyGoalForm';
-import ClientDetailsModal from './components/ClientDetailsModal';
-import EditSettlementDayForm from './components/forms/EditSettlementDayForm';
+
+// Lazy load views
+const Home = lazy(() => import('./views/Home'));
+const Agenda = lazy(() => import('./views/Agenda'));
+const Clients = lazy(() => import('./views/Clients'));
+const CashFlow = lazy(() => import('./views/CashFlow'));
+const Management = lazy(() => import('./views/Management'));
+const Analysis = lazy(() => import('./views/Analysis'));
+
+// Lazy load forms for the modal
+const NewAppointmentForm = lazy(() => import('./components/forms/NewAppointmentForm'));
+const NewClientForm = lazy(() => import('./components/forms/NewClientForm'));
+const NewTransactionForm = lazy(() => import('./components/forms/NewTransactionForm'));
+const NewTeamMemberForm = lazy(() => import('./components/forms/NewTeamMemberForm'));
+const NewServiceForm = lazy(() => import('./components/forms/NewServiceForm'));
+const EditProfileForm = lazy(() => import('./components/forms/EditProfileForm'));
+const EditWorkingHoursForm = lazy(() => import('./components/forms/EditWorkingHoursForm'));
+const EditTeamMemberForm = lazy(() => import('./components/forms/EditTeamMemberForm'));
+const EditCommissionForm = lazy(() => import('./components/forms/EditCommissionForm'));
+const AppointmentDetailsModal = lazy(() => import('./components/AppointmentDetailsModal'));
+const EditDailyGoalForm = lazy(() => import('./components/forms/EditDailyGoalForm'));
+const ClientDetailsModal = lazy(() => import('./components/ClientDetailsModal'));
+const EditSettlementDayForm = lazy(() => import('./components/forms/EditSettlementDayForm'));
+
 
 type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails' | 'editSettlementDay';
 
 interface AppProps {
     session: Session;
 }
+
+const LoadingSpinner: React.FC = () => (
+    <div className="flex justify-center items-center h-full w-full p-10">
+        <p>Carregando...</p>
+    </div>
+);
 
 const App: React.FC<AppProps> = ({ session }) => {
     const [activeView, setActiveView] = useState<View>('inicio');
@@ -50,7 +61,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [dailyGoal, setDailyGoal] = useState(500);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     
-    const theme = useTheme(user); // Inicializa o hook de tema
+    const theme = useTheme(user);
 
     const refreshData = () => setDataVersion(v => v + 1);
 
@@ -67,7 +78,6 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
 
-            // 1. Fetch team member data (which includes shop_id)
             const { data: memberData, error: memberError } = await supabase
                 .from('team_members')
                 .select('name, image_url, shop_id')
@@ -79,13 +89,10 @@ const App: React.FC<AppProps> = ({ session }) => {
             let name = session.user.email?.split('@')[0] || "Usuário";
             let imageUrl = "";
             let shopId: number | null = null;
-            let shopType: 'barbearia' | 'salao' = 'barbearia'; // Default
+            let shopType: 'barbearia' | 'salao' = 'barbearia';
 
-            if (memberError) {
-                // PGRST116: No rows found (pode ser um novo usuário que o trigger ainda não processou)
-                if (memberError.code !== 'PGRST116') {
-                    console.error("Error fetching user profile from DB:", memberError.message);
-                }
+            if (memberError && memberError.code !== 'PGRST116') {
+                console.error("Error fetching user profile from DB:", memberError.message);
             }
 
             if (memberData) {
@@ -94,43 +101,37 @@ const App: React.FC<AppProps> = ({ session }) => {
                 imageUrl = imageUrlWithCacheBust;
                 shopId = memberData.shop_id;
             } else {
-                 // Fallback for users who signed up via OAuth without custom metadata
                 const metadataName = session.user.user_metadata?.name;
                 const metadataImageUrl = session.user.user_metadata?.image_url;
-
                 if (metadataName) name = metadataName;
                 if (metadataImageUrl) imageUrl = `${metadataImageUrl.split('?')[0]}?t=${new Date().getTime()}`;
             }
             
-            // 2. Fetch shop name and Daily Goal if shopId exists
             if (shopId) {
                 const [shopRes, settingsRes] = await Promise.all([
-                    // Adiciona 'type' na busca da loja
                     supabase.from('shops').select('name, type').eq('id', shopId).limit(1).single(),
                     supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
                 ]);
                 
                 if (shopRes.data) {
                     shopName = shopRes.data.name;
-                    shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia'; // Captura o tipo
+                    shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
                 }
                 
                 if (settingsRes.data && settingsRes.data.daily_goal !== null) {
                     setDailyGoal(settingsRes.data.daily_goal);
                 } else {
-                    setDailyGoal(500); // Default fallback
+                    setDailyGoal(500);
                 }
             }
 
             if (!shopId) {
-                // Se o shopId ainda for nulo, tentamos novamente se não excedeu o limite
                 if (profileLoadAttempts < MAX_ATTEMPTS) {
-                    console.warn(`Shop ID not found. Retrying in 1 second... (Attempt ${profileLoadAttempts + 1}/${MAX_ATTEMPTS})`);
+                    console.warn(`Shop ID not found. Retrying... (Attempt ${profileLoadAttempts + 1})`);
                     setProfileLoadAttempts(prev => prev + 1);
                     setTimeout(fetchUserProfile, 1000);
                 } else {
-                    console.error("FATAL: User does not have an associated shop ID after multiple attempts. Forcing logout.");
-                    // Se falhar após MAX_ATTEMPTS, forçamos o logout para voltar à tela de AuthScreen
+                    console.error("FATAL: Could not associate user with a shop. Forcing logout.");
                     await handleLogout(); 
                     setUser(null);
                     setIsInitialLoading(false);
@@ -138,13 +139,12 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
 
-            const finalUser: User = { name, imageUrl, shopName, shopId, shopType }; // Adiciona shopType
+            const finalUser: User = { name, imageUrl, shopName, shopId, shopType };
             setUser(finalUser);
-            setProfileLoadAttempts(0); // Reset attempts on success
+            setProfileLoadAttempts(0);
             setIsInitialLoading(false);
         };
         
-        // Inicia a busca ou repetição
         fetchUserProfile();
     }, [session, dataVersion, profileLoadAttempts]);
     
@@ -197,20 +197,9 @@ const App: React.FC<AppProps> = ({ session }) => {
         if (!user) return null;
         switch (activeView) {
             case 'inicio':
-                return <Home 
-                            user={user} 
-                            dataVersion={dataVersion} 
-                            setActiveView={setActiveView} 
-                            openModal={openModal} 
-                            onAppointmentSelect={handleAppointmentSelect}
-                        />;
+                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} openModal={openModal} onAppointmentSelect={handleAppointmentSelect} />;
             case 'agenda':
-                return <Agenda 
-                            onAppointmentSelect={handleAppointmentSelect} 
-                            dataVersion={dataVersion} 
-                            initialAppointment={editingAppointment}
-                            user={user}
-                        />;
+                return <Agenda onAppointmentSelect={handleAppointmentSelect} dataVersion={dataVersion} initialAppointment={editingAppointment} user={user} />;
             case 'clientes':
                 return <Clients dataVersion={dataVersion} onClientSelect={handleClientSelect} user={user} />;
             case 'caixa':
@@ -220,13 +209,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             case 'analise':
                 return <Analysis dataVersion={dataVersion} user={user} />;
             default:
-                return <Home 
-                            user={user} 
-                            dataVersion={dataVersion} 
-                            setActiveView={setActiveView} 
-                            openModal={openModal} 
-                            onAppointmentSelect={handleAppointmentSelect}
-                        />;
+                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} openModal={openModal} onAppointmentSelect={handleAppointmentSelect} />;
         }
     };
     
@@ -240,14 +223,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} shopId={user.shopId} user={user} />;
             case 'appointmentDetails':
                 if (!editingAppointment) return null;
-                return <AppointmentDetailsModal 
-                            appointment={editingAppointment} 
-                            onClose={closeModal} 
-                            onSuccess={handleSuccess} 
-                            shopId={user.shopId} 
-                            onEditClick={handleEditAppointment}
-                            user={user}
-                        />;
+                return <AppointmentDetailsModal appointment={editingAppointment} onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} onEditClick={handleEditAppointment} user={user} />;
              case 'newClient':
                 return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
             case 'clientDetails':
@@ -269,7 +245,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return <EditCommissionForm member={editingMember!} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'editDailyGoal':
                 return <EditDailyGoalForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} currentGoal={dailyGoal} user={user} />;
-            case 'editSettlementDay': // NOVO
+            case 'editSettlementDay':
                 return <EditSettlementDayForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
             default:
                 return null;
@@ -297,49 +273,36 @@ const App: React.FC<AppProps> = ({ session }) => {
     const isFabVisible = ['agenda', 'clientes', 'caixa'].includes(activeView);
 
     if (isInitialLoading) {
-        return (
-            <div className="flex justify-center items-center h-screen bg-background-dark text-white">
-                <p>Carregando painel...</p>
-            </div>
-        );
+        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Carregando painel...</p></div>;
     }
     
     if (!user) {
-        return (
-            <div className="flex justify-center items-center h-screen bg-background-dark text-white">
-                <p>Erro ao carregar perfil. Tentando novamente...</p>
-            </div>
-        );
+        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Erro ao carregar perfil. Tentando novamente...</p></div>;
     }
 
     return (
         <div className="flex min-h-screen w-full bg-background-dark">
-            <Sidebar 
-                user={user}
-                onLogout={handleLogout}
-                items={navItems}
-                activeView={activeView}
-                setActiveView={setActiveView}
-                openModal={() => openModal('editProfile')}
-            />
+            <Sidebar user={user} onLogout={handleLogout} items={navItems} activeView={activeView} setActiveView={setActiveView} openModal={() => openModal('editProfile')} />
             
             <div className="relative flex flex-col w-full md:ml-64">
                 <Header activeViewLabel={navItems.find(item => item.id === activeView)?.label || 'FlowPro'}/>
                 
                 <div className="flex-grow overflow-y-auto pb-20 md:pb-4">
-                    <AnimatePresence mode="wait">
-                        <motion.main
-                            key={activeView}
-                            initial="initial"
-                            animate="in"
-                            exit="out"
-                            variants={pageVariants}
-                            transition={pageTransition}
-                            className="flex-grow"
-                        >
-                            {renderView()}
-                        </motion.main>
-                    </AnimatePresence>
+                    <Suspense fallback={<LoadingSpinner />}>
+                        <AnimatePresence mode="wait">
+                            <motion.main
+                                key={activeView}
+                                initial="initial"
+                                animate="in"
+                                exit="out"
+                                variants={pageVariants}
+                                transition={pageTransition}
+                                className="flex-grow"
+                            >
+                                {renderView()}
+                            </motion.main>
+                        </AnimatePresence>
+                    </Suspense>
                 </div>
                 
                 <AnimatePresence>
@@ -365,7 +328,9 @@ const App: React.FC<AppProps> = ({ session }) => {
                 <BottomNav items={navItems} activeView={activeView} setActiveView={setActiveView} user={user} />
 
                 <Modal isOpen={isModalOpen} onClose={closeModal}>
-                    {getModalContent()}
+                    <Suspense fallback={<LoadingSpinner />}>
+                        {getModalContent()}
+                    </Suspense>
                 </Modal>
             </div>
         </div>

@@ -1,15 +1,15 @@
-import React from 'react';
+import React, { memo } from 'react';
 import type { Appointment, TeamMember, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 
 interface AppointmentCardProps {
     appointment: Appointment;
     teamMembers: TeamMember[];
-    onClick: (appointment: Appointment) => void; // Nova prop
-    user: User; // Adiciona user para obter o tema
+    onClick: (appointment: Appointment) => void;
+    user: User;
 }
 
-const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMembers, onClick, user }) => {
+const AppointmentCard: React.FC<AppointmentCardProps> = memo(({ appointment, teamMembers, onClick, user }) => {
     const theme = useTheme(user);
     const barber = teamMembers.find(b => b.id === appointment.barberId);
     const appointmentDate = new Date(appointment.startTime);
@@ -23,7 +23,6 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMemb
         : appointmentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
     const clientName = appointment.clients?.name || 'Cliente';
-    // Usa o primeiro serviço ou uma lista de serviços
     const serviceName = appointment.services_json && appointment.services_json.length > 0 
         ? appointment.services_json.map(s => s.name).join(', ') 
         : 'Serviço';
@@ -33,7 +32,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMemb
     return (
         <div 
             className="flex h-full w-44 flex-shrink-0 flex-col gap-3 rounded-xl bg-card-dark p-3 cursor-pointer hover:bg-card-dark/80 transition-colors"
-            onClick={() => onClick(appointment)} // Adiciona o manipulador de clique
+            onClick={() => onClick(appointment)}
         >
             <div 
                 className="aspect-square w-full rounded-lg bg-cover bg-center bg-no-repeat" 
@@ -52,15 +51,15 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, teamMemb
             </div>
         </div>
     );
-};
+});
 
 
 interface AppointmentsSectionProps {
     appointments: Appointment[];
     teamMembers: TeamMember[];
     onViewAllClick: () => void;
-    onAppointmentClick: (appointment: Appointment) => void; // Nova prop
-    user: User; // Adiciona user para obter o tema
+    onAppointmentClick: (appointment: Appointment) => void;
+    user: User;
 }
 
 const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({ appointments, teamMembers, onViewAllClick, onAppointmentClick, user }) => {
@@ -79,7 +78,7 @@ const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({ appointments,
                             key={appointment.id} 
                             appointment={appointment} 
                             teamMembers={teamMembers} 
-                            onClick={onAppointmentClick} // Passa a função de clique
+                            onClick={onAppointmentClick}
                             user={user}
                         />
                     ))}
