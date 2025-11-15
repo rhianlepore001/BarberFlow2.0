@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { Appointment, Service, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { formatCurrency } from '../lib/utils'; // Importa a nova função
 
 interface AppointmentDetailsModalProps {
     appointment: Appointment;
@@ -10,10 +11,8 @@ interface AppointmentDetailsModalProps {
     onSuccess: () => void;
     shopId: number;
     onEditClick: (appointment: Appointment) => void;
-    user: User; // Adiciona user para obter o tema
+    user: User;
 }
-
-const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
 const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appointment, onClose, onSuccess, shopId, onEditClick, user }) => {
     const [isProcessing, setIsProcessing] = useState(false);
@@ -45,7 +44,6 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             return;
         }
         
-        // 1. Inserir Transação de Entrada (Income)
         const transactionData = {
             description: serviceNames,
             amount: totalAmount,
@@ -65,7 +63,6 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             return;
         }
 
-        // 2. Deletar Agendamento (Dar Baixa)
         const { error: deleteError } = await supabase.from('appointments').delete().eq('id', appointment.id);
 
         if (deleteError) {
@@ -122,7 +119,7 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
                         {services.map((s, index) => (
                             <li key={index} className="flex justify-between text-white text-sm">
                                 <span>{s.name}</span>
-                                <span className="font-semibold">{formatCurrency(s.price)}</span>
+                                <span className="font-semibold">{formatCurrency(s.price, user.country)}</span>
                             </li>
                         ))}
                     </ul>
@@ -130,7 +127,7 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
                 
                 <div className="flex justify-between items-center border-t border-white/10 pt-3">
                     <p className="text-lg font-bold text-white">Total</p>
-                    <p className={`text-xl font-extrabold ${theme.primary}`}>{formatCurrency(totalAmount)}</p>
+                    <p className={`text-xl font-extrabold ${theme.primary}`}>{formatCurrency(totalAmount, user.country)}</p>
                 </div>
             </div>
             
@@ -139,7 +136,7 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             <div className="flex gap-3 pt-4">
                 <button 
                     type="button" 
-                    onClick={() => onEditClick(appointment)} // Novo botão de edição
+                    onClick={() => onEditClick(appointment)}
                     disabled={isProcessing}
                     className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white disabled:opacity-50 hover:bg-gray-600 transition-colors"
                 >

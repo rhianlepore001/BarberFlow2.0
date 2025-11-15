@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { Transaction, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { formatCurrency } from '../lib/utils'; // Importa a nova função
 
 interface TransactionItemProps {
     transaction: Transaction;
@@ -21,8 +22,8 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
         : transaction.description;
         
     const amountDisplay = transaction.type === 'income' 
-        ? `+R$${transaction.amount.toFixed(2)}` 
-        : `-R$${transaction.amount.toFixed(2)}`;
+        ? `+${formatCurrency(transaction.amount, user.country)}` 
+        : `-${formatCurrency(transaction.amount, user.country)}`;
         
     const amountColor = transaction.type === 'income' ? 'text-green-400' : 'text-red-400';
     const iconBg = transaction.type === 'income' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-500';

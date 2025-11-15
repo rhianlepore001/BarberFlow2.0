@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { Client } from '../types';
+import type { Client, User } from '../types'; // Adicionado User
 import { useTheme } from '../hooks/useTheme';
+import { formatCurrency } from '../lib/utils'; // Importa a nova função
 
 interface ClientDetailsModalProps {
     client: Client;
     onClose: () => void;
     onSuccess: () => void;
-    user: User; // Adiciona user para usar o tema
+    user: User;
 }
-
-const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
 const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose, onSuccess, user }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -19,7 +18,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
     const [phone, setPhone] = useState(client.phone || '');
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const theme = useTheme(user); // Usa o hook de tema
+    const theme = useTheme(user);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -110,7 +109,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                     </div>
                     <div className="flex justify-between items-center">
                         <p className="text-sm font-medium text-text-secondary-dark">Total Gasto</p>
-                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(client.totalSpent || 0)}</p>
+                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(client.totalSpent || 0, user.country)}</p>
                     </div>
                     <div className="flex justify-between items-center">
                         <p className="text-sm font-medium text-text-secondary-dark">Telefone</p>

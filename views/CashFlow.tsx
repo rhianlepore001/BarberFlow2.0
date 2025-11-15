@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import type { Transaction, User } from '../types';
 import TransactionItem from '../components/TransactionItem';
 import { useTheme } from '../hooks/useTheme';
+import { formatCurrency } from '../lib/utils'; // Importa a nova função
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -27,7 +28,7 @@ const ITEMS_PER_PAGE = 10;
 interface CashFlowProps {
     dataVersion: number;
     refreshData: () => void; 
-    user: User; // Adiciona user para obter o tema
+    user: User;
 }
 
 const FilterButtons: React.FC<{ activeFilter: FilterType; setFilter: (filter: FilterType) => void; theme: ReturnType<typeof useTheme> }> = ({ activeFilter, setFilter, theme }) => {
@@ -68,7 +69,6 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) =
     useEffect(() => {
         const fetchTransactions = async () => {
             setLoading(true);
-            // Faz JOIN com team_members para obter o nome do barbeiro
             const { data, error } = await supabase
                 .from('transactions')
                 .select('*, team_members(name)')
@@ -80,7 +80,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) =
                 setTransactions(data.map((t: any) => ({
                     ...t, 
                     date: new Date(t.transaction_date).toLocaleDateString('pt-BR'),
-                    barberName: t.team_members?.name || null, // Extrai o nome do barbeiro
+                    barberName: t.team_members?.name || null,
                 })));
             }
             setLoading(false);
@@ -111,7 +111,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) =
         <div className="px-4 pt-4 pb-6">
             <motion.div initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} className={`mt-4 rounded-xl bg-gradient-to-br ${theme.gradientPrimary} p-5 text-background-dark shadow-lg ${theme.shadowPrimary}`}>
                 <p className="text-sm font-medium text-black/70">Saldo Atual</p>
-                <p className="text-4xl font-extrabold">R$ {balance.toFixed(2).replace('.', ',')}</p>
+                <p className="text-4xl font-extrabold">{formatCurrency(balance, user.country)}</p>
             </motion.div>
             
             <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0, transition: {delay: 0.1}}} className="my-6">
@@ -136,7 +136,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) =
                         <TransactionItem 
                             transaction={t} 
                             onDeleteSuccess={refreshData} 
-                            user={user} // Passa o user
+                            user={user}
                         />
                     </motion.div>
                 ))}

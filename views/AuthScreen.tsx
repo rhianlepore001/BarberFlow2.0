@@ -5,6 +5,7 @@ import AuthInput from '../components/AuthInput';
 
 type AuthMode = 'login' | 'signup';
 type ShopType = 'barbearia' | 'salao';
+type Country = 'BR' | 'PT'; // Novo tipo para o país
 
 const AuthScreen: React.FC = () => {
     const [mode, setMode] = useState<AuthMode>('login');
@@ -12,12 +13,12 @@ const AuthScreen: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [name, setName] = useState('');
     const [shopName, setShopName] = useState('');
-    const [shopType, setShopType] = useState<ShopType>('barbearia'); // Mantém a escolha do tipo de loja
+    const [shopType, setShopType] = useState<ShopType>('barbearia');
+    const [country, setCountry] = useState<Country>('BR'); // Novo estado para o país
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     
-    // Classes estáticas baseadas na cor primária global (Azul Royal)
     const themeClasses = { 
         primary: 'text-primary', 
         bgPrimary: 'bg-primary',
@@ -29,8 +30,7 @@ const AuthScreen: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Define a cor do avatar com base no tipo de loja (mantemos a cor do avatar para diferenciar)
-        const avatarColor = shopType === 'salao' ? '8A2BE2' : '4169E1'; // Azul Royal para barbearia, Violeta para salão (apenas no avatar)
+        const avatarColor = shopType === 'salao' ? '8A2BE2' : '4169E1';
         const defaultImageUrl = `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${avatarColor}&color=101012`;
 
         if (mode === 'signup') {
@@ -47,7 +47,8 @@ const AuthScreen: React.FC = () => {
                     data: {
                         name: name,
                         shop_name: shopName,
-                        shop_type: shopType, // Salva o tipo de loja
+                        shop_type: shopType,
+                        country: country, // Envia o país no cadastro
                         image_url: defaultImageUrl
                     }
                 }
@@ -84,7 +85,6 @@ const AuthScreen: React.FC = () => {
             >
                 <div className="text-center mb-8">
                     <div className="flex justify-center items-center gap-3">
-                        {/* Ícone com cor primária global */}
                         <span className={`material-symbols-outlined ${themeClasses.primary} text-4xl`}>auto_awesome</span>
                         <h1 className="text-4xl font-extrabold text-white">Flow<span className={themeClasses.primary}>Pro</span></h1>
                     </div>
@@ -115,7 +115,19 @@ const AuthScreen: React.FC = () => {
                     >
                         {mode === 'signup' && (
                             <>
-                                {/* Seleção do Tipo de Negócio (Mantida) */}
+                                <div className="relative">
+                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">public</span>
+                                    <select
+                                        value={country}
+                                        onChange={e => setCountry(e.target.value as Country)}
+                                        required
+                                        className={`w-full bg-background-dark border-2 border-card-dark rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 ${themeClasses.focusRing} transition-all appearance-none`}
+                                    >
+                                        <option value="BR">Brasil (R$)</option>
+                                        <option value="PT">Portugal (€)</option>
+                                    </select>
+                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary-dark pointer-events-none">expand_more</span>
+                                </div>
                                 <div className="relative">
                                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">store</span>
                                     <select

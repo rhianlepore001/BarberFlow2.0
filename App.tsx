@@ -90,6 +90,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             let imageUrl = "";
             let shopId: number | null = null;
             let shopType: 'barbearia' | 'salao' = 'barbearia';
+            let country: 'BR' | 'PT' = 'BR'; // Adicionado
 
             if (memberError && memberError.code !== 'PGRST116') {
                 console.error("Error fetching user profile from DB:", memberError.message);
@@ -109,13 +110,14 @@ const App: React.FC<AppProps> = ({ session }) => {
             
             if (shopId) {
                 const [shopRes, settingsRes] = await Promise.all([
-                    supabase.from('shops').select('name, type').eq('id', shopId).limit(1).single(),
+                    supabase.from('shops').select('name, type, country').eq('id', shopId).limit(1).single(), // Pega o país
                     supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
                 ]);
                 
                 if (shopRes.data) {
                     shopName = shopRes.data.name;
                     shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
+                    country = (shopRes.data.country as 'BR' | 'PT') || 'BR'; // Pega o país
                 }
                 
                 if (settingsRes.data && settingsRes.data.daily_goal !== null) {
@@ -139,7 +141,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
 
-            const finalUser: User = { name, imageUrl, shopName, shopId, shopType };
+            const finalUser: User = { name, imageUrl, shopName, shopId, shopType, country }; // Adiciona o país
             setUser(finalUser);
             setProfileLoadAttempts(0);
             setIsInitialLoading(false);

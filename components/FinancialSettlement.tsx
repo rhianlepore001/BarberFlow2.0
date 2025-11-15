@@ -1,14 +1,13 @@
 import React from 'react';
 import type { BarberFinancials, TeamMember, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { formatCurrency } from '../lib/utils'; // Importa a nova função
 
 interface FinancialSettlementProps {
     financials: BarberFinancials[];
     team: TeamMember[];
-    user: User; // Adiciona user
+    user: User;
 }
-
-const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
 const FinancialSettlement: React.FC<FinancialSettlementProps> = ({ financials, team, user }) => {
     const theme = useTheme(user);
@@ -17,7 +16,6 @@ const FinancialSettlement: React.FC<FinancialSettlementProps> = ({ financials, t
         <div>
             <div className="flex justify-between items-center mb-3 px-1">
                 <h4 className="text-lg font-bold">Acerto de Comissão</h4>
-                {/* Removido o link 'Ver Histórico' */}
             </div>
             <div className="space-y-3">
                 {financials.length === 0 ? (
@@ -40,17 +38,17 @@ const FinancialSettlement: React.FC<FinancialSettlementProps> = ({ financials, t
                                     <img src={barber.imageUrl} alt={barber.name} className="w-10 h-10 rounded-full object-cover" />
                                     <div>
                                         <p className="font-bold text-white">{barber.name}</p>
-                                        <p className="text-sm text-text-secondary-dark">Faturamento Total: {formatCurrency(fin.monthRevenue)}</p>
+                                        <p className="text-sm text-text-secondary-dark">Faturamento Total: {formatCurrency(fin.monthRevenue, user.country)}</p>
                                     </div>
                                 </div>
                                 <div className="space-y-2 border-t border-white/10 pt-3 text-sm">
                                     <div className="flex justify-between">
                                         <p className="text-text-secondary-dark">Comissão da Barbearia ({shopPercentage}%)</p>
-                                        <p className="font-semibold text-red-400">-{formatCurrency(shopCommission)}</p>
+                                        <p className="font-semibold text-red-400">-{formatCurrency(shopCommission, user.country)}</p>
                                     </div>
                                     <div className="flex justify-between">
                                         <p className="text-text-secondary-dark">Valor a Pagar ({barberPercentage}%)</p>
-                                        <p className="font-bold text-lg text-green-400">{formatCurrency(barberPayment)}</p>
+                                        <p className="font-bold text-lg text-green-400">{formatCurrency(barberPayment, user.country)}</p>
                                     </div>
                                 </div>
                             </div>

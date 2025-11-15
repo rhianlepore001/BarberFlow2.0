@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import type { User } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { formatCurrency } from '../lib/utils'; // Importa a nova função
 
 interface FinancialSummaryProps {
     dailyRevenue: number;
@@ -10,22 +11,20 @@ interface FinancialSummaryProps {
     totalAppointments: number;
     nextAppointmentName: string | null;
     onEditGoalClick: () => void;
-    user: User; // Adiciona user para obter o tema
+    user: User;
 }
 
 const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, dailyGoal, completedAppointments, totalAppointments, nextAppointmentName, onEditGoalClick, user }) => {
     const theme = useTheme(user);
     const progress = dailyGoal > 0 ? Math.min((dailyRevenue / dailyGoal) * 100, 100) : 0;
     
-    const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
-
     return (
         <div className="rounded-xl bg-card-dark p-4">
             <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-text-secondary-dark">Faturamento de Hoje</p>
                 <span className={`material-symbols-outlined ${theme.primary} text-xl`}>monitoring</span>
             </div>
-            <p className="text-3xl font-extrabold text-white mt-1">{formatCurrency(dailyRevenue)}</p>
+            <p className="text-3xl font-extrabold text-white mt-1">{formatCurrency(dailyRevenue, user.country)}</p>
             
             <div className="mt-4">
                 <div className="flex justify-between text-xs font-bold text-text-secondary-dark mb-1">
@@ -35,7 +34,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, daily
                             <span className="material-symbols-outlined text-sm">edit</span>
                         </button>
                     </div>
-                    <span>{formatCurrency(dailyGoal)}</span>
+                    <span>{formatCurrency(dailyGoal, user.country)}</span>
                 </div>
                 <div className="w-full bg-background-dark rounded-full h-2 overflow-hidden">
                     <motion.div

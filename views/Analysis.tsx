@@ -7,6 +7,7 @@ import GeminiInsightCard from '../components/GeminiInsightCard';
 import GeminiForecastCard from '../components/GeminiForecastCard';
 import Tooltip from '../components/Tooltip';
 import { useTheme } from '../hooks/useTheme';
+import { formatCurrency } from '../lib/utils'; // Importa a nova função
 
 type Period = 'week' | 'month' | 'year';
 
@@ -24,8 +25,6 @@ const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
 };
-
-const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
 const PeriodSelector: React.FC<{ selectedPeriod: Period; setPeriod: (p: Period) => void; theme: ReturnType<typeof useTheme> }> = ({ selectedPeriod, setPeriod, theme }) => {
     const periods: { label: string; value: Period }[] = [
@@ -125,7 +124,6 @@ interface FullAnalysisData extends PeriodData {
 
 interface AnalysisProps {
     dataVersion: number;
-    // O App.tsx precisa passar o user para que o tema seja aplicado
     user: User; 
 }
 
@@ -144,13 +142,9 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
 
             const { startDate, endDate, previousStartDate, previousEndDate } = getDateRanges(period);
             
-            // Fetch all relevant data covering both current and previous periods
             const [transactionsRes, clientsRes, appointmentsRes] = await Promise.all([
-                 // Fetch transactions from previous start date to current end date
                  supabase.from('transactions').select('amount, type, transaction_date, client_id').gte('transaction_date', previousStartDate.toISOString()).lte('transaction_date', endDate.toISOString()),
-                 // Fetch clients created from previous start date to current end date
                  supabase.from('clients').select('id, name, created_at').gte('created_at', previousStartDate.toISOString()).lte('created_at', endDate.toISOString()),
-                 // Fetch appointments for the current period, joining with services
                  supabase.from('appointments').select('services_json, start_time').gte('start_time', startDate.toISOString()).lte('start_time', endDate.toISOString())
             ]);
 
@@ -162,21 +156,17 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
                 return;
             }
             
-            // Define types for fetched data
             type TransactionData = {amount: number; type: 'income' | 'expense'; transaction_date: string; client_id: number | null};
             type ClientData = {id: number; name: string; created_at: string};
-            // Ajusta a tipagem para garantir que services_json é um array de objetos com 'name'
             type AppointmentData = {services_json: {name: string, price: number}[] | null; start_time: string};
 
             const allTransactions: TransactionData[] = transactionsRes.data || [];
             const allClients: ClientData[] = clientsRes.data || [];
             const currentAppointments: AppointmentData[] = appointmentsRes.data || [];
 
-            // --- 1. Filter Transactions for Current and Previous Periods (Income only) ---
             const currentPeriodIncome = allTransactions.filter(t => new Date(t.transaction_date) >= startDate && t.type === 'income');
             const previousPeriodIncome = allTransactions.filter(t => new Date(t.transaction_date) >= previousStartDate && new Date(t.transaction_date) <= previousEndDate && t.type === 'income');
 
-            // --- 2. Calculate Revenue and Avg Ticket ---
             const totalRevenue = currentPeriodIncome.reduce((acc, t) => acc + t.amount, 0);
             const previousTotalRevenue = previousPeriodIncome.reduce((acc, t) => acc + t.amount, 0);
             
@@ -186,11 +176,9 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
             const avgTicket = currentTransactionCount > 0 ? totalRevenue / currentTransactionCount : 0;
             const previousAvgTicket = previousTransactionCount > 0 ? previousTotalRevenue / previousTransactionCount : 0;
 
-            // --- 3. Calculate New Clients ---
             const newClients = allClients.filter(c => new Date(c.created_at) >= startDate && new Date(c.created_at) <= endDate).length;
             const previousNewClients = allClients.filter(c => new Date(c.created_at) >= previousStartDate && new Date(c.created_at) <= previousEndDate).length;
 
-            // --- 4. Calculate Revenue Trend and X-Axis Labels ---
             let trendLength: number;
             let getTrendIndex: (date: Date) => number;
             let xAxisLabels: string[] = [];
@@ -198,13 +186,13 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
             if (period === 'week') {
                 trendLength = 7;
                 const dayLabels = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
-                getTrendIndex = (date) => (date.getDay() + 6) % 7; // 0=Mon, 6=Sun
+                getTrendIndex = (date) => (date.getDay() + 6) % 7;
                 xAxisLabels = dayLabels;
             } else if (period === 'month') {
-                trendLength = 4; // 4 weeks
+                trendLength = 4;
                 getTrendIndex = (date) => Math.floor((date.getDate() - 1) / 7);
                 xAxisLabels = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'];
-            } else { // year
+            } else {
                 trendLength = 12;
                 getTrendIndex = (date) => date.getMonth();
                 xAxisLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -214,19 +202,15 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
             currentPeriodIncome.forEach(t => {
                 const date = new Date(t.transaction_date);
                 const index = getTrendIndex(date);
-                // Garante que o índice esteja dentro do limite
                 if (index >= 0 && index < trendLength) {
                     revenueTrend[index] += t.amount;
                 }
             });
             
-            // --- 5. Top Services ---
             const serviceCounts: Record<string, number> = {};
             currentAppointments.forEach(a => {
-                // Verifica se services_json existe e é um array
                 if (a.services_json && Array.isArray(a.services_json)) {
                     a.services_json.forEach(s => {
-                        // Garante que 'name' existe no objeto de serviço
                         if (s.name) {
                             serviceCounts[s.name] = (serviceCounts[s.name] || 0) + 1;
                         }
@@ -236,7 +220,6 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
 
             const topServices = Object.entries(serviceCounts).sort((a,b) => b[1] - a[1]).slice(0,3).map(([name, value]) => ({name, value: `${value}x`}));
 
-            // --- 6. Top Clients (Spending) ---
             const clientMap = new Map(allClients.map(c => [c.id, c.name]));
             const clientSpending: Record<number, {name: string, total: number}> = {};
             currentPeriodIncome.forEach(t => {
@@ -250,7 +233,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
                      }
                  }
             });
-            const topClients = Object.values(clientSpending).sort((a,b) => b.total - a.total).slice(0,3).map(c => ({name: c.name, value: formatCurrency(c.total)}));
+            const topClients = Object.values(clientSpending).sort((a,b) => b.total - a.total).slice(0,3).map(c => ({name: c.name, value: formatCurrency(c.total, user.country)}));
 
 
             setData({
@@ -258,9 +241,9 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
                 previousTotalRevenue,
                 avgTicket,
                 newClients,
-                retentionRate: 78, // Placeholder - requires more complex logic
+                retentionRate: 78,
                 revenueTrend,
-                xAxisLabels, // Adiciona os rótulos
+                xAxisLabels,
                 topServices,
                 topClients,
                 previousAvgTicket,
@@ -270,7 +253,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
         };
 
         fetchDataForPeriod();
-    }, [period, dataVersion]);
+    }, [period, dataVersion, user.country]);
 
     if (loading) {
         return <div className="text-center p-10">Analisando dados...</div>;
@@ -284,7 +267,6 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
          return <div className="text-center p-10 text-text-secondary-dark">Nenhum dado encontrado para o período selecionado.</div>;
     }
 
-    // Calculate percentage change safely
     const calculateChange = (current: number, previous: number) => {
         if (previous === 0) return current > 0 ? 100 : 0;
         return ((current - previous) / previous) * 100;
@@ -293,7 +275,6 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
     const revenueChange = calculateChange(data.totalRevenue, data.previousTotalRevenue);
     const avgTicketChange = calculateChange(data.avgTicket, data.previousAvgTicket);
     const newClientsChange = calculateChange(data.newClients, data.previousNewClients);
-    // Retention rate remains placeholder for now
     const retentionChange = 2.5; 
     
     const kpiDescriptions = {
@@ -319,13 +300,13 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
             <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
                 <KPICard 
                     label="Faturamento" 
-                    value={formatCurrency(data.totalRevenue)} 
+                    value={formatCurrency(data.totalRevenue, user.country)} 
                     percentageChange={revenueChange} 
                     tooltipContent={kpiDescriptions.faturamento}
                 />
                 <KPICard 
                     label="Ticket Médio" 
-                    value={formatCurrency(data.avgTicket)} 
+                    value={formatCurrency(data.avgTicket, user.country)} 
                     percentageChange={avgTicketChange} 
                     tooltipContent={kpiDescriptions.ticketMedio}
                 /> 
@@ -354,8 +335,8 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
                         <span className="material-symbols-outlined text-sm text-text-secondary-dark cursor-pointer hover:text-white transition-colors">info</span>
                     </Tooltip>
                 </div>
-                 <GeminiForecastCard data={data} period={period}/>
-                 <GeminiInsightCard data={data} period={period}/>
+                 <GeminiForecastCard data={data} period={period} user={user}/>
+                 <GeminiInsightCard data={data} period={period} user={user}/>
             </motion.div>
             
             <motion.div variants={itemVariants}>

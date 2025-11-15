@@ -2,8 +2,9 @@ export interface User {
   name: string;
   imageUrl: string;
   shopName: string;
-  shopId: number; // Adicionado shopId
-  shopType: 'barbearia' | 'salao'; // Adicionado shopType
+  shopId: number;
+  shopType: 'barbearia' | 'salao';
+  country: 'BR' | 'PT'; // Adicionado
 }
 
 export type View = 'inicio' | 'agenda' | 'clientes' | 'caixa' | 'gestao' | 'analise';
