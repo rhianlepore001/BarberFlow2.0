@@ -5,7 +5,7 @@ import type { TeamMember, Service, Appointment } from '../types';
 import { useTheme } from '../hooks/useTheme';
 
 interface BookingCalendarProps {
-    selectedBarber: TeamMember; // Alterado de 'barber' para 'selectedBarber'
+    selectedBarber: TeamMember;
     selectedServices: Service[];
     totalDuration: number;
     onTimeSelect: (date: Date, time: string) => void;
@@ -14,9 +14,8 @@ interface BookingCalendarProps {
 }
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const MINUTE_INTERVAL = 30; // Intervalo de agendamento
+const MINUTE_INTERVAL = 30;
 
-// Helper para obter o início da semana (Domingo)
 const getStartOfWeek = (date: Date): Date => {
     const d = new Date(date);
     d.setDate(d.getDate() - d.getDay());
@@ -32,19 +31,15 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const shopId = selectedBarber.shop_id; // Pega o shopId do barbeiro selecionado
-    
-    // Mapeamento de dias da semana (0=Dom, 6=Sáb) para strings do BD
+    const shopId = selectedBarber.shop_id;
     const dayMap: Record<number, string> = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' };
 
-    // Calcula a semana atual
     const currentWeekStart = useMemo(() => {
         const date = new Date();
         date.setDate(date.getDate() + weekOffset * 7);
         return getStartOfWeek(date);
     }, [weekOffset]);
-    
-    // Gera os 7 dias da semana
+
     const weekDays = useMemo(() => {
         return Array(7).fill(null).map((_, i) => {
             const date = new Date(currentWeekStart);
@@ -53,190 +48,99 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
         });
     }, [currentWeekStart]);
 
-    // --- Fetch Data (Settings and Appointments) ---
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             setError(null);
             
-            // 1. Fetch Shop Settings
-            const { data: settingsData, error: settingsError } = await supabase
-                .from('shop_settings')
-                .select('start_time, end_time, open_days')
-                .eq('shop_id', shopId)
-                .limit(1)
-                .single();
-            
-            if (settingsError && settingsError.code !== 'PGRST116') {
-                console.error("Error fetching shop settings:", settingsError);
+            const [settingsRes, appointmentsRes] = await Promise.all([
+                supabase.from('shop_settings').select('start_time, end_time, open_days').eq('shop_id', shopId).limit(1).single(),
+                supabase.from('appointments').select('startTime:start_time, duration_minutes').eq('barber_id', selectedBarber.id).gte('start_time', currentWeekStart.toISOString()).lte('start_time', new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1).toISOString())
+            ]);
+
+            if (settingsRes.error && settingsRes.error.code !== 'PGRST116') {
                 setError("Erro ao carregar configurações da barbearia.");
-                setLoading(false);
-                return;
+            } else {
+                setSettings(settingsRes.data || { start_time: '09:00', end_time: '20:00', open_days: ['seg', 'ter', 'qua', 'qui', 'sex', 'sab'] });
             }
-            setSettings(settingsData || { start_time: '09:00', end_time: '20:00', open_days: ['seg', 'ter', 'qua', 'qui', 'sex', 'sab'] });
 
-            // 2. Fetch Appointments for the entire week
-            const startOfWeekISO = currentWeekStart.toISOString();
-            const endOfWeek = new Date(currentWeekStart);
-            endOfWeek.setDate(currentWeekStart.getDate() + 6);
-            endOfWeek.setHours(23, 59, 59, 999);
-            const endOfWeekISO = endOfWeek.toISOString();
-
-            const { data: appointmentsData, error: appointmentsError } = await supabase
-                .from('appointments')
-                .select('*')
-                .eq('barber_id', selectedBarber.id) // Filtra apenas os agendamentos deste barbeiro
-                .gte('start_time', startOfWeekISO)
-                .lte('start_time', endOfWeekISO)
-                .order('start_time');
-
-            if (appointmentsError) {
-                console.error("Error fetching appointments:", appointmentsError);
+            if (appointmentsRes.error) {
                 setError("Erro ao carregar agendamentos.");
             } else {
-                setAppointments(appointmentsData as Appointment[]);
+                setAppointments(appointmentsRes.data as Appointment[]);
             }
 
             setLoading(false);
         };
         fetchData();
-    }, [shopId, selectedBarber.id, currentWeekStart]); // Depende de selectedBarber.id e shopId
-    
-    // Define o dia selecionado como o primeiro dia aberto da semana atual
+    }, [shopId, selectedBarber.id, currentWeekStart]);
+
     useEffect(() => {
         if (settings && !loading) {
             const today = new Date();
-            
-            // Se a semana atual for a de hoje (offset 0), tentamos selecionar hoje ou o próximo dia aberto
-            if (weekOffset === 0) {
-                const todayIndex = today.getDay();
-                const todayDayStr = dayMap[todayIndex];
-                
-                if (settings.open_days.includes(todayDayStr)) {
-                    // Se hoje está aberto, seleciona hoje
-                    setSelectedDate(today);
-                } else {
-                    // Se hoje está fechado, procura o próximo dia aberto
-                    let nextOpenDay = new Date(today);
-                    for (let i = 1; i <= 7; i++) {
-                        nextOpenDay.setDate(today.getDate() + i);
-                        const nextDayIndex = nextOpenDay.getDay();
-                        const nextDayStr = dayMap[nextDayIndex];
-                        if (settings.open_days.includes(nextDayStr)) {
-                            setSelectedDate(nextOpenDay);
-                            break;
-                        }
-                    }
-                }
+            if (weekOffset === 0 && settings.open_days.includes(dayMap[today.getDay()])) {
+                setSelectedDate(today);
             } else {
-                // Se for uma semana futura, seleciona o primeiro dia aberto da semana
-                for (let i = 0; i < 7; i++) {
-                    const day = weekDays[i];
-                    const dayStr = dayMap[day.getDay()];
-                    if (settings.open_days.includes(dayStr)) {
-                        setSelectedDate(day);
-                        break;
-                    }
-                }
+                const firstOpenDay = weekDays.find(day => settings.open_days.includes(dayMap[day.getDay()]));
+                if (firstOpenDay) setSelectedDate(firstOpenDay);
             }
         }
     }, [settings, loading, weekOffset, weekDays]);
 
-
-    // --- Lógica de Cálculo de Slots Possíveis (Gerando todos os slots) ---
     const allPossibleSlots = useMemo(() => {
         if (!settings || totalDuration === 0 || !selectedDate) return [];
-        
-        const selectedDayIndex = selectedDate.getDay();
-        const selectedDayStr = dayMap[selectedDayIndex];
-        
+        const selectedDayStr = dayMap[selectedDate.getDay()];
         if (!settings.open_days.includes(selectedDayStr)) return [];
         
         const [startHour, startMinute] = settings.start_time.split(':').map(Number);
         const [endHour, endMinute] = settings.end_time.split(':').map(Number);
-        
         const workStartMinutes = startHour * 60 + startMinute;
         const workEndMinutes = endHour * 60 + endMinute;
         
         const slots: string[] = [];
-
-        // Gera todos os slots de 30 minutos que começam dentro do horário de trabalho
         for (let m = workStartMinutes; m < workEndMinutes; m += MINUTE_INTERVAL) {
-            const slotStartMinutes = m;
-            const slotEndMinutes = m + totalDuration;
-
-            // Verifica se o slot termina dentro do horário de trabalho
-            if (slotEndMinutes > workEndMinutes) continue;
-            
-            const hour = Math.floor(slotStartMinutes / 60);
-            const minute = slotStartMinutes % 60;
-            slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+            if (m + totalDuration <= workEndMinutes) {
+                const hour = Math.floor(m / 60);
+                const minute = m % 60;
+                slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+            }
         }
-
         return slots;
     }, [selectedDate, settings, totalDuration]);
-    
-    // 1. Create a timeline of busy minutes for the selected day
-    const dayTimeline = useMemo(() => {
-        const timeline = new Array(24 * 60).fill(false); // false = free, true = busy
-        if (!selectedDate) return timeline;
 
-        // Usamos toDateString() para comparação local, evitando problemas de fuso horário na virada do dia.
-        const selectedDateLocalStr = selectedDate.toDateString();
-
-        appointments
-            .filter(a => new Date(a.startTime).toDateString() === selectedDateLocalStr)
-            .forEach(a => {
-                // NOTA: O start_time do Supabase é UTC. Ao criar new Date(a.startTime), o JS o converte para o fuso horário local.
-                // Isso é o que queremos, pois o horário de trabalho (settings) é local.
-                const apptDate = new Date(a.startTime);
-                const start = apptDate.getHours() * 60 + apptDate.getMinutes();
-                const end = start + a.duration_minutes;
-                
-                // Marca o período do agendamento como ocupado
-                for (let i = start; i < end; i++) {
-                    if (i < timeline.length) {
-                        timeline[i] = true;
-                    }
-                }
-            });
-        return timeline;
+    const appointmentsForSelectedDay = useMemo(() => {
+        if (!selectedDate) return [];
+        const selectedDateStr = selectedDate.toDateString();
+        return appointments.filter(a => new Date(a.startTime).toDateString() === selectedDateStr);
     }, [selectedDate, appointments]);
-    
-    // 2. Function to check if a specific slot is available
+
     const getSlotStatus = (time: string): 'available' | 'past' | 'conflict' => {
-        const [slotHour, slotMinute] = time.split(':').map(Number);
-        const slotStartMinutes = slotHour * 60 + slotMinute;
-        const slotEndMinutes = slotStartMinutes + totalDuration;
-        
         const now = new Date();
         const isToday = selectedDate.toDateString() === now.toDateString();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        
-        // Check if slot is in the past
-        if (isToday && slotStartMinutes < currentMinutes) {
+
+        const [slotHour, slotMinute] = time.split(':').map(Number);
+        const newApptStart = slotHour * 60 + slotMinute;
+        const newApptEnd = newApptStart + totalDuration;
+
+        if (isToday && newApptStart < currentMinutes) {
             return 'past';
         }
 
-        // Check for conflict using the timeline
-        for (let i = slotStartMinutes; i < slotEndMinutes; i++) {
-            // Verifica se o minuto está dentro dos limites da timeline (0 a 1439)
-            if (i >= 0 && i < dayTimeline.length && dayTimeline[i]) {
-                return 'conflict';
-            }
-        }
-        
-        return 'available';
+        const hasConflict = appointmentsForSelectedDay.some(existingAppt => {
+            const existingApptDate = new Date(existingAppt.startTime);
+            const existingApptStart = existingApptDate.getHours() * 60 + existingApptDate.getMinutes();
+            const existingApptEnd = existingApptStart + existingAppt.duration_minutes;
+            
+            // Condição de sobreposição: (InícioA < FimB) E (FimA > InícioB)
+            return newApptStart < existingApptEnd && newApptEnd > existingApptStart;
+        });
+
+        return hasConflict ? 'conflict' : 'available';
     };
 
-
-    if (loading) {
-        return <div className="text-center p-8 text-text-secondary-dark">Carregando agenda...</div>;
-    }
-    
-    if (error) {
-        return <div className="text-center p-8 text-red-400">{error}</div>;
-    }
+    if (loading) return <div className="text-center p-8 text-text-secondary-dark">Carregando agenda...</div>;
+    if (error) return <div className="text-center p-8 text-red-400">{error}</div>;
     
     const isDayOpen = settings?.open_days.includes(dayMap[selectedDate.getDay()]);
 
@@ -244,35 +148,23 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <h2 className="text-lg font-bold text-white">2. Data e Hora</h2>
             
-            {/* Week Selector */}
             <div className="flex items-center justify-between bg-background-dark p-2 rounded-xl">
-                <button 
-                    onClick={() => setWeekOffset(weekOffset - 1)}
-                    className="p-2 text-text-secondary-dark hover:text-white transition-colors"
-                >
+                <button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 text-text-secondary-dark hover:text-white transition-colors">
                     <span className="material-symbols-outlined">chevron_left</span>
                 </button>
                 <h3 className="text-sm font-bold text-white text-center">
                     {currentWeekStart.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
                 </h3>
-                <button 
-                    onClick={() => setWeekOffset(weekOffset + 1)}
-                    className="p-2 text-text-secondary-dark hover:text-white transition-colors"
-                >
+                <button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 text-text-secondary-dark hover:text-white transition-colors">
                     <span className="material-symbols-outlined">chevron_right</span>
                 </button>
             </div>
             
-            {/* Day Selector */}
             <div className="flex justify-between items-center bg-background-dark p-1 rounded-xl">
                 {weekDays.map((day, index) => {
-                    const dayStr = dayMap[day.getDay()];
-                    const isToday = day.toDateString() === new Date().toDateString();
                     const isSelected = day.toDateString() === selectedDate.toDateString();
-                    const isOpen = settings?.open_days.includes(dayStr);
-                    
-                    // Verifica se o dia está no passado (apenas se não for hoje)
-                    const isPast = day < new Date() && !isToday;
+                    const isOpen = settings?.open_days.includes(dayMap[day.getDay()]);
+                    const isPast = day < new Date() && day.toDateString() !== new Date().toDateString();
 
                     return (
                         <button 
@@ -297,7 +189,6 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
                 })}
             </div>
             
-            {/* Time Slots */}
             <div className="space-y-3">
                 <p className="text-sm font-medium text-text-secondary-dark">Horários disponíveis em {selectedDate.toLocaleDateString('pt-BR')}:</p>
                 
@@ -310,19 +201,13 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
                         {allPossibleSlots.map(time => {
                             const status = getSlotStatus(time);
                             const isAvailable = status === 'available';
-                            const isConflict = status === 'conflict';
-                            const isPast = status === 'past';
                             
                             let buttonClasses = 'py-2 rounded-full font-bold transition-colors border-2';
-                            
                             if (isAvailable) {
-                                // Verde para disponível
                                 buttonClasses += ` bg-green-600 text-white hover:bg-green-700 border-green-700`;
-                            } else if (isConflict) {
-                                // Vermelho para conflito
+                            } else if (status === 'conflict') {
                                 buttonClasses += ' bg-red-900/50 text-red-400 border-red-900/80 cursor-not-allowed opacity-70';
-                            } else if (isPast) {
-                                // Cinza para passado
+                            } else { // past
                                 buttonClasses += ' bg-gray-800 text-gray-600 border-gray-700 cursor-not-allowed opacity-50';
                             }
 
@@ -341,10 +226,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
                 )}
             </div>
 
-            <button 
-                onClick={onBack}
-                className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white hover:bg-gray-600 transition-colors"
-            >
+            <button onClick={onBack} className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white hover:bg-gray-600 transition-colors">
                 Voltar
             </button>
         </motion.div>
