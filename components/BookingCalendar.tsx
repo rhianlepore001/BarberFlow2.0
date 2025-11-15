@@ -143,7 +143,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     }, [settings, loading, weekOffset, weekDays]);
 
 
-    // --- Lógica de Cálculo de Slots Disponíveis (Gerando todos os slots) ---
+    // --- Lógica de Cálculo de Slots Possíveis (Gerando todos os slots) ---
     const allPossibleSlots = useMemo(() => {
         if (!settings || totalDuration === 0 || !selectedDate) return [];
         
@@ -181,12 +181,14 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
         const timeline = new Array(24 * 60).fill(false); // false = free, true = busy
         if (!selectedDate) return timeline;
 
-        // Formata a data selecionada para comparação de string (YYYY-MM-DD)
-        const selectedDateStr = selectedDate.toISOString().split('T')[0];
+        // Usamos toDateString() para comparação local, evitando problemas de fuso horário na virada do dia.
+        const selectedDateLocalStr = selectedDate.toDateString();
 
         appointments
-            .filter(a => a.startTime.split('T')[0] === selectedDateStr)
+            .filter(a => new Date(a.startTime).toDateString() === selectedDateLocalStr)
             .forEach(a => {
+                // NOTA: O start_time do Supabase é UTC. Ao criar new Date(a.startTime), o JS o converte para o fuso horário local.
+                // Isso é o que queremos, pois o horário de trabalho (settings) é local.
                 const apptDate = new Date(a.startTime);
                 const start = apptDate.getHours() * 60 + apptDate.getMinutes();
                 const end = start + a.duration_minutes;
@@ -218,7 +220,8 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
 
         // Check for conflict using the timeline
         for (let i = slotStartMinutes; i < slotEndMinutes; i++) {
-            if (dayTimeline[i]) {
+            // Verifica se o minuto está dentro dos limites da timeline (0 a 1439)
+            if (i >= 0 && i < dayTimeline.length && dayTimeline[i]) {
                 return 'conflict';
             }
         }
