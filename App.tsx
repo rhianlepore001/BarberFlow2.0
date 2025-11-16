@@ -33,7 +33,7 @@ const EditTeamMemberForm = lazy(() => import('./components/forms/EditTeamMemberF
 const EditCommissionForm = lazy(() => import('./components/forms/EditCommissionForm'));
 const AppointmentDetailsModal = lazy(() => import('./components/AppointmentDetailsModal'));
 const EditDailyGoalForm = lazy(() => import('./components/forms/EditDailyGoalForm'));
-const ClientDetailsModal = lazy(() => import('./components/ClientDetailsModal'));
+const ClientDetailsModal = lazy(() => import('./components/forms/ClientDetailsModal'));
 const EditSettlementDayForm = lazy(() => import('./components/forms/EditSettlementDayForm'));
 
 
@@ -72,40 +72,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     };
 
     // Função para forçar o refresh do usuário (para o botão de debug)
-    const forceRefreshUser = async () => {
-        console.log('🔄 Forçando atualização do perfil...');
-        
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) return;
-
-        const { data: member } = await supabase
-            .from('team_members')
-            .select('name, image_url, shop_id')
-            .eq('auth_user_id', authUser.id)
-            .single();
-
-        if (!member?.shop_id) return;
-
-        const { data: shop } = await supabase
-            .from('shops')
-            .select('name, type, country, currency')
-            .eq('id', member.shop_id)
-            .single();
-
-        console.log('✅ Shop data from forceRefreshUser:', shop);
-
-        if (shop) {
-            setUser({
-                name: member.name,
-                imageUrl: member.image_url || '',
-                shopName: shop.name,
-                shopId: member.shop_id,
-                shopType: shop.type || 'barbearia',
-                country: shop.country || 'BR',
-                currency: shop.currency || 'BRL',
-            });
-        }
-    };
+    // REMOVIDA: const forceRefreshUser = async () => { ... }
 
     useEffect(() => {
         const MAX_ATTEMPTS = 5;
@@ -396,24 +363,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                     </Suspense>
                 </Modal>
             </div>
-            {/* BOTÃO DEBUG TEMPORÁRIO - REMOVA DEPOIS */}
-            <button 
-                onClick={forceRefreshUser}
-                style={{
-                    position: 'fixed',
-                    top: '10px',
-                    right: '10px',
-                    zIndex: 9999,
-                    padding: '10px',
-                    background: 'red',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '5px',
-                    cursor: 'pointer'
-                }}
-            >
-                🔄 REFRESH USER
-            </button>
+            {/* BOTÃO DEBUG TEMPORÁRIO - REMOVIDO */}
         </div>
     );
 };
