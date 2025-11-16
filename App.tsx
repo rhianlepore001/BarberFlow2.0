@@ -71,6 +71,42 @@ const App: React.FC<AppProps> = ({ session }) => {
         await supabase.auth.signOut();
     };
 
+    // Função para forçar o refresh do usuário (para o botão de debug)
+    const forceRefreshUser = async () => {
+        console.log('🔄 Forçando atualização do perfil...');
+        
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) return;
+
+        const { data: member } = await supabase
+            .from('team_members')
+            .select('name, image_url, shop_id')
+            .eq('auth_user_id', authUser.id)
+            .single();
+
+        if (!member?.shop_id) return;
+
+        const { data: shop } = await supabase
+            .from('shops')
+            .select('name, type, country, currency')
+            .eq('id', member.shop_id)
+            .single();
+
+        console.log('✅ Shop data from forceRefreshUser:', shop);
+
+        if (shop) {
+            setUser({
+                name: member.name,
+                imageUrl: member.image_url || '',
+                shopName: shop.name,
+                shopId: member.shop_id,
+                shopType: shop.type || 'barbearia',
+                country: shop.country || 'BR',
+                currency: shop.currency || 'BRL',
+            });
+        }
+    };
+
     useEffect(() => {
         const MAX_ATTEMPTS = 5;
         
@@ -121,6 +157,15 @@ const App: React.FC<AppProps> = ({ session }) => {
                     shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
                     country = (shopRes.data.country as 'BR' | 'PT') || 'BR';
                     currency = (shopRes.data.currency as 'BRL' | 'EUR') || 'BRL'; // Define currency
+                    
+                    // ← ADICIONE ESTE LOG PARA DEBUG
+                    console.log('🏪 Shop loaded:', {
+                        shopId,
+                        shopName,
+                        country,
+                        currency,
+                        rawData: shopRes.data
+                    });
                 }
                 
                 if (settingsRes.data && settingsRes.data.daily_goal !== null) {
@@ -148,6 +193,10 @@ const App: React.FC<AppProps> = ({ session }) => {
             const finalImageUrl = imageUrl ? `${imageUrl.split('?')[0]}?t=${new Date().getTime()}` : `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${shopType === 'salao' ? '8A2BE2' : 'E5A00D'}&color=101012`;
 
             const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country, currency }; // Inclui currency
+            
+            // ← ADICIONE ESTE LOG TAMBÉM
+            console.log('👤 Setting user:', finalUser);
+
             setUser(finalUser);
             console.log("User profile loaded:", finalUser); // LOG PARA DEBUG
             setProfileLoadAttempts(0);
@@ -156,6 +205,11 @@ const App: React.FC<AppProps> = ({ session }) => {
         
         fetchUserProfile();
     }, [session, dataVersion, profileLoadAttempts]);
+
+    // Log para o estado atual do usuário
+    useEffect(() => {
+        console.log('👤 Current user state:', user);
+    }, [user]);
     
     const openModal = (content: ModalContentType, data: any = null) => {
         if (!user) return;
@@ -342,6 +396,24 @@ const App: React.FC<AppProps> = ({ session }) => {
                     </Suspense>
                 </Modal>
             </div>
+            {/* BOTÃO DEBUG TEMPORÁRIO - REMOVA DEPOIS */}
+            <button 
+                onClick={forceRefreshUser}
+                style={{
+                    position: 'fixed',
+                    top: '10px',
+                    right: '10px',
+                    zIndex: 9999,
+                    padding: '10px',
+                    background: 'red',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer'
+                }}
+            >
+                🔄 REFRESH USER
+            </button>
         </div>
     );
 };

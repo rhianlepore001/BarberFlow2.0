@@ -19,6 +19,10 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
     const theme = useTheme(user);
     const shopLabels = useShopLabels(user.shopType); // Usa o novo hook
 
+    // Logs para debug
+    console.log('💰 NewServiceForm - user.currency:', user.currency);
+    console.log('💰 NewServiceForm - full user:', user);
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSaving(true);
