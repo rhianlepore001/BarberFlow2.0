@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
 import type { TeamMember, User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
+import { formatCurrency } from '../../lib/utils'; // Importação adicionada
 
 interface NewTransactionFormProps {
     onClose: () => void;
@@ -84,7 +85,15 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
                 <div className="flex gap-3">
                     <div className="w-2/3">
                         <label htmlFor="amount" className="block text-sm font-medium text-text-secondary-dark mb-1">Valor</label>
-                        <input type="number" step="0.01" id="amount" name="amount" placeholder="R$ 0,00" required className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}/>
+                        <input 
+                            type="number" 
+                            step="0.01" 
+                            id="amount" 
+                            name="amount" 
+                            placeholder={formatCurrency(0, user.currency)} // Placeholder dinâmico
+                            required 
+                            className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
+                        />
                     </div>
                     <div className="w-1/3">
                         <label htmlFor="type" className="block text-sm font-medium text-text-secondary-dark mb-1">Tipo</label>

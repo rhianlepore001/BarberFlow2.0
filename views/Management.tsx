@@ -290,7 +290,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                             <img src={member.imageUrl} alt={member.name} className="w-10 h-10 rounded-full object-cover" />
                             <div className="flex-grow">
                                 <p className="font-semibold text-white">{member.name}</p>
-                                <p className="text-sm text-text-secondary-dark">{member.role} (ID: {member.id}) ({Math.round(member.commissionRate * 100)}%)</p>
+                                <p className="text-sm text-text-secondary-dark">{member.role} ({Math.round(member.commissionRate * 100)}%)</p> {/* ID removido aqui */}
                             </div>
                             <div className="relative">
                                 <button
@@ -375,7 +375,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                <p className="font-semibold text-white">{service.name}</p>
                                <p className="text-sm text-text-secondary-dark">{service.duration_minutes} min</p>
                             </div>
-                             <p className="font-bold text-green-400">{formatCurrency(service.price, user.currency)}</p> {/* CORRIGIDO AQUI */}
+                             <p className="font-bold text-green-400">{formatCurrency(service.price, user.currency)}</p>
                         </div>
                     ))}
                 </div>
