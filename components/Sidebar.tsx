@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import type { NavItemData, View, User } from '../types';
 import { useTheme } from '../hooks/useTheme'; // Importa o hook
+import { useShopLabels } from '../hooks/useShopLabels'; // Importa o novo hook
 
 interface SidebarNavItemProps {
     item: NavItemData;
@@ -35,6 +36,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, openModal, items, activeView, setActiveView }) => {
     const theme = useTheme(user); // Usa o hook de tema
+    const shopLabels = useShopLabels(user.shopType); // Usa o novo hook
     
     return (
         <aside className="hidden md:flex flex-col w-64 bg-background-dark border-r border-card-dark fixed h-full p-4">
@@ -62,7 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, openModal, items, act
                         <img className="h-10 w-10 rounded-full object-cover" alt={user.name} src={user.imageUrl} />
                         <div className="flex-1 min-w-0">
                             <p className="font-bold text-white truncate">{user.name}</p>
-                            <p className="text-xs text-text-secondary-dark">Proprietário</p>
+                            <p className="text-xs text-text-secondary-dark">{shopLabels.defaultTeamMemberRole}</p> {/* Usando rótulo dinâmico */}
                         </div>
                          <div className="absolute top-1/2 -translate-y-1/2 right-2 flex items-center">
                             <motion.div

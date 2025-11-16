@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
+import { useShopLabels } from '../../hooks/useShopLabels'; // Importa o novo hook
 
 interface NewTeamMemberFormProps {
     onClose: () => void;
@@ -15,6 +16,7 @@ const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSucces
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
+    const shopLabels = useShopLabels(user.shopType); // Usa o novo hook
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -55,7 +57,14 @@ const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSucces
                 </div>
                  <div>
                     <label htmlFor="role" className="block text-sm font-medium text-text-secondary-dark mb-1">Função</label>
-                    <input type="text" id="role" name="role" placeholder="Ex: Barbeiro" required className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}/>
+                    <input 
+                        type="text" 
+                        id="role" 
+                        name="role" 
+                        placeholder={shopLabels.rolePlaceholder} // Usando placeholder dinâmico
+                        required 
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
+                    />
                 </div>
 
                 {error && <p className="text-red-400 text-xs text-center pt-1">{error}</p>}

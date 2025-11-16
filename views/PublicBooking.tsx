@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { TeamMember, Service, Appointment } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { useShopLabels } from '../hooks/useShopLabels'; // Importa o novo hook
 
 // Lazy load booking steps
 const PublicAuth = lazy(() => import('../components/PublicAuth'));
@@ -38,6 +39,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const [error, setError] = useState<string | null>(null);
     
     const theme = useTheme(null); 
+    const shopLabels = useShopLabels(shopDetails?.type); // Usa o novo hook com o tipo de loja
 
     const totalDuration = useMemo(() => selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0), [selectedServices]);
     const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + s.price, 0), [selectedServices]);
@@ -198,10 +200,11 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
         return <div className="flex justify-center items-center h-screen text-red-400 text-center p-4">{error}</div>;
     }
     
-    const shopEmoji = shopDetails?.type === 'barbearia' ? '💈' : '✂️';
-    const profileImageUrl = selectedBarber?.image_url || clientSession?.user.user_metadata?.image_url || `https://ui-avatars.com/api/?name=${shopDetails?.name || 'FlowPro'}&background=${theme.themeColor}&color=101012`;
+    // Usando shopLabels para emojis e rótulos
+    const shopEmoji = shopLabels.shopTypeEmoji;
+    const profileImageUrl = selectedBarber?.image_url || clientSession?.user.user_metadata?.image_url || `https://ui-avatars.com/api/?name=${shopDetails?.name || shopLabels.defaultAvatarName}&background=${theme.themeColor}&color=101012`;
     const profileName = selectedBarber ? `Agende com ${selectedBarber.name}` : `Agende em ${shopDetails?.name}`;
-    const profileSubtitle = selectedBarber ? `${selectedBarber.role} em ${shopDetails?.name}` : 'Seja bem-vindo(a)! Encontre o horário perfeito e faça seu agendamento.';
+    const profileSubtitle = selectedBarber ? `${selectedBarber.role} em ${shopDetails?.name}` : `Seja bem-vindo(a)! Encontre o horário perfeito e faça seu agendamento em ${shopLabels.shopTypeLabel}.`;
 
     return (
         <div className="min-h-screen bg-background-dark p-4 flex flex-col items-center">

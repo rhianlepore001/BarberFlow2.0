@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import type { Appointment, TeamMember, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { useShopLabels } from '../hooks/useShopLabels'; // Importa o novo hook
 
 interface AppointmentCardProps {
     appointment: Appointment;
@@ -11,6 +12,7 @@ interface AppointmentCardProps {
 
 const AppointmentCard: React.FC<AppointmentCardProps> = memo(({ appointment, teamMembers, onClick, user }) => {
     const theme = useTheme(user);
+    const shopLabels = useShopLabels(user.shopType); // Usa o novo hook
     const barber = teamMembers.find(b => b.id === appointment.barberId);
     const appointmentDate = new Date(appointment.startTime);
     const displayTime = appointmentDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -25,7 +27,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = memo(({ appointment, tea
     const clientName = appointment.clients?.name || 'Cliente';
     const serviceName = appointment.services_json && appointment.services_json.length > 0 
         ? appointment.services_json.map(s => s.name).join(', ') 
-        : 'Serviço';
+        : shopLabels.defaultServiceName; // Usando nome de serviço dinâmico
         
     const clientImageUrl = appointment.clients?.image_url || `https://ui-avatars.com/api/?name=${clientName}&background=${theme.themeColor.substring(1)}&color=101012`;
 
@@ -46,7 +48,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = memo(({ appointment, tea
                     {displayTime} ({displayDate})
                 </p>
                 <p className="text-xs text-text-secondary-dark truncate">
-                    com {barber?.name.split(' ')[0] || 'Barbeiro'}
+                    com {barber?.name.split(' ')[0] || shopLabels.defaultTeamMemberRole} {/* Usando fallback dinâmico */}
                 </p>
             </div>
         </div>

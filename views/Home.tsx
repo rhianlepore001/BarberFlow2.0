@@ -6,6 +6,7 @@ import CashFlowChart from '../components/CashFlowChart';
 import FinancialSummary from '../components/FinancialSummary';
 import WeekSelector from '../components/WeekSelector';
 import type { User, Appointment, CashFlowDay, TeamMember, View } from '../types';
+import { useShopLabels } from '../hooks/useShopLabels'; // Importa o novo hook
 
 interface HomeProps {
     user: User;
@@ -60,6 +61,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
     });
     const [loading, setLoading] = useState(true);
     const [weekOffset, setWeekOffset] = useState(0); // 0 = Current week, -1 = Last week
+    const shopLabels = useShopLabels(user.shopType); // Usa o novo hook
 
     useEffect(() => {
         const fetchData = async () => {
@@ -111,7 +113,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
 
                 setAppointments(fetchedAppointments.map(a => {
                     // Determina o nome do serviço principal para o resumo
-                    const serviceName = a.services_json && a.services_json.length > 0 ? a.services_json[0].name : 'Serviço';
+                    const serviceName = a.services_json && a.services_json.length > 0 ? a.services_json[0].name : shopLabels.defaultServiceName; // Usando nome de serviço dinâmico
                     
                     return {
                         ...a,
@@ -221,7 +223,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
         >
             <motion.div variants={itemVariants} className="px-4 pb-4 pt-4">
                 <h2 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
-                    {user.shopName} {user.shopType === 'barbearia' ? '💈' : '✂️'}
+                    {user.shopName} {shopLabels.shopTypeEmoji} {/* Usando emoji dinâmico */}
                 </h2>
                 <p className="text-base text-text-secondary-dark">Bem-vindo(a) ao seu painel de gestão. Foco total nos resultados de hoje!</p>
             </motion.div>
@@ -244,6 +246,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
                     teamMembers={teamMembers} 
                     onViewAllClick={() => setActiveView('agenda')}
                     onAppointmentClick={handleAppointmentClick} // Passa a função de clique
+                    user={user}
                 />
             </motion.div>
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import AuthInput from '../components/AuthInput';
+import { useShopLabels } from '../hooks/useShopLabels'; // Importa o novo hook
 
 type AuthMode = 'login' | 'signup';
 type ShopType = 'barbearia' | 'salao';
@@ -24,6 +25,7 @@ const AuthScreen: React.FC = () => {
         bgPrimary: 'bg-primary',
         focusRing: 'focus:ring-primary focus:border-primary'
     };
+    const shopLabels = useShopLabels(shopType); // Usa o novo hook
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();

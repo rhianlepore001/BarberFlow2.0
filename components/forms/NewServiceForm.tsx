@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
+import { useShopLabels } from '../../hooks/useShopLabels'; // Importa o novo hook
 
 interface NewServiceFormProps {
     onClose: () => void;
@@ -15,6 +16,7 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
+    const shopLabels = useShopLabels(user.shopType); // Usa o novo hook
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -49,7 +51,14 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
             <form className="space-y-4" onSubmit={handleSubmit}>
                  <div>
                     <label htmlFor="service-name" className="block text-sm font-medium text-text-secondary-dark mb-1">Nome do Serviço</label>
-                    <input type="text" id="service-name" name="service-name" placeholder="Ex: Corte & Barba" required className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}/>
+                    <input 
+                        type="text" 
+                        id="service-name" 
+                        name="service-name" 
+                        placeholder={shopLabels.serviceNamePlaceholder} // Usando placeholder dinâmico
+                        required 
+                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
+                    />
                 </div>
                 <div className="flex gap-3">
                     <div className="w-1/2">

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import type { Appointment, Client, Service, TeamMember, User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../lib/utils'; // Importação adicionada
+import { useShopLabels } from '../../hooks/useShopLabels'; // Importa o novo hook
 
 interface NewAppointmentFormProps {
     onClose: () => void;
@@ -31,6 +32,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
+    const shopLabels = useShopLabels(user.shopType); // Usa o novo hook
 
     useEffect(() => {
         const fetchData = async () => {
@@ -81,7 +83,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
             return;
         }
         if (!barberId || !clientId) {
-            setError("Selecione o cliente e o barbeiro.");
+            setError("Selecione o cliente e o profissional."); // Rótulo dinâmico
             setIsSaving(false);
             return;
         }
@@ -119,7 +121,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
             
             // Verifica se é o erro de conflito do trigger
             if (dbError.message.includes('Conflito de agendamento')) {
-                 errorMessage = "Conflito de horário! O barbeiro já tem um agendamento neste período.";
+                 errorMessage = `Conflito de horário! O ${shopLabels.defaultTeamMemberRole} já tem um agendamento neste período.`; // Rótulo dinâmico
             }
             
             console.error('Error saving appointment:', dbError);
@@ -170,7 +172,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
                     required 
                     className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                 >
-                     <option value="" disabled>Selecione um barbeiro</option>
+                     <option value="" disabled>Selecione um profissional</option> {/* Rótulo dinâmico */}
                     {teamMembers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
 
