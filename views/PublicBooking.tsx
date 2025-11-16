@@ -90,7 +90,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
             }
             
             try {
-                console.log('🔍 Buscando dados para shopId:', shopId);
+                // console.log('🔍 Buscando dados para shopId:', shopId);
                 
                 // A função get_public_shop_data retorna um TABLE, que o cliente Supabase
                 // encapsula em um array. Usamos .single() para pegar o primeiro (e único) elemento.
@@ -105,7 +105,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                     return;
                 }
 
-                console.log('✅ Dados recebidos:', rpcData);
+                // console.log('✅ Dados recebidos:', rpcData);
 
                 if (!rpcData || !rpcData.shop_data) {
                     setError('Loja não encontrada ou dados incompletos.');

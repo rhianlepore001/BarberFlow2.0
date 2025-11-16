@@ -33,7 +33,7 @@ const EditTeamMemberForm = lazy(() => import('./components/forms/EditTeamMemberF
 const EditCommissionForm = lazy(() => import('./components/forms/EditCommissionForm'));
 const AppointmentDetailsModal = lazy(() => import('./components/AppointmentDetailsModal'));
 const EditDailyGoalForm = lazy(() => import('./components/forms/EditDailyGoalForm'));
-const ClientDetailsModal = lazy(() => import('./components/ClientDetailsModal')); // CORRIGIDO AQUI
+const ClientDetailsModal = lazy(() => import('./components/ClientDetailsModal'));
 const EditSettlementDayForm = lazy(() => import('./components/forms/EditSettlementDayForm'));
 
 
@@ -70,9 +70,6 @@ const App: React.FC<AppProps> = ({ session }) => {
     const handleLogout = async () => {
         await supabase.auth.signOut();
     };
-
-    // Função para forçar o refresh do usuário (para o botão de debug)
-    // REMOVIDA: const forceRefreshUser = async () => { ... }
 
     useEffect(() => {
         const MAX_ATTEMPTS = 5;
@@ -125,14 +122,13 @@ const App: React.FC<AppProps> = ({ session }) => {
                     country = (shopRes.data.country as 'BR' | 'PT') || 'BR';
                     currency = (shopRes.data.currency as 'BRL' | 'EUR') || 'BRL'; // Define currency
                     
-                    // ← ADICIONE ESTE LOG PARA DEBUG
-                    console.log('🏪 Shop loaded:', {
-                        shopId,
-                        shopName,
-                        country,
-                        currency,
-                        rawData: shopRes.data
-                    });
+                    // console.log('🏪 Shop loaded:', {
+                    //     shopId,
+                    //     shopName,
+                    //     country,
+                    //     currency,
+                    //     rawData: shopRes.data
+                    // });
                 }
                 
                 if (settingsRes.data && settingsRes.data.daily_goal !== null) {
@@ -161,11 +157,10 @@ const App: React.FC<AppProps> = ({ session }) => {
 
             const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country, currency }; // Inclui currency
             
-            // ← ADICIONE ESTE LOG TAMBÉM
-            console.log('👤 Setting user:', finalUser);
+            // console.log('👤 Setting user:', finalUser);
 
             setUser(finalUser);
-            console.log("User profile loaded:", finalUser); // LOG PARA DEBUG
+            // console.log("User profile loaded:", finalUser); // LOG PARA DEBUG
             setProfileLoadAttempts(0);
             setIsInitialLoading(false);
         };
@@ -175,7 +170,7 @@ const App: React.FC<AppProps> = ({ session }) => {
 
     // Log para o estado atual do usuário
     useEffect(() => {
-        console.log('👤 Current user state:', user);
+        // console.log('👤 Current user state:', user);
     }, [user]);
     
     const openModal = (content: ModalContentType, data: any = null) => {
@@ -363,7 +358,6 @@ const App: React.FC<AppProps> = ({ session }) => {
                     </Suspense>
                 </Modal>
             </div>
-            {/* BOTÃO DEBUG TEMPORÁRIO - REMOVIDO */}
         </div>
     );
 };
