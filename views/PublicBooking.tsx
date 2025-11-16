@@ -72,40 +72,46 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                 return;
             }
             
-            // 1. Fetch Shop Details
-            const { data: shopData, error: shopError } = await supabase.from('shops').select('name, type').eq('id', shopId).limit(1).single();
-            if (shopError) {
-                setError(`Falha ao carregar a loja: ${shopError.message || 'Erro desconhecido'}.`);
+            try {
+                console.log('🔍 Buscando dados para shopId:', shopId);
+                
+                // A função get_public_shop_data retorna um TABLE, que o cliente Supabase
+                // encapsula em um array. Usamos .single() para pegar o primeiro (e único) elemento.
+                const { data: rpcData, error: rpcError } = await supabase
+                    .rpc('get_public_shop_data', { p_shop_id: shopId })
+                    .single(); // .single() aqui é para pegar o único objeto do array
+
+                if (rpcError) {
+                    console.error('❌ Erro RPC:', rpcError);
+                    setError(`Erro ao carregar dados: ${rpcError.message}`);
+                    setLoading(false);
+                    return;
+                }
+
+                console.log('✅ Dados recebidos:', rpcData);
+
+                if (!rpcData || !rpcData.shop_data) {
+                    setError('Loja não encontrada ou dados incompletos.');
+                    setLoading(false);
+                    return;
+                }
+
+                setShopDetails(rpcData.shop_data);
+                setAllTeamMembers(rpcData.team_members_data || []);
+                setServices(rpcData.services_data || []);
+                
+                if (rpcData.team_members_data?.length > 0) {
+                    setSelectedBarber(rpcData.team_members_data[0]); // Define o primeiro barbeiro como selecionado por padrão
+                }
+
+            } catch (err) {
+                console.error('❌ Erro inesperado:', err);
+                setError('Erro inesperado ao carregar dados');
+            } finally {
                 setLoading(false);
-                return;
             }
-            if (!shopData) {
-                setError("Loja não encontrada.");
-                setLoading(false);
-                return;
-            }
-            setShopDetails(shopData);
-            
-            // 2. Fetch Team Members (agora com filtro direto no frontend)
-            const { data: teamMembersData, error: teamMembersError } = await supabase.from('team_members').select('id, name, role, image_url, shop_id').eq('shop_id', shopId).order('name');
-            if (teamMembersError) {
-                setError(`Falha ao carregar a equipe: ${teamMembersError.message || 'Erro desconhecido'}.`);
-                setLoading(false);
-                return;
-            }
-            setAllTeamMembers(teamMembersData as TeamMember[]);
-            
-            // 3. Fetch Services (agora com filtro direto no frontend)
-            const { data: servicesData, error: servicesError } = await supabase.from('services').select('*').eq('shop_id', shopId).order('name');
-            if (servicesError) {
-                setError(`Erro ao carregar serviços: ${servicesError.message}.`);
-                setLoading(false);
-                return;
-            }
-            setServices(servicesData as Service[]);
             
             await checkSessionAndSetStep();
-            setLoading(false);
         };
         
         fetchShopDetailsAndData();
