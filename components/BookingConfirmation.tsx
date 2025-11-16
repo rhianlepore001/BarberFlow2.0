@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { TeamMember, Service } from '../types';
+import type { TeamMember, Service, User } from '../types'; // Importa User
 import { useTheme } from '../hooks/useTheme';
+import { formatCurrency } from '../lib/utils'; // Importa a nova função
 
 interface BookingConfirmationProps {
     selectedBarber: TeamMember; // Alterado de 'barber' para 'selectedBarber'
@@ -15,9 +16,8 @@ interface BookingConfirmationProps {
     onSuccess: () => void;
     onBack: () => void;
     theme: ReturnType<typeof useTheme>;
+    user: User; // Adiciona user
 }
-
-const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
 const BookingConfirmation: React.FC<BookingConfirmationProps> = ({ 
     selectedBarber, // Usa selectedBarber
@@ -29,7 +29,8 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
     selectedTime, 
     onSuccess, 
     onBack, 
-    theme 
+    theme,
+    user // Usa user
 }) => {
     const [isBooking, setIsBooking] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -138,7 +139,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
                         {selectedServices.map((s, index) => (
                             <li key={index} className="flex justify-between text-white text-sm">
                                 <span>{s.name}</span>
-                                <span className="font-semibold">{formatCurrency(s.price)}</span>
+                                <span className="font-semibold">{formatCurrency(s.price, user.country)}</span> {/* Usa user.country */}
                             </li>
                         ))}
                     </ul>
@@ -146,7 +147,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
                 
                 <div className="flex justify-between items-center border-t border-white/10 pt-3">
                     <p className="text-lg font-bold text-white">Total Estimado</p>
-                    <p className={`text-xl font-extrabold ${theme.primary}`}>{formatCurrency(totalPrice)}</p>
+                    <p className={`text-xl font-extrabold ${theme.primary}`}>{formatCurrency(totalPrice, user.country)}</p> {/* Usa user.country */}
                 </div>
             </div>
             

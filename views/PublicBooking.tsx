@@ -27,7 +27,7 @@ const LoadingSpinner: React.FC = () => (
 
 const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const [step, setStep] = useState<BookingStep>('auth');
-    const [shopDetails, setShopDetails] = useState<{ name: string, type: 'barbearia' | 'salao' } | null>(null);
+    const [shopDetails, setShopDetails] = useState<{ name: string, type: 'barbearia' | 'salao', country: 'BR' | 'PT', currency: 'BRL' | 'EUR' } | null>(null); // Adicionado country e currency
     const [allTeamMembers, setAllTeamMembers] = useState<TeamMember[]>([]);
     const [selectedBarber, setSelectedBarber] = useState<TeamMember | null>(null);
     const [services, setServices] = useState<Service[]>([]);
@@ -38,7 +38,22 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
-    const theme = useTheme(null); 
+    // O useTheme agora recebe um objeto User completo, mas para PublicBooking,
+    // podemos simular um user com base nos shopDetails para obter o tema correto.
+    const themeUser = useMemo(() => {
+        if (!shopDetails) return null;
+        return {
+            name: shopDetails.name,
+            imageUrl: '', // Não relevante para o tema
+            shopName: shopDetails.name,
+            shopId: shopId,
+            shopType: shopDetails.type,
+            country: shopDetails.country,
+            currency: shopDetails.currency,
+        };
+    }, [shopDetails, shopId]);
+
+    const theme = useTheme(themeUser); 
     const shopLabels = useShopLabels(shopDetails?.type); // Usa o novo hook com o tipo de loja
 
     const totalDuration = useMemo(() => selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0), [selectedServices]);
@@ -170,6 +185,17 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const renderStep = () => {
         if (!shopDetails) return null;
         
+        // Cria um objeto User simulado para passar o country para os componentes de booking
+        const simulatedUser: User = {
+            name: clientSession?.user.user_metadata?.name || 'Cliente',
+            imageUrl: clientSession?.user.user_metadata?.image_url || '',
+            shopName: shopDetails.name,
+            shopId: shopId,
+            shopType: shopDetails.type,
+            country: shopDetails.country,
+            currency: shopDetails.currency,
+        };
+
         switch (step) {
             case 'auth':
                 return <PublicAuth onAuthSuccess={handleAuthSuccess} theme={theme} />;
@@ -180,13 +206,13 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                 return <BookingBarberSelector teamMembers={allTeamMembers} onSelectBarber={handleSelectBarber} theme={theme} />;
             case 'services':
                 if (!selectedBarber) return null; 
-                return <BookingServiceSelector services={services} onNext={handleServiceSelect} theme={theme} />;
+                return <BookingServiceSelector services={services} onNext={handleServiceSelect} theme={theme} user={simulatedUser} />; {/* Passa user */}
             case 'calendar':
                 if (!selectedBarber || selectedServices.length === 0) return null;
-                return <BookingCalendar selectedBarber={selectedBarber} selectedServices={selectedServices} totalDuration={totalDuration} onTimeSelect={handleTimeSelect} onBack={() => setStep('services')} theme={theme} />;
+                return <BookingCalendar selectedBarber={selectedBarber} selectedServices={selectedServices} totalDuration={totalDuration} onTimeSelect={handleTimeSelect} onBack={() => setStep('services')} theme={theme} user={simulatedUser} />; {/* Passa user */}
             case 'confirm':
                 if (!selectedBarber || !clientSession || selectedServices.length === 0 || !selectedDate || !selectedTime) return null;
-                return <BookingConfirmation selectedBarber={selectedBarber} clientSession={clientSession} selectedServices={selectedServices} totalDuration={totalDuration} totalPrice={totalPrice} selectedDate={selectedDate!} selectedTime={selectedTime!} onSuccess={handleBookingSuccess} onBack={() => setStep('calendar')} theme={theme} />;
+                return <BookingConfirmation selectedBarber={selectedBarber} clientSession={clientSession} selectedServices={selectedServices} totalDuration={totalDuration} totalPrice={totalPrice} selectedDate={selectedDate!} selectedTime={selectedTime!} onSuccess={handleBookingSuccess} onBack={() => setStep('calendar')} theme={theme} user={simulatedUser} />; {/* Passa user */}
             default:
                 return null;
         }

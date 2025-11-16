@@ -4,7 +4,8 @@ export interface User {
   shopName: string;
   shopId: number;
   shopType: 'barbearia' | 'salao';
-  country: 'BR' | 'PT'; // Adicionado
+  country: 'BR' | 'PT';
+  currency: 'BRL' | 'EUR'; // Adicionado
 }
 
 export type View = 'inicio' | 'agenda' | 'clientes' | 'caixa' | 'gestao' | 'analise';
@@ -31,6 +32,7 @@ export interface Service {
     price: number;
     duration_minutes: number; // in minutes
     timesPerformed?: number;
+    currency?: 'BRL' | 'EUR'; // Adicionado
 }
 
 export interface TeamMember {

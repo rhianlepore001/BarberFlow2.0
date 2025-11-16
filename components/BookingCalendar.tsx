@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { TeamMember, Service, Appointment } from '../types';
+import type { TeamMember, Service, Appointment, User } from '../types'; // Importa User
 import { useTheme } from '../hooks/useTheme';
 
 interface BookingCalendarProps {
@@ -11,6 +11,7 @@ interface BookingCalendarProps {
     onTimeSelect: (date: Date, time: string) => void;
     onBack: () => void;
     theme: ReturnType<typeof useTheme>;
+    user: User; // Adiciona user
 }
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -23,7 +24,7 @@ const getStartOfWeek = (date: Date): Date => {
     return d;
 };
 
-const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, totalDuration, onTimeSelect, onBack, theme }) => {
+const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, totalDuration, onTimeSelect, onBack, theme, user }) => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [appointments, setAppointments] = useState<Appointment[]>([]);

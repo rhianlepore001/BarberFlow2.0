@@ -35,6 +35,9 @@ const AuthScreen: React.FC = () => {
         // A cor do avatar agora é baseada no shopType
         const avatarBgColor = shopType === 'salao' ? '8A2BE2' : 'E5A00D'; // Roxo para salão, Laranja para barbearia
         const defaultImageUrl = `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${avatarBgColor}&color=101012`;
+        
+        // Determina a moeda com base no país selecionado
+        const shopCurrency = country === 'PT' ? 'EUR' : 'BRL';
 
         if (mode === 'signup') {
             if (password !== confirmPassword) {
@@ -51,7 +54,8 @@ const AuthScreen: React.FC = () => {
                         name: name,
                         shop_name: shopName,
                         shop_type: shopType,
-                        country: country, // Envia o país no cadastro
+                        country: country,
+                        currency: shopCurrency, // Adiciona a moeda aqui
                         image_url: defaultImageUrl
                     }
                 }

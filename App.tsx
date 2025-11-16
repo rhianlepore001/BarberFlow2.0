@@ -93,6 +93,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             let shopId: number | null = null;
             let shopType: 'barbearia' | 'salao' = 'barbearia';
             let country: 'BR' | 'PT' = 'BR';
+            let currency: 'BRL' | 'EUR' = 'BRL'; // Inicializa com BRL
 
             if (memberError && memberError.code !== 'PGRST116') {
                 console.error("Error fetching user profile from DB:", memberError.message);
@@ -111,7 +112,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             
             if (shopId) {
                 const [shopRes, settingsRes] = await Promise.all([
-                    supabase.from('shops').select('name, type, country').eq('id', shopId).limit(1).single(),
+                    supabase.from('shops').select('name, type, country, currency').eq('id', shopId).limit(1).single(), // Busca currency
                     supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
                 ]);
                 
@@ -119,6 +120,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                     shopName = shopRes.data.name;
                     shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
                     country = (shopRes.data.country as 'BR' | 'PT') || 'BR';
+                    currency = (shopRes.data.currency as 'BRL' | 'EUR') || 'BRL'; // Define currency
                 }
                 
                 if (settingsRes.data && settingsRes.data.daily_goal !== null) {
@@ -145,7 +147,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             // Adiciona cache buster à URL da imagem APENAS no final, se houver uma URL
             const finalImageUrl = imageUrl ? `${imageUrl.split('?')[0]}?t=${new Date().getTime()}` : `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${shopType === 'salao' ? '8A2BE2' : 'E5A00D'}&color=101012`;
 
-            const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country };
+            const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country, currency }; // Inclui currency
             setUser(finalUser);
             console.log("User profile loaded:", finalUser); // LOG PARA DEBUG
             setProfileLoadAttempts(0);

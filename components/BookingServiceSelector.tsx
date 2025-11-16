@@ -1,17 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import type { Service } from '../types';
+import type { Service, User } from '../types'; // Importa User
 import { useTheme } from '../hooks/useTheme';
+import { formatCurrency } from '../lib/utils'; // Importa formatCurrency
 
 interface BookingServiceSelectorProps {
     services: Service[];
     onNext: (services: Service[]) => void;
     theme: ReturnType<typeof useTheme>;
+    user: User; // Adiciona user
 }
 
-const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
-
-const BookingServiceSelector: React.FC<BookingServiceSelectorProps> = ({ services, onNext, theme }) => {
+const BookingServiceSelector: React.FC<BookingServiceSelectorProps> = ({ services, onNext, theme, user }) => {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     
     const handleToggle = (id: number) => {
@@ -53,7 +53,7 @@ const BookingServiceSelector: React.FC<BookingServiceSelectorProps> = ({ service
                                 <p className="text-xs text-text-secondary-dark">{service.duration_minutes} min</p>
                             </div>
                         </div>
-                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(service.price)}</p>
+                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(service.price, user.country)}</p> {/* Usa user.country */}
                     </div>
                 ))}
             </div>
@@ -65,7 +65,7 @@ const BookingServiceSelector: React.FC<BookingServiceSelectorProps> = ({ service
                 </div>
                 <div className="flex justify-between text-lg font-bold">
                     <span>Total:</span>
-                    <span className={theme.primary}>{formatCurrency(totalPrice)}</span>
+                    <span className={theme.primary}>{formatCurrency(totalPrice, user.country)}</span> {/* Usa user.country */}
                 </div>
             </div>
 
