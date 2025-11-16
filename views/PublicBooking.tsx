@@ -72,14 +72,6 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                 return;
             }
             
-            // 0. Setar o contexto da loja para RLS (NECESSÁRIO para anon)
-            // Usamos p_shop_id para corresponder ao nome do argumento na função SQL
-            const { error: contextError } = await supabase.rpc('set_shop_context', { p_shop_id: shopId });
-            if (contextError) {
-                console.error("Error setting shop context:", contextError);
-                // Se falhar, o RLS bloqueará as consultas abaixo, o que é seguro.
-            }
-            
             // 1. Fetch Shop Details
             const { data: shopData, error: shopError } = await supabase.from('shops').select('name, type').eq('id', shopId).limit(1).single();
             if (shopError) {
@@ -94,8 +86,8 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
             }
             setShopDetails(shopData);
             
-            // 2. Fetch Team Members (O RLS agora filtra automaticamente pelo contexto setado)
-            const { data: teamMembersData, error: teamMembersError } = await supabase.from('team_members').select('id, name, role, image_url, shop_id').order('name');
+            // 2. Fetch Team Members (agora com filtro direto no frontend)
+            const { data: teamMembersData, error: teamMembersError } = await supabase.from('team_members').select('id, name, role, image_url, shop_id').eq('shop_id', shopId).order('name');
             if (teamMembersError) {
                 setError(`Falha ao carregar a equipe: ${teamMembersError.message || 'Erro desconhecido'}.`);
                 setLoading(false);
@@ -103,8 +95,8 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
             }
             setAllTeamMembers(teamMembersData as TeamMember[]);
             
-            // 3. Fetch Services (O RLS agora filtra automaticamente pelo contexto setado)
-            const { data: servicesData, error: servicesError } = await supabase.from('services').select('*').order('name');
+            // 3. Fetch Services (agora com filtro direto no frontend)
+            const { data: servicesData, error: servicesError } = await supabase.from('services').select('*').eq('shop_id', shopId).order('name');
             if (servicesError) {
                 setError(`Erro ao carregar serviços: ${servicesError.message}.`);
                 setLoading(false);
