@@ -1,7 +1,8 @@
 import React from 'react';
+import { motion } from 'framer-motion'; // Importação adicionada
 import type { User } from '../types';
 import { useTheme } from '../hooks/useTheme';
-import { formatCurrency } from '../lib/utils'; // Importa a nova função
+import { formatCurrency } from '../lib/utils';
 
 interface FinancialSummaryProps {
     dailyRevenue: number;
