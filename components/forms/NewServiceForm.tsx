@@ -29,6 +29,7 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
             price: parseFloat(formData.get('price') as string),
             duration_minutes: parseInt(formData.get('duration') as string),
             shop_id: shopId, // Adicionado shop_id
+            currency: user.currency, // ← ADICIONADO: Envia a moeda da loja
         };
 
         const { error: insertError } = await supabase.from('services').insert([serviceData]);
