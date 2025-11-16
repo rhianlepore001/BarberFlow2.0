@@ -6,6 +6,7 @@ import type { View, Appointment, User, TeamMember, Client } from './types';
 import { navItems } from './data';
 import { supabase } from './lib/supabaseClient';
 import { useTheme } from '@/hooks/useTheme';
+import { useShopLabels } from '@/hooks/useShopLabels'; // Importa o novo hook
 
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -62,6 +63,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     
     const theme = useTheme(user);
+    const shopLabels = useShopLabels(user?.shopType); // Usa o novo hook aqui também
 
     const refreshData = () => setDataVersion(v => v + 1);
 
@@ -90,7 +92,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             let imageUrl = "";
             let shopId: number | null = null;
             let shopType: 'barbearia' | 'salao' = 'barbearia';
-            let country: 'BR' | 'PT' = 'BR'; // Adicionado
+            let country: 'BR' | 'PT' = 'BR';
 
             if (memberError && memberError.code !== 'PGRST116') {
                 console.error("Error fetching user profile from DB:", memberError.message);
@@ -98,26 +100,25 @@ const App: React.FC<AppProps> = ({ session }) => {
 
             if (memberData) {
                 name = memberData.name;
-                const imageUrlWithCacheBust = memberData.image_url ? `${memberData.image_url.split('?')[0]}?t=${new Date().getTime()}` : '';
-                imageUrl = imageUrlWithCacheBust;
+                imageUrl = memberData.image_url || ''; // Não adiciona cache buster aqui, será feito no final
                 shopId = memberData.shop_id;
             } else {
                 const metadataName = session.user.user_metadata?.name;
                 const metadataImageUrl = session.user.user_metadata?.image_url;
                 if (metadataName) name = metadataName;
-                if (metadataImageUrl) imageUrl = `${metadataImageUrl.split('?')[0]}?t=${new Date().getTime()}`;
+                if (metadataImageUrl) imageUrl = metadataImageUrl; // Não adiciona cache buster aqui
             }
             
             if (shopId) {
                 const [shopRes, settingsRes] = await Promise.all([
-                    supabase.from('shops').select('name, type, country').eq('id', shopId).limit(1).single(), // Pega o país
+                    supabase.from('shops').select('name, type, country').eq('id', shopId).limit(1).single(),
                     supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
                 ]);
                 
                 if (shopRes.data) {
                     shopName = shopRes.data.name;
                     shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
-                    country = (shopRes.data.country as 'BR' | 'PT') || 'BR'; // Pega o país
+                    country = (shopRes.data.country as 'BR' | 'PT') || 'BR';
                 }
                 
                 if (settingsRes.data && settingsRes.data.daily_goal !== null) {
@@ -140,9 +141,13 @@ const App: React.FC<AppProps> = ({ session }) => {
                 }
                 return;
             }
+            
+            // Adiciona cache buster à URL da imagem APENAS no final, se houver uma URL
+            const finalImageUrl = imageUrl ? `${imageUrl.split('?')[0]}?t=${new Date().getTime()}` : `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${shopType === 'salao' ? '8A2BE2' : 'E5A00D'}&color=101012`;
 
-            const finalUser: User = { name, imageUrl, shopName, shopId, shopType, country }; // Adiciona o país
+            const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country };
             setUser(finalUser);
+            console.log("User profile loaded:", finalUser); // LOG PARA DEBUG
             setProfileLoadAttempts(0);
             setIsInitialLoading(false);
         };

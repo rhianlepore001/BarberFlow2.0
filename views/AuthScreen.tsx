@@ -32,8 +32,9 @@ const AuthScreen: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const avatarColor = shopType === 'salao' ? '8A2BE2' : '4169E1';
-        const defaultImageUrl = `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${avatarColor}&color=101012`;
+        // A cor do avatar agora é baseada no shopType
+        const avatarBgColor = shopType === 'salao' ? '8A2BE2' : 'E5A00D'; // Roxo para salão, Laranja para barbearia
+        const defaultImageUrl = `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${avatarBgColor}&color=101012`;
 
         if (mode === 'signup') {
             if (password !== confirmPassword) {

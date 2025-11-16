@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
 import { useShopLabels } from '../../hooks/useShopLabels'; // Importa o novo hook
+import { formatCurrency } from '../../lib/utils'; // Importa a função de formatação de moeda
 
 interface NewServiceFormProps {
     onClose: () => void;
@@ -63,7 +64,15 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
                 <div className="flex gap-3">
                     <div className="w-1/2">
                         <label htmlFor="price" className="block text-sm font-medium text-text-secondary-dark mb-1">Preço</label>
-                        <input type="number" step="0.01" id="price" name="price" placeholder="R$ 0,00" required className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}/>
+                        <input 
+                            type="number" 
+                            step="0.01" 
+                            id="price" 
+                            name="price" 
+                            placeholder={formatCurrency(0, user.country)} // Placeholder dinâmico
+                            required 
+                            className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
+                        />
                     </div>
                     <div className="w-1/2">
                          <label htmlFor="duration" className="block text-sm font-medium text-text-secondary-dark mb-1">Duração (min)</label>
