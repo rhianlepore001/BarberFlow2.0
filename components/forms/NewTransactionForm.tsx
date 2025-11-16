@@ -21,7 +21,8 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
 
     useEffect(() => {
         const fetchTeamMembers = async () => {
-            const { data, error } = await supabase.from('team_members').select('id, name');
+            // FILTRO CORRETO: Buscar apenas membros da equipe desta loja
+            const { data, error } = await supabase.from('team_members').select('id, name').eq('shop_id', shopId).order('name');
             if (error) {
                 console.error("Error fetching team members:", error);
             } else {
@@ -30,7 +31,7 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
             setLoadingMembers(false);
         };
         fetchTeamMembers();
-    }, []);
+    }, [shopId]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();

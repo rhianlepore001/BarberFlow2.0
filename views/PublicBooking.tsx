@@ -72,6 +72,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                 return;
             }
             
+            // 1. Fetch Shop Details
             const { data: shopData, error: shopError } = await supabase.from('shops').select('name, type').eq('id', shopId).limit(1).single();
             if (shopError) {
                 setError(`Falha ao carregar a loja: ${shopError.message || 'Erro desconhecido'}.`);
@@ -85,6 +86,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
             }
             setShopDetails(shopData);
             
+            // 2. Fetch Team Members (Filtered by shopId)
             const { data: teamMembersData, error: teamMembersError } = await supabase.from('team_members').select('id, name, role, image_url, shop_id').eq('shop_id', shopId).order('name');
             if (teamMembersError) {
                 setError(`Falha ao carregar a equipe: ${teamMembersError.message || 'Erro desconhecido'}.`);
@@ -93,6 +95,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
             }
             setAllTeamMembers(teamMembersData as TeamMember[]);
             
+            // 3. Fetch Services (Filtered by shopId)
             const { data: servicesData, error: servicesError } = await supabase.from('services').select('*').eq('shop_id', shopId).order('name');
             if (servicesError) {
                 setError(`Erro ao carregar serviços: ${servicesError.message}.`);

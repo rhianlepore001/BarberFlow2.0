@@ -34,16 +34,19 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
     useEffect(() => {
         const fetchData = async () => {
             const [clientsRes, servicesRes, teamRes] = await Promise.all([
-                supabase.from('clients').select('id, name, image_url').order('name'),
-                supabase.from('services').select('id, name, price, duration_minutes').order('name'),
-                supabase.from('team_members').select('id, name').order('name')
+                // FILTRO CORRETO: Clientes desta loja
+                supabase.from('clients').select('id, name, image_url').eq('shop_id', shopId).order('name'),
+                // FILTRO CORRETO: Serviços desta loja
+                supabase.from('services').select('id, name, price, duration_minutes').eq('shop_id', shopId).order('name'),
+                // FILTRO CORRETO: Membros da equipe desta loja
+                supabase.from('team_members').select('id, name').eq('shop_id', shopId).order('name')
             ]);
             if (clientsRes.data) setClients(clientsRes.data);
             if (servicesRes.data) setAllServices(servicesRes.data);
             if (teamRes.data) setTeamMembers(teamRes.data);
         };
         fetchData();
-    }, []);
+    }, [shopId]);
     
     const handleServiceToggle = (serviceId: number) => {
         setSelectedServiceIds(prev => 
@@ -172,7 +175,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
 
                 {/* Seleção de Serviços (Múltipla) */}
                 <div className="bg-background-dark border-2 border-gray-700 rounded-lg p-3 max-h-40 overflow-y-auto">
-                    <p className="text-sm font-medium text-text-secondary-dark mb-2">Serviços ({totalDuration} min | R$ {totalPrice.toFixed(2).replace('.', ',')})</p>
+                    <p className="text-sm font-medium text-text-secondary-dark mb-2">Serviços ({totalDuration} min | {user.country === 'BR' ? 'R$' : '€'} {totalPrice.toFixed(2).replace('.', ',')})</p>
                     {allServices.map(s => (
                         <div key={s.id} className="flex items-center justify-between py-1">
                             <label htmlFor={`service-${s.id}`} className="flex items-center gap-2 text-white text-sm cursor-pointer flex-1">
@@ -185,7 +188,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
                                 />
                                 {s.name}
                             </label>
-                            <span className="text-xs text-text-secondary-dark">R$ {s.price.toFixed(2)}</span>
+                            <span className="text-xs text-text-secondary-dark">{formatCurrency(s.price, user.country)}</span>
                         </div>
                     ))}
                 </div>
