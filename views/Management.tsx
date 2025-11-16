@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { User, Service, TeamMember, BarberFinancials } from '../types';
 import FinancialSettlement from '../components/FinancialSettlement';
-import { useTheme } from '../hooks/useTheme'; // Importa o hook
+import { useTheme } from '../hooks/useTheme';
+import { formatCurrency } from '../lib/utils'; // Importa a nova função
 
 interface ManagementProps {
     user: User;
@@ -16,7 +17,7 @@ interface ShopSettings {
     open_days: string[];
     start_time: string;
     end_time: string;
-    settlement_day: number; // Adicionado
+    settlement_day: number;
 }
 
 const containerVariants = {
@@ -35,7 +36,6 @@ const itemVariants = {
     visible: { opacity: 1, y: 0 },
 };
 
-// Helper function to calculate the settlement period based on the configured day
 const getSettlementPeriod = (settlementDay: number) => {
     const now = new Date();
     const currentDay = now.getDate();
@@ -43,10 +43,8 @@ const getSettlementPeriod = (settlementDay: number) => {
     let periodStart: Date;
     
     if (currentDay >= settlementDay) {
-        // Se hoje é 26/11 e acerto é 25: O ciclo começou em 26/11.
         periodStart = new Date(now.getFullYear(), now.getMonth(), settlementDay);
     } else {
-        // Se hoje é 10/11 e acerto é 25: O ciclo começou em 26/10.
         periodStart = new Date(now.getFullYear(), now.getMonth() - 1, settlementDay);
     }
     periodStart.setHours(0, 0, 0, 0);
@@ -64,8 +62,8 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     const [settings, setSettings] = useState<ShopSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeMenu, setActiveMenu] = useState<number | null>(null);
-    const [copyMessage, setCopyMessage] = useState<string | null>(null); // Alterado para mensagem única
-    const theme = useTheme(user); // Usa o hook de tema
+    const [copyMessage, setCopyMessage] = useState<string | null>(null);
+    const theme = useTheme(user);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -100,13 +98,9 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                 setSettings(currentSettings);
             }
             
-            // --- Lógica de Acerto Mensal Baseada no settlement_day ---
             const settlementDay = currentSettings?.settlement_day || 1;
             const { periodStart, periodEnd } = getSettlementPeriod(settlementDay);
             
-            const periodStartISO = periodStart.toISOString();
-            const periodEndISO = periodEnd.toISOString();
-
             if (transactionsRes.error) console.error("Error fetching transactions:", transactionsRes.error.message);
             else {
                 const barberRevenues: { [key: number]: number } = {};
@@ -123,7 +117,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                     });
                 
                 const barberFinancials: BarberFinancials[] = fetchedTeam
-                    .filter(member => member.id in barberRevenues) // Apenas membros com receita no período
+                    .filter(member => member.id in barberRevenues)
                     .map(member => {
                         return {
                             barberId: member.id,
@@ -141,7 +135,6 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     
     const handleDeleteMember = async (memberId: number) => {
         if (window.confirm('Tem certeza que deseja remover este membro da equipe? Essa ação não pode ser desfeita.')) {
-            // RLS garante que apenas membros do shop possam deletar
             const { error } = await supabase.from('team_members').delete().eq('id', memberId);
             if (error) {
                 console.error('Error deleting team member:', error);
@@ -238,7 +231,6 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                 </div>
             </motion.div>
 
-            {/* NOVO: Seção de Link de Agendamento Geral */}
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
                     <h4 className="text-lg font-bold">Agendamento Online</h4>
@@ -316,7 +308,6 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                             transition={{ duration: 0.15, ease: 'easeOut' }}
                                             className="absolute top-full right-0 mt-1 w-48 bg-background-dark rounded-lg shadow-lg border border-white/10 z-20"
                                         >
-                                            {/* Removido o botão de copiar link individual */}
                                             <button
                                                 onClick={() => {
                                                     openModal('editCommission', member);
@@ -384,7 +375,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                <p className="font-semibold text-white">{service.name}</p>
                                <p className="text-sm text-text-secondary-dark">{service.duration_minutes} min</p>
                             </div>
-                             <p className="font-bold text-green-400">R$ {service.price.toFixed(2)}</p>
+                             <p className="font-bold text-green-400">{formatCurrency(service.price, user.currency)}</p> {/* CORRIGIDO AQUI */}
                         </div>
                     ))}
                 </div>
