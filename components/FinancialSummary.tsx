@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import type { User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils'; // Importa a nova função
@@ -24,7 +23,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, daily
                 <p className="text-sm font-medium text-text-secondary-dark">Faturamento de Hoje</p>
                 <span className={`material-symbols-outlined ${theme.primary} text-xl`}>monitoring</span>
             </div>
-            <p className="text-3xl font-extrabold text-white mt-1">{formatCurrency(dailyRevenue, user.country)}</p>
+            <p className="text-3xl font-extrabold text-white mt-1">{formatCurrency(dailyRevenue, user.currency)}</p>
             
             <div className="mt-4">
                 <div className="flex justify-between text-xs font-bold text-text-secondary-dark mb-1">
@@ -34,7 +33,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, daily
                             <span className="material-symbols-outlined text-sm">edit</span>
                         </button>
                     </div>
-                    <span>{formatCurrency(dailyGoal, user.country)}</span>
+                    <span>{formatCurrency(dailyGoal, user.currency)}</span>
                 </div>
                 <div className="w-full bg-background-dark rounded-full h-2 overflow-hidden">
                     <motion.div

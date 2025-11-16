@@ -111,7 +111,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) =
         <div className="px-4 pt-4 pb-6">
             <motion.div initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} className={`mt-4 rounded-xl bg-gradient-to-br ${theme.gradientPrimary} p-5 text-background-dark shadow-lg ${theme.shadowPrimary}`}>
                 <p className="text-sm font-medium text-black/70">Saldo Atual</p>
-                <p className="text-4xl font-extrabold">{formatCurrency(balance, user.country)}</p>
+                <p className="text-4xl font-extrabold">{formatCurrency(balance, user.currency)}</p>
             </motion.div>
             
             <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0, transition: {delay: 0.1}}} className="my-6">

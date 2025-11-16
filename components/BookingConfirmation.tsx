@@ -139,7 +139,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
                         {selectedServices.map((s, index) => (
                             <li key={index} className="flex justify-between text-white text-sm">
                                 <span>{s.name}</span>
-                                <span className="font-semibold">{formatCurrency(s.price, user.country)}</span> {/* Usa user.country */}
+                                <span className="font-semibold">{formatCurrency(s.price, user.currency)}</span> {/* Usa user.currency */}
                             </li>
                         ))}
                     </ul>
@@ -147,7 +147,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
                 
                 <div className="flex justify-between items-center border-t border-white/10 pt-3">
                     <p className="text-lg font-bold text-white">Total Estimado</p>
-                    <p className={`text-xl font-extrabold ${theme.primary}`}>{formatCurrency(totalPrice, user.country)}</p> {/* Usa user.country */}
+                    <p className={`text-xl font-extrabold ${theme.primary}`}>{formatCurrency(totalPrice, user.currency)}</p> {/* Usa user.currency */}
                 </div>
             </div>
             

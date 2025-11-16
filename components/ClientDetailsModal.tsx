@@ -109,7 +109,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                     </div>
                     <div className="flex justify-between items-center">
                         <p className="text-sm font-medium text-text-secondary-dark">Total Gasto</p>
-                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(client.totalSpent || 0, user.country)}</p>
+                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(client.totalSpent || 0, user.currency)}</p>
                     </div>
                     <div className="flex justify-between items-center">
                         <p className="text-sm font-medium text-text-secondary-dark">Telefone</p>

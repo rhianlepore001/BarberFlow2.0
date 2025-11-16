@@ -119,7 +119,7 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
                         {services.map((s, index) => (
                             <li key={index} className="flex justify-between text-white text-sm">
                                 <span>{s.name}</span>
-                                <span className="font-semibold">{formatCurrency(s.price, user.country)}</span>
+                                <span className="font-semibold">{formatCurrency(s.price, user.currency)}</span>
                             </li>
                         ))}
                     </ul>
@@ -127,7 +127,7 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
                 
                 <div className="flex justify-between items-center border-t border-white/10 pt-3">
                     <p className="text-lg font-bold text-white">Total</p>
-                    <p className={`text-xl font-extrabold ${theme.primary}`}>{formatCurrency(totalAmount, user.country)}</p>
+                    <p className={`text-xl font-extrabold ${theme.primary}`}>{formatCurrency(totalAmount, user.currency)}</p>
                 </div>
             </div>
             

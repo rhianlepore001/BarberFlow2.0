@@ -375,7 +375,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                <p className="font-semibold text-white">{service.name}</p>
                                <p className="text-sm text-text-secondary-dark">{service.duration_minutes} min</p>
                             </div>
-                             <p className="font-bold text-green-400">{formatCurrency(service.price, user.country)}</p>
+                             <p className="font-bold text-green-400">{formatCurrency(service.price, user.currency)}</p>
                         </div>
                     ))}
                 </div>

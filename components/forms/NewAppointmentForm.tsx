@@ -178,7 +178,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
 
                 {/* Seleção de Serviços (Múltipla) */}
                 <div className="bg-background-dark border-2 border-gray-700 rounded-lg p-3 max-h-40 overflow-y-auto">
-                    <p className="text-sm font-medium text-text-secondary-dark mb-2">Serviços ({totalDuration} min | {formatCurrency(totalPrice, user.country)})</p>
+                    <p className="text-sm font-medium text-text-secondary-dark mb-2">Serviços ({totalDuration} min | {formatCurrency(totalPrice, user.currency)})</p>
                     {allServices.map(s => (
                         <div key={s.id} className="flex items-center justify-between py-1">
                             <label htmlFor={`service-${s.id}`} className="flex items-center gap-2 text-white text-sm cursor-pointer flex-1">
@@ -191,7 +191,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
                                 />
                                 {s.name}
                             </label>
-                            <span className="text-xs text-text-secondary-dark">{formatCurrency(s.price, user.country)}</span>
+                            <span className="text-xs text-text-secondary-dark">{formatCurrency(s.price, user.currency)}</span>
                         </div>
                     ))}
                 </div>

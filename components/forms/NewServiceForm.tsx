@@ -69,7 +69,7 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
                             step="0.01" 
                             id="price" 
                             name="price" 
-                            placeholder={formatCurrency(0, user.country)} // Placeholder dinâmico
+                            placeholder={formatCurrency(0, user.currency)} // Placeholder dinâmico
                             required 
                             className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                         />

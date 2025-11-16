@@ -53,7 +53,7 @@ const BookingServiceSelector: React.FC<BookingServiceSelectorProps> = ({ service
                                 <p className="text-xs text-text-secondary-dark">{service.duration_minutes} min</p>
                             </div>
                         </div>
-                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(service.price, user.country)}</p> {/* Usa user.country */}
+                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(service.price, user.currency)}</p> {/* Usa user.currency */}
                     </div>
                 ))}
             </div>
@@ -65,7 +65,7 @@ const BookingServiceSelector: React.FC<BookingServiceSelectorProps> = ({ service
                 </div>
                 <div className="flex justify-between text-lg font-bold">
                     <span>Total:</span>
-                    <span className={theme.primary}>{formatCurrency(totalPrice, user.country)}</span> {/* Usa user.country */}
+                    <span className={theme.primary}>{formatCurrency(totalPrice, user.currency)}</span> {/* Usa user.currency */}
                 </div>
             </div>
 

@@ -233,7 +233,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
                      }
                  }
             });
-            const topClients = Object.values(clientSpending).sort((a,b) => b.total - a.total).slice(0,3).map(c => ({name: c.name, value: formatCurrency(c.total, user.country)}));
+            const topClients = Object.values(clientSpending).sort((a,b) => b.total - a.total).slice(0,3).map(c => ({name: c.name, value: formatCurrency(c.total, user.currency)}));
 
 
             setData({
@@ -253,7 +253,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
         };
 
         fetchDataForPeriod();
-    }, [period, dataVersion, user.country]);
+    }, [period, dataVersion, user.currency]);
 
     if (loading) {
         return <div className="text-center p-10">Analisando dados...</div>;
@@ -300,13 +300,13 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
             <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
                 <KPICard 
                     label="Faturamento" 
-                    value={formatCurrency(data.totalRevenue, user.country)} 
+                    value={formatCurrency(data.totalRevenue, user.currency)} 
                     percentageChange={revenueChange} 
                     tooltipContent={kpiDescriptions.faturamento}
                 />
                 <KPICard 
                     label="Ticket Médio" 
-                    value={formatCurrency(data.avgTicket, user.country)} 
+                    value={formatCurrency(data.avgTicket, user.currency)} 
                     percentageChange={avgTicketChange} 
                     tooltipContent={kpiDescriptions.ticketMedio}
                 /> 

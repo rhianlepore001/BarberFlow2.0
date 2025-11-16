@@ -22,8 +22,8 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
         : transaction.description;
         
     const amountDisplay = transaction.type === 'income' 
-        ? `+${formatCurrency(transaction.amount, user.country)}` 
-        : `-${formatCurrency(transaction.amount, user.country)}`;
+        ? `+${formatCurrency(transaction.amount, user.currency)}` 
+        : `-${formatCurrency(transaction.amount, user.currency)}`;
         
     const amountColor = transaction.type === 'income' ? 'text-green-400' : 'text-red-400';
     const iconBg = transaction.type === 'income' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-500';
