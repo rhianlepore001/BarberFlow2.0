@@ -33,7 +33,7 @@ const EditTeamMemberForm = lazy(() => import('./components/forms/EditTeamMemberF
 const EditCommissionForm = lazy(() => import('./components/forms/EditCommissionForm'));
 const AppointmentDetailsModal = lazy(() => import('./components/AppointmentDetailsModal'));
 const EditDailyGoalForm = lazy(() => import('./components/forms/EditDailyGoalForm'));
-const ClientDetailsModal = lazy(() => import('./components/ClientDetailsModal'));
+const ClientDetailsModal = lazy(() => import('./components/forms/ClientDetailsModal'));
 const EditSettlementDayForm = lazy(() => import('./components/forms/EditSettlementDayForm'));
 
 
@@ -58,7 +58,6 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [user, setUser] = useState<User | null>(null);
     const [dataVersion, setDataVersion] = useState(0);
-    // Removido profileLoadAttempts, pois a lógica de retry foi simplificada
     const [dailyGoal, setDailyGoal] = useState(500);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     
@@ -68,12 +67,16 @@ const App: React.FC<AppProps> = ({ session }) => {
     const refreshData = () => setDataVersion(v => v + 1);
 
     const handleLogout = async () => {
+        console.log("App: Executing handleLogout.");
         await supabase.auth.signOut();
     };
 
     useEffect(() => {
+        console.log("App useEffect: session.user =", session.user);
         const fetchUserProfile = async () => {
+            console.log("App: fetchUserProfile started for user ID:", session.user?.id);
             if (!session.user) {
+                console.log("App: No session user, setting initial loading to false.");
                 setIsInitialLoading(false);
                 return;
             }
@@ -86,8 +89,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                 .single();
 
             if (memberError && memberError.code !== 'PGRST116') { // PGRST116 significa "nenhuma linha encontrada"
-                console.error("Erro ao buscar perfil do usuário no DB:", memberError.message);
-                // Se houver um erro real no DB (não apenas nenhuma linha), desloga.
+                console.error("App: Erro ao buscar perfil do usuário no DB:", memberError.message);
                 await handleLogout();
                 setUser(null);
                 setIsInitialLoading(false);
@@ -95,15 +97,15 @@ const App: React.FC<AppProps> = ({ session }) => {
             }
 
             if (!memberData) {
-                // Se nenhum registro de team_member for encontrado, este usuário não está autorizado para o dashboard.
-                console.warn("Usuário não é um membro da equipe. Forçando logout.");
+                console.warn("App: Usuário não é um membro da equipe. Forçando logout.");
                 await handleLogout();
                 setUser(null);
                 setIsInitialLoading(false);
                 return;
             }
 
-            // Se memberData for encontrado, prossegue para carregar os detalhes da loja
+            console.log("App: Member data found:", memberData);
+
             let shopName = "Barbearia";
             let name = memberData.name;
             let imageUrl = memberData.image_url || '';
@@ -124,35 +126,40 @@ const App: React.FC<AppProps> = ({ session }) => {
                 shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
                 country = (shopRes.data.country as 'BR' | 'PT') || 'BR';
                 currency = (shopRes.data.currency as 'BRL' | 'EUR') || 'BRL';
+                console.log("App: Shop data found:", shopRes.data);
             } else if (shopRes.error && shopRes.error.code !== 'PGRST116') {
-                console.error("Erro ao buscar detalhes da loja:", shopRes.error.message);
+                console.error("App: Erro ao buscar detalhes da loja:", shopRes.error.message);
                 // Se os detalhes da loja não puderem ser buscados, é um erro crítico. Desloga.
                 await handleLogout();
                 setUser(null);
                 setIsInitialLoading(false);
                 return;
+            } else {
+                console.warn("App: No shop data found for shopId:", shopId);
             }
             
             if (settingsRes.data && settingsRes.data.daily_goal !== null) {
                 setDailyGoal(settingsRes.data.daily_goal);
+                console.log("App: Daily goal set:", settingsRes.data.daily_goal);
             } else {
                 setDailyGoal(500);
+                console.warn("App: No daily goal found, setting to default 500.");
             }
             
             const finalImageUrl = imageUrl ? `${imageUrl.split('?')[0]}?t=${new Date().getTime()}` : `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${shopType === 'salao' ? '8A2BE2' : 'E5A00D'}&color=101012`;
 
             const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country, currency, role };
             
+            console.log("App: Final user object created:", finalUser);
             setUser(finalUser);
             setIsInitialLoading(false); // Define como false assim que o usuário é carregado com sucesso
+            console.log("App: Initial loading set to false.");
         };
         
         fetchUserProfile();
-    }, [session, dataVersion]); // Removido profileLoadAttempts das dependências
+    }, [session, dataVersion]);
 
-    useEffect(() => {
-        // console.log('👤 Current user state:', user);
-    }, [user]);
+    console.log("App render: isInitialLoading =", isInitialLoading, "user =", user ? "present" : "null");
     
     const openModal = (content: ModalContentType, data: any = null) => {
         if (!user) return;

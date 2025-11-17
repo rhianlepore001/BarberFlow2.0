@@ -11,6 +11,7 @@ const AuthGate: React.FC = () => {
     const [publicShopId, setPublicShopId] = useState<number | null>(null); // Alterado de publicBarberId para publicShopId
 
     useEffect(() => {
+        console.log("AuthGate useEffect triggered.");
         // Verifica a URL para a rota pública
         const path = window.location.pathname;
         // Nova regex para /public-booking/:shopId
@@ -19,28 +20,36 @@ const AuthGate: React.FC = () => {
         
         if (isPublicRoute) {
             setPublicShopId(parseInt(match[1]));
+            console.log("AuthGate: Public route detected, shopId:", match[1]);
         } else {
             setPublicShopId(null);
+            console.log("AuthGate: Not a public route.");
         }
         
         const getSession = async () => {
+            console.log("AuthGate: Attempting to get session...");
             const { data: { session } } = await supabase.auth.getSession();
+            console.log("AuthGate: Session retrieved:", session);
             setSession(session);
             setLoading(false);
         };
 
         getSession();
 
-        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log("AuthGate: Auth state changed. Event:", event, "Session:", session);
             setSession(session);
             // Se estiver em uma rota pública, não faz nada além de atualizar a sessão.
             // Se não estiver em uma rota pública, o App.tsx ou AuthScreen reagirão à sessão.
         });
 
         return () => {
+            console.log("AuthGate: Unsubscribing from auth listener.");
             authListener?.subscription.unsubscribe();
         };
     }, []); // Dependência vazia para rodar apenas uma vez na montagem
+
+    console.log("AuthGate render: loading =", loading, "session =", session ? "present" : "null", "publicShopId =", publicShopId);
 
     if (loading) {
         return (
