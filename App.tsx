@@ -6,7 +6,7 @@ import type { View, Appointment, User, TeamMember, Client } from './types';
 import { navItems } from './data';
 import { supabase } from './lib/supabaseClient';
 import { useTheme } from '@/hooks/useTheme';
-import { useShopLabels } from '@/hooks/useShopLabels'; // Importa o novo hook
+import { useShopLabels } from '@/hooks/useShopLabels';
 
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -58,12 +58,12 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [user, setUser] = useState<User | null>(null);
     const [dataVersion, setDataVersion] = useState(0);
-    const [profileLoadAttempts, setProfileLoadAttempts] = useState(0);
+    // Removido profileLoadAttempts, pois a lógica de retry foi simplificada
     const [dailyGoal, setDailyGoal] = useState(500);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     
     const theme = useTheme(user);
-    const shopLabels = useShopLabels(user?.shopType); // Usa o novo hook aqui também
+    const shopLabels = useShopLabels(user?.shopType);
 
     const refreshData = () => setDataVersion(v => v + 1);
 
@@ -72,8 +72,6 @@ const App: React.FC<AppProps> = ({ session }) => {
     };
 
     useEffect(() => {
-        const MAX_ATTEMPTS = 5;
-        
         const fetchUserProfile = async () => {
             if (!session.user) {
                 setIsInitialLoading(false);
@@ -82,81 +80,75 @@ const App: React.FC<AppProps> = ({ session }) => {
 
             const { data: memberData, error: memberError } = await supabase
                 .from('team_members')
-                .select('name, image_url, shop_id, role') // NOVO: Seleciona a role
+                .select('name, image_url, shop_id, role')
                 .eq('auth_user_id', session.user.id)
                 .limit(1)
                 .single();
 
+            if (memberError && memberError.code !== 'PGRST116') { // PGRST116 significa "nenhuma linha encontrada"
+                console.error("Erro ao buscar perfil do usuário no DB:", memberError.message);
+                // Se houver um erro real no DB (não apenas nenhuma linha), desloga.
+                await handleLogout();
+                setUser(null);
+                setIsInitialLoading(false);
+                return;
+            }
+
+            if (!memberData) {
+                // Se nenhum registro de team_member for encontrado, este usuário não está autorizado para o dashboard.
+                console.warn("Usuário não é um membro da equipe. Forçando logout.");
+                await handleLogout();
+                setUser(null);
+                setIsInitialLoading(false);
+                return;
+            }
+
+            // Se memberData for encontrado, prossegue para carregar os detalhes da loja
             let shopName = "Barbearia";
-            let name = session.user.email?.split('@')[0] || "Usuário";
-            let imageUrl = "";
-            let shopId: number | null = null;
+            let name = memberData.name;
+            let imageUrl = memberData.image_url || '';
+            let shopId: number = memberData.shop_id; // shop_id é garantido se memberData existe
             let shopType: 'barbearia' | 'salao' = 'barbearia';
             let country: 'BR' | 'PT' = 'BR';
             let currency: 'BRL' | 'EUR' = 'BRL';
-            let role: string = 'Proprietário'; // NOVO: Define um valor padrão para role
+            let role: string = memberData.role;
 
-            if (memberError && memberError.code !== 'PGRST116') {
-                console.error("Error fetching user profile from DB:", memberError.message);
-            }
-
-            if (memberData) {
-                name = memberData.name;
-                imageUrl = memberData.image_url || '';
-                shopId = memberData.shop_id;
-                role = memberData.role; // NOVO: Atribui a role do banco de dados
-            } else {
-                const metadataName = session.user.user_metadata?.name;
-                const metadataImageUrl = session.user.user_metadata?.image_url;
-                if (metadataName) name = metadataName;
-                if (metadataImageUrl) imageUrl = metadataImageUrl;
+            // Busca detalhes da loja
+            const [shopRes, settingsRes] = await Promise.all([
+                supabase.from('shops').select('name, type, country, currency').eq('id', shopId).limit(1).single(),
+                supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
+            ]);
+            
+            if (shopRes.data) {
+                shopName = shopRes.data.name;
+                shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
+                country = (shopRes.data.country as 'BR' | 'PT') || 'BR';
+                currency = (shopRes.data.currency as 'BRL' | 'EUR') || 'BRL';
+            } else if (shopRes.error && shopRes.error.code !== 'PGRST116') {
+                console.error("Erro ao buscar detalhes da loja:", shopRes.error.message);
+                // Se os detalhes da loja não puderem ser buscados, é um erro crítico. Desloga.
+                await handleLogout();
+                setUser(null);
+                setIsInitialLoading(false);
+                return;
             }
             
-            if (shopId) {
-                const [shopRes, settingsRes] = await Promise.all([
-                    supabase.from('shops').select('name, type, country, currency').eq('id', shopId).limit(1).single(),
-                    supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
-                ]);
-                
-                if (shopRes.data) {
-                    shopName = shopRes.data.name;
-                    shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
-                    country = (shopRes.data.country as 'BR' | 'PT') || 'BR';
-                    currency = (shopRes.data.currency as 'BRL' | 'EUR') || 'BRL';
-                }
-                
-                if (settingsRes.data && settingsRes.data.daily_goal !== null) {
-                    setDailyGoal(settingsRes.data.daily_goal);
-                } else {
-                    setDailyGoal(500);
-                }
-            }
-
-            if (!shopId) {
-                if (profileLoadAttempts < MAX_ATTEMPTS) {
-                    console.warn(`Shop ID not found. Retrying... (Attempt ${profileLoadAttempts + 1})`);
-                    setProfileLoadAttempts(prev => prev + 1);
-                    setTimeout(fetchUserProfile, 1000);
-                } else {
-                    console.error("FATAL: Could not associate user with a shop. Forcing logout.");
-                    await handleLogout(); 
-                    setUser(null);
-                    setIsInitialLoading(false);
-                }
-                return;
+            if (settingsRes.data && settingsRes.data.daily_goal !== null) {
+                setDailyGoal(settingsRes.data.daily_goal);
+            } else {
+                setDailyGoal(500);
             }
             
             const finalImageUrl = imageUrl ? `${imageUrl.split('?')[0]}?t=${new Date().getTime()}` : `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${shopType === 'salao' ? '8A2BE2' : 'E5A00D'}&color=101012`;
 
-            const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country, currency, role }; // NOVO: Inclui role
+            const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country, currency, role };
             
             setUser(finalUser);
-            setProfileLoadAttempts(0);
-            setIsInitialLoading(false);
+            setIsInitialLoading(false); // Define como false assim que o usuário é carregado com sucesso
         };
         
         fetchUserProfile();
-    }, [session, dataVersion, profileLoadAttempts]);
+    }, [session, dataVersion]); // Removido profileLoadAttempts das dependências
 
     useEffect(() => {
         // console.log('👤 Current user state:', user);
@@ -291,7 +283,9 @@ const App: React.FC<AppProps> = ({ session }) => {
     }
     
     if (!user) {
-        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Erro ao carregar perfil. Tentando novamente...</p></div>;
+        // Se user for null aqui, significa que fetchUserProfile falhou e deslogou o usuário.
+        // AuthGate irá renderizar AuthScreen.
+        return null; 
     }
 
     return (
