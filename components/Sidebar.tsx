@@ -64,7 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, openModal, items, act
                         <img className="h-10 w-10 rounded-full object-cover" alt={user.name} src={user.imageUrl} />
                         <div className="flex-1 min-w-0">
                             <p className="font-bold text-white truncate">{user.name}</p>
-                            <p className="text-xs text-text-secondary-dark">{shopLabels.defaultTeamMemberRole}</p> {/* Usando rótulo dinâmico */}
+                            <p className="text-xs text-text-secondary-dark">{user.role}</p> {/* NOVO: Exibe a role do usuário */}
                         </div>
                          <div className="absolute top-1/2 -translate-y-1/2 right-2 flex items-center">
                             <motion.div

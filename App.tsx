@@ -82,7 +82,7 @@ const App: React.FC<AppProps> = ({ session }) => {
 
             const { data: memberData, error: memberError } = await supabase
                 .from('team_members')
-                .select('name, image_url, shop_id')
+                .select('name, image_url, shop_id, role') // NOVO: Seleciona a role
                 .eq('auth_user_id', session.user.id)
                 .limit(1)
                 .single();
@@ -93,7 +93,8 @@ const App: React.FC<AppProps> = ({ session }) => {
             let shopId: number | null = null;
             let shopType: 'barbearia' | 'salao' = 'barbearia';
             let country: 'BR' | 'PT' = 'BR';
-            let currency: 'BRL' | 'EUR' = 'BRL'; // Inicializa com BRL
+            let currency: 'BRL' | 'EUR' = 'BRL';
+            let role: string = 'Proprietário'; // NOVO: Define um valor padrão para role
 
             if (memberError && memberError.code !== 'PGRST116') {
                 console.error("Error fetching user profile from DB:", memberError.message);
@@ -101,18 +102,19 @@ const App: React.FC<AppProps> = ({ session }) => {
 
             if (memberData) {
                 name = memberData.name;
-                imageUrl = memberData.image_url || ''; // Não adiciona cache buster aqui, será feito no final
+                imageUrl = memberData.image_url || '';
                 shopId = memberData.shop_id;
+                role = memberData.role; // NOVO: Atribui a role do banco de dados
             } else {
                 const metadataName = session.user.user_metadata?.name;
                 const metadataImageUrl = session.user.user_metadata?.image_url;
                 if (metadataName) name = metadataName;
-                if (metadataImageUrl) imageUrl = metadataImageUrl; // Não adiciona cache buster aqui
+                if (metadataImageUrl) imageUrl = metadataImageUrl;
             }
             
             if (shopId) {
                 const [shopRes, settingsRes] = await Promise.all([
-                    supabase.from('shops').select('name, type, country, currency').eq('id', shopId).limit(1).single(), // Busca currency
+                    supabase.from('shops').select('name, type, country, currency').eq('id', shopId).limit(1).single(),
                     supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
                 ]);
                 
@@ -120,15 +122,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                     shopName = shopRes.data.name;
                     shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
                     country = (shopRes.data.country as 'BR' | 'PT') || 'BR';
-                    currency = (shopRes.data.currency as 'BRL' | 'EUR') || 'BRL'; // Define currency
-                    
-                    // console.log('🏪 Shop loaded:', {
-                    //     shopId,
-                    //     shopName,
-                    //     country,
-                    //     currency,
-                    //     rawData: shopRes.data
-                    // });
+                    currency = (shopRes.data.currency as 'BRL' | 'EUR') || 'BRL';
                 }
                 
                 if (settingsRes.data && settingsRes.data.daily_goal !== null) {
@@ -152,15 +146,11 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
             
-            // Adiciona cache buster à URL da imagem APENAS no final, se houver uma URL
             const finalImageUrl = imageUrl ? `${imageUrl.split('?')[0]}?t=${new Date().getTime()}` : `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${shopType === 'salao' ? '8A2BE2' : 'E5A00D'}&color=101012`;
 
-            const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country, currency }; // Inclui currency
+            const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country, currency, role }; // NOVO: Inclui role
             
-            // console.log('👤 Setting user:', finalUser);
-
             setUser(finalUser);
-            // console.log("User profile loaded:", finalUser); // LOG PARA DEBUG
             setProfileLoadAttempts(0);
             setIsInitialLoading(false);
         };
@@ -168,7 +158,6 @@ const App: React.FC<AppProps> = ({ session }) => {
         fetchUserProfile();
     }, [session, dataVersion, profileLoadAttempts]);
 
-    // Log para o estado atual do usuário
     useEffect(() => {
         // console.log('👤 Current user state:', user);
     }, [user]);
