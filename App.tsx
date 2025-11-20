@@ -32,7 +32,7 @@ const EditTeamMemberForm = lazy(() => import('./components/forms/EditTeamMemberF
 const EditCommissionForm = lazy(() => import('./components/forms/EditCommissionForm'));
 const AppointmentDetailsModal = lazy(() => import('./components/AppointmentDetailsModal'));
 const EditDailyGoalForm = lazy(() => import('./components/forms/EditDailyGoalForm'));
-const ClientDetailsModal = lazy(() => import('./components/forms/ClientDetailsModal'));
+const ClientDetailsModal = lazy(() => import('./components/ClientDetailsModal'));
 const EditSettlementDayForm = lazy(() => import('./components/forms/EditSettlementDayForm'));
 
 type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails' | 'editSettlementDay';
