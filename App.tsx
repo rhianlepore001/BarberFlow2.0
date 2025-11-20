@@ -19,9 +19,9 @@ const CashFlow = lazy(() => import('./views/CashFlow'));
 const Management = lazy(() => import('./views/Management'));
 const Analysis = lazy(() => import('./views/Analysis'));
 
-// Forms... (mantendo os imports existentes)
+// Forms...
 const NewAppointmentForm = lazy(() => import('./components/forms/NewAppointmentForm'));
-// ... outros forms
+// ... other forms will be lazy loaded as needed
 
 type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails' | 'editSettlementDay';
 
@@ -31,7 +31,7 @@ interface AppProps {
 
 const LoadingSpinner: React.FC = () => (
     <div className="flex justify-center items-center h-full w-full p-10">
-        <p>Carregando...</p>
+        <p>Loading...</p>
     </div>
 );
 
@@ -43,7 +43,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [dataVersion, setDataVersion] = useState(0);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     
-    // Mantendo outros estados...
+    // State for modal data
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -63,7 +63,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
 
-            // 1. Obter o tenant_id do usuário
+            // 1. Get the user's tenant_id
             const { data: memberData, error: memberError } = await supabase
                 .from('tenant_members')
                 .select('tenant_id')
@@ -72,12 +72,11 @@ const App: React.FC<AppProps> = ({ session }) => {
 
             if (memberError || !memberData) {
                 console.error("Could not find tenant for user.", memberError);
-                // Idealmente, teríamos um fluxo de erro aqui, talvez deslogar
                 setIsInitialLoading(false);
                 return;
             }
 
-            // 2. Obter os detalhes do tenant
+            // 2. Get the tenant details
             const { data: tenantData, error: tenantError } = await supabase
                 .from('tenants')
                 .select('*')
@@ -110,45 +109,36 @@ const App: React.FC<AppProps> = ({ session }) => {
         fetchUserAndTenant();
     }, [session, dataVersion]);
 
-    // ... (resto das funções openModal, closeModal, handleSuccess, etc. permanecem as mesmas)
-    const openModal = (content: ModalContentType, data: any = null) => {
-        // ...
-    };
-    const closeModal = () => {
-        // ...
-    };
-    const handleSuccess = () => {
-        // ...
-    };
-    const handleAppointmentSelect = (appointment: Appointment) => {
-        // ...
-    };
-    const handleClientSelect = (client: Client) => {
-        // ...
-    };
-    const handleEditAppointment = (appointment: Appointment) => {
-        // ...
-    };
+    const openModal = (content: ModalContentType, data: any = null) => { /* ... implementation ... */ };
+    const closeModal = () => { /* ... implementation ... */ };
+    const handleSuccess = () => { /* ... implementation ... */ };
+    const handleAppointmentSelect = (appointment: Appointment) => { /* ... implementation ... */ };
+    const handleClientSelect = (client: Client) => { /* ... implementation ... */ };
+    const handleEditAppointment = (appointment: Appointment) => { /* ... implementation ... */ };
+    
     const renderView = () => {
-        // ...
+        if (!user) return null;
+        // This will be expanded to render the correct view component
+        return <p className="p-4">Current View: {activeView}</p>;
     };
+
     const getModalContent = () => {
-        // ...
+        if (!user) return null;
+        // This will be expanded to render the correct form in the modal
+        return null;
     };
-    const handleFabClick = () => {
-        // ...
-    };
+
+    const handleFabClick = () => { /* ... implementation ... */ };
 
 
     if (isInitialLoading || !user) {
-        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Carregando seu império...</p></div>;
+        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Loading your empire...</p></div>;
     }
     
     const themeClass = `theme-${user.tenant.business_type}`;
 
     return (
         <div className={`flex min-h-screen w-full ${themeClass}`}>
-            {/* O Sidebar e o BottomNav precisarão ser adaptados para receber o tema via props ou contexto */}
             <Sidebar user={user} onLogout={handleLogout} items={navItems} activeView={activeView} setActiveView={setActiveView} openModal={() => openModal('editProfile')} />
             
             <div className="relative flex flex-col w-full md:ml-64 bg-background">
@@ -159,20 +149,22 @@ const App: React.FC<AppProps> = ({ session }) => {
                         <AnimatePresence mode="wait">
                             <motion.main
                                 key={activeView}
-                                // ... (animações)
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2 }}
                             >
-                                {/* {renderView()} */}
-                                <p className="p-4">View: {activeView}</p>
+                                {renderView()}
                             </motion.main>
                         </AnimatePresence>
                     </Suspense>
                 </div>
                 
-                {/* ... (FAB e BottomNav) */}
+                {/* FAB and BottomNav will be added here */}
                 
                 <Modal isOpen={isModalOpen} onClose={closeModal}>
                     <Suspense fallback={<LoadingSpinner />}>
-                        {/* {getModalContent()} */}
+                        {getModalContent()}
                     </Suspense>
                 </Modal>
             </div>
