@@ -2,61 +2,44 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import AuthInput from '../components/AuthInput';
-import { useShopLabels } from '../hooks/useShopLabels'; // Importa o novo hook
 
 type AuthMode = 'login' | 'signup';
-type ShopType = 'barbearia' | 'salao';
-type Country = 'BR' | 'PT'; // Novo tipo para o país
+type BusinessType = 'barber' | 'beauty';
 
 const AuthScreen: React.FC = () => {
     const [mode, setMode] = useState<AuthMode>('login');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    
+    // Campos de Signup
     const [name, setName] = useState('');
-    const [shopName, setShopName] = useState('');
-    const [shopType, setShopType] = useState<ShopType>('barbearia');
-    const [country, setCountry] = useState<Country>('BR'); // Novo estado para o país
+    const [tenantName, setTenantName] = useState('');
+    const [businessType, setBusinessType] = useState<BusinessType>('barber');
+    
+    // Campos Comuns
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     
-    const themeClasses = { 
-        primary: 'text-primary', 
-        bgPrimary: 'bg-primary',
-        focusRing: 'focus:ring-primary focus:border-primary'
-    };
-    const shopLabels = useShopLabels(shopType); // Usa o novo hook
+    const themeClasses = businessType === 'barber' 
+        ? { primary: 'text-yellow-400', bgPrimary: 'bg-yellow-400', focusRing: 'focus:ring-yellow-400 focus:border-yellow-400' }
+        : { primary: 'text-pink-500', bgPrimary: 'bg-pink-500', focusRing: 'focus:ring-pink-500 focus:border-pink-500' };
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
-        // A cor do avatar agora é baseada no shopType
-        const avatarBgColor = shopType === 'salao' ? '8A2BE2' : 'E5A00D'; // Roxo para salão, Laranja para barbearia
-        const defaultImageUrl = `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${avatarBgColor}&color=101012`;
-        
-        // Determina a moeda com base no país selecionado
-        const shopCurrency = country === 'PT' ? 'EUR' : 'BRL';
-
         if (mode === 'signup') {
-            if (password !== confirmPassword) {
-                setError("As senhas não coincidem.");
-                setLoading(false);
-                return;
-            }
-            
+            // Lógica de Onboarding
             const { data, error } = await supabase.auth.signUp({ 
                 email, 
                 password,
                 options: {
                     data: {
-                        name: name,
-                        shop_name: shopName,
-                        shop_type: shopType,
-                        country: country,
-                        currency: shopCurrency, // Adiciona a moeda aqui
-                        image_url: defaultImageUrl
+                        full_name: name,
+                        // Estes dados serão usados por uma Edge Function/Trigger para criar o tenant
+                        tenant_name: tenantName,
+                        business_type: businessType,
                     }
                 }
             });
@@ -68,6 +51,7 @@ const AuthScreen: React.FC = () => {
             }
             
         } else {
+            // Lógica de Login
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
                 setError(error.message);
@@ -83,7 +67,7 @@ const AuthScreen: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background-dark p-4">
+        <div className={`flex flex-col items-center justify-center min-h-screen p-4 ${businessType === 'barber' ? 'theme-barber' : 'theme-beauty'}`}>
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -93,19 +77,19 @@ const AuthScreen: React.FC = () => {
                 <div className="text-center mb-8">
                     <div className="flex justify-center items-center gap-3">
                         <span className={`material-symbols-outlined ${themeClasses.primary} text-4xl`}>auto_awesome</span>
-                        <h1 className="text-4xl font-extrabold text-white">Flow<span className={themeClasses.primary}>Pro</span></h1>
+                        <h1 className="text-4xl font-extrabold text-text-primary">Alpha<span className={themeClasses.primary}>Core</span></h1>
                     </div>
-                    <p className="text-text-secondary-dark mt-2">Gestão de primeira para seu negócio de beleza.</p>
+                    <p className="text-text-secondary mt-2">A plataforma definitiva para seu negócio.</p>
                 </div>
                 
-                <div className="bg-card-dark p-2 rounded-full flex items-center gap-2 mb-6">
+                <div className="bg-card p-2 rounded-full flex items-center gap-2 mb-6">
                     <button onClick={() => setMode('login')} className="w-full relative py-2 rounded-full text-sm font-bold">
                         {mode === 'login' && <motion.div layoutId="auth-mode" className={`absolute inset-0 ${themeClasses.bgPrimary} rounded-full z-0`} />}
-                        <span className={`relative z-10 transition-colors ${mode === 'login' ? 'text-background-dark' : 'text-text-secondary-dark'}`}>Entrar</span>
+                        <span className={`relative z-10 transition-colors ${mode === 'login' ? 'text-card' : 'text-text-secondary'}`}>Entrar</span>
                     </button>
                     <button onClick={() => setMode('signup')} className="w-full relative py-2 rounded-full text-sm font-bold">
                         {mode === 'signup' && <motion.div layoutId="auth-mode" className={`absolute inset-0 ${themeClasses.bgPrimary} rounded-full z-0`} />}
-                        <span className={`relative z-10 transition-colors ${mode === 'signup' ? 'text-background-dark' : 'text-text-secondary-dark'}`}>Cadastrar</span>
+                        <span className={`relative z-10 transition-colors ${mode === 'signup' ? 'text-card' : 'text-text-secondary'}`}>Cadastrar</span>
                     </button>
                 </div>
 
@@ -122,48 +106,30 @@ const AuthScreen: React.FC = () => {
                     >
                         {mode === 'signup' && (
                             <>
-                                <div className="relative">
-                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">public</span>
-                                    <select
-                                        value={country}
-                                        onChange={e => setCountry(e.target.value as Country)}
-                                        required
-                                        className={`w-full bg-background-dark border-2 border-card-dark rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 ${themeClasses.focusRing} transition-all appearance-none`}
-                                    >
-                                        <option value="BR">Brasil (R$)</option>
-                                        <option value="PT">Portugal (€)</option>
-                                    </select>
-                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary-dark pointer-events-none">expand_more</span>
+                                <div className="text-text-primary text-center">
+                                    <label className="text-lg font-bold">Qual o seu império?</label>
+                                    <div className="flex gap-4 mt-2">
+                                        <button type="button" onClick={() => setBusinessType('barber')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'barber' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
+                                            <span className="text-4xl">💈</span>
+                                            <p className="font-bold mt-1">Barbearia</p>
+                                        </button>
+                                        <button type="button" onClick={() => setBusinessType('beauty')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'beauty' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
+                                            <span className="text-4xl">✂️</span>
+                                            <p className="font-bold mt-1">Salão/Studio</p>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="relative">
-                                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">store</span>
-                                    <select
-                                        value={shopType}
-                                        onChange={e => setShopType(e.target.value as ShopType)}
-                                        required
-                                        className={`w-full bg-background-dark border-2 border-card-dark rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 ${themeClasses.focusRing} transition-all appearance-none`}
-                                    >
-                                        <option value="barbearia">Barbearia</option>
-                                        <option value="salao">Salão de Beleza</option>
-                                    </select>
-                                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary-dark pointer-events-none">expand_more</span>
-                                </div>
-                                
-                                <AuthInput icon="store" type="text" placeholder="Nome do Negócio" value={shopName} onChange={e => setShopName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                                <AuthInput icon="store" type="text" placeholder="Nome do Negócio" value={tenantName} onChange={e => setTenantName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                                 <AuthInput icon="person" type="text" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                             </>
                         )}
                         <AuthInput icon="mail" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                         <AuthInput icon="lock" type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                         
-                        {mode === 'signup' && (
-                            <AuthInput icon="lock" type="password" placeholder="Confirmar Senha" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required focusRingClass={themeClasses.focusRing} />
-                        )}
-                        
-                        {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+                        {error && <p className="text-red-500 text-xs text-center">{error}</p>}
 
-                        <button type="submit" disabled={loading} className={`w-full ${themeClasses.bgPrimary} text-background-dark font-bold py-3 rounded-full hover:${themeClasses.bgPrimary}/80 transition-colors disabled:opacity-50`}>
-                            {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar' : 'Criar Conta')}
+                        <button type="submit" disabled={loading} className={`w-full ${themeClasses.bgPrimary} text-background font-bold py-3 rounded-full transition-colors disabled:opacity-50`}>
+                            {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar' : 'Criar Império')}
                         </button>
                     </motion.form>
                 </AnimatePresence>

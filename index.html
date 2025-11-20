@@ -5,42 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Painel de Controle - FlowPro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#4169E1", // Azul Royal Vibrante
-                        "background-light": "#f6f6f8",
-                        "background-dark": "#101012",
-                        "card-dark": "#1A1B1E",
-                        "text-secondary-dark": "#A0A0A0"
-                    },
-                    fontFamily: {
-                        "display": ["Manrope", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
     <style>
+        /* Definição das Variáveis CSS para o Tema */
+        :root {
+            --font-primary: 'Manrope', sans-serif;
+            --border-radius-base: 8px;
+            --border-radius-lg: 12px;
+            --border-radius-xl: 16px;
+            --border-radius-full: 9999px;
+        }
+
+        .theme-barber {
+            --color-primary: 234 179 8; /* Amarelo Ouro (EAB308) */
+            --color-background: #000000;
+            --color-card: #111827;
+            --color-text-primary: #FFFFFF;
+            --color-text-secondary: #9CA3AF;
+            --font-primary: 'Manrope', sans-serif;
+            --border-radius-base: 8px;
+            --border-radius-lg: 12px;
+            --border-radius-xl: 16px;
+        }
+
+        .theme-beauty {
+            --color-primary: 219 39 119; /* Rosa Pink (DB2777) */
+            --color-background: #FDF2F8;
+            --color-card: #FFFFFF;
+            --color-text-primary: #111827;
+            --color-text-secondary: #6B7280;
+            --font-primary: 'Playfair Display', serif;
+            --border-radius-base: 24px;
+            --border-radius-lg: 32px;
+            --border-radius-xl: 48px;
+        }
+
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
         body {
             min-height: 100vh;
             min-height: 100dvh;
+            font-family: var(--font-primary);
+            background-color: var(--color-background);
+            color: var(--color-text-primary);
         }
     </style>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: 'rgb(var(--color-primary) / <alpha-value>)',
+                        background: 'var(--color-background)',
+                        card: 'var(--color-card)',
+                        'text-primary': 'var(--color-text-primary)',
+                        'text-secondary': 'var(--color-text-secondary)',
+                        // Cores antigas para compatibilidade, podem ser removidas depois
+                        "background-dark": "#101012",
+                        "card-dark": "#1A1B1E",
+                        "text-secondary-dark": "#A0A0A0"
+                    },
+                    fontFamily: {
+                        display: ['var(--font-primary)', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "var(--border-radius-base)",
+                        "lg": "var(--border-radius-lg)",
+                        "xl": "var(--border-radius-xl)",
+                        "full": "var(--border-radius-full)"
+                    },
+                },
+            },
+        }
+    </script>
 <script type="importmap">
 {
   "imports": {
@@ -55,7 +96,7 @@
 </script>
 <script type="module" src="/index.tsx"></script>
 </head>
-<body class="bg-background-dark font-display text-white">
+<body>
 <div id="root"></div>
 </body>
 </html>

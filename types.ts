@@ -1,14 +1,72 @@
+// types.ts
 export interface User {
   name: string;
   imageUrl: string;
-  shopName: string;
-  shopId: number;
-  shopType: 'barbearia' | 'salao';
-  country: 'BR' | 'PT';
-  currency: 'BRL' | 'EUR'; // Adicionado
+  tenant: Tenant; // Aninhando os detalhes do tenant
+}
+
+export interface Tenant {
+  id: string; // UUID
+  name: string;
+  slug: string;
+  business_type: 'barber' | 'beauty';
+  theme_config?: any; // JSONB
 }
 
 export type View = 'inicio' | 'agenda' | 'clientes' | 'caixa' | 'gestao' | 'analise';
+
+export interface Service {
+    id: string; // UUID
+    tenant_id: string;
+    name: string;
+    price: number;
+    duration_minutes: number;
+    category?: 'corte' | 'quimica' | 'tratamento' | 'barba' | 'outro';
+    active: boolean;
+}
+
+export interface Client {
+    id: string; // UUID
+    tenant_id: string;
+    name: string;
+    phone?: string;
+    last_visit?: string; // Date
+    total_spent?: number;
+    tags?: string[];
+    anamnese_data?: any; // JSONB
+    visagism_data?: any; // JSONB
+}
+
+export interface Appointment {
+    id: string; // UUID
+    tenant_id: string;
+    client_id: string;
+    service_id: string;
+    professional_id: string;
+    start_time: string; // Timestamp
+    end_time: string; // Timestamp
+    status: 'pending' | 'confirmed' | 'completed' | 'canceled' | 'noshow';
+    revenue_generated?: number;
+    // Propriedades aninhadas que virão da query com JOIN
+    clients?: Pick<Client, 'id' | 'name'>;
+    services?: Pick<Service, 'id' | 'name'>;
+}
+
+export interface PortfolioPost {
+    id: string; // UUID
+    tenant_id: string;
+    image_url: string;
+    caption_ai?: string;
+    likes_count: number;
+    is_public_showcase: boolean;
+}
+
+// Tipos utilitários que podem ser mantidos/adaptados
+export interface NavItemData {
+  id: View;
+  icon: string;
+  label: string;
+}
 
 export interface Stat {
   icon: string;
@@ -16,61 +74,10 @@ export interface Stat {
   label: string;
 }
 
-export interface Client {
-  id: number;
-  name: string;
-  lastVisit: string; // Display value (e.g., "Há 3 dias")
-  lastVisitRaw: string | null; // Raw DB value (ISO string)
-  image_url: string; // Corresponde ao BD
-  totalSpent?: number;
-  phone?: string;
-}
-
-export interface Service {
-    id: number;
-    name: string;
-    price: number;
-    duration_minutes: number; // in minutes
-    timesPerformed?: number;
-    currency?: 'BRL' | 'EUR'; // Adicionado
-}
-
-export interface TeamMember {
-    id: number;
-    name: string;
-    role: string;
-    image_url: string; // Corresponde ao BD
-    commissionRate: number; // Taxa de comissão (0.0 a 1.0)
-    shop_id: number; // Adicionado shop_id para uso no agendamento público
-    shopName?: string; // NOVO: Nome da loja para a tela pública
-    shopType?: 'barbearia' | 'salao'; // NOVO: Tipo da loja para a tela pública
-}
-
-// O tipo Appointment agora reflete os dados obtidos com JOINs do Supabase.
-export interface Appointment {
-  id: number;
-  startTime: string; // Deve ser uma string ISO completa
-  duration_minutes: number; // em minutos
-  barberId: number;
-  clientId?: number;
-  // services_json armazena os detalhes dos serviços selecionados
-  services_json: Service[] | null; 
-  // Propriedades aninhadas que virão da query com JOIN
-  clients: Pick<Client, 'id' | 'name' | 'image_url'> | null;
-  team_members: Pick<TeamMember, 'id' | 'name'> | null;
-}
-
-
 export interface CashFlowDay {
   day: string;
   revenue: number;
   isCurrent: boolean;
-}
-
-export interface NavItemData {
-  id: View;
-  icon: string;
-  label: string;
 }
 
 export interface Transaction {
@@ -79,16 +86,26 @@ export interface Transaction {
     amount: number;
     type: 'income' | 'expense';
     date: string;
-    barberName?: string; // Novo campo
+    barberName?: string;
+}
+
+export interface TeamMember {
+    id: number;
+    name: string;
+    role: string;
+    image_url: string;
+    commissionRate: number;
+    shop_id: number;
+    shopName?: string;
+    shopType?: 'barber' | 'beauty';
 }
 
 export interface BarberFinancials {
     barberId: number;
     monthRevenue: number;
-    commissionRate: number; // e.g., 0.4 for 40%
+    commissionRate: number;
 }
 
-// Tipos para a nova tela de Análise
 export interface PeriodData {
   totalRevenue: number;
   previousTotalRevenue: number;
@@ -96,13 +113,7 @@ export interface PeriodData {
   newClients: number;
   retentionRate: number;
   revenueTrend: number[];
-  xAxisLabels: string[]; // NOVO: Rótulos para o eixo X (dias, semanas, meses)
+  xAxisLabels: string[];
   topServices: { name: string; value: string }[];
   topClients: { name: string; value: string }[];
-}
-
-export interface PerformanceData {
-  week: PeriodData;
-  month: PeriodData;
-  year: PeriodData;
 }
