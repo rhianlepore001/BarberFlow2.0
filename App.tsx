@@ -32,7 +32,7 @@ const EditTeamMemberForm = lazy(() => import('./components/forms/EditTeamMemberF
 const EditCommissionForm = lazy(() => import('./components/forms/EditCommissionForm'));
 const AppointmentDetailsModal = lazy(() => import('./components/AppointmentDetailsModal'));
 const EditDailyGoalForm = lazy(() => import('./components/forms/EditDailyGoalForm'));
-const ClientDetailsModal = lazy(() => import('./components/ClientDetailsModal'));
+const ClientDetailsModal = lazy(() => import('./components/forms/ClientDetailsModal'));
 const EditSettlementDayForm = lazy(() => import('./components/forms/EditSettlementDayForm'));
 
 type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails' | 'editSettlementDay';
@@ -74,18 +74,33 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
 
+            // 1. Tenta buscar o tenant_id na tabela de membros (donos/funcionários)
             const { data: memberData, error: memberError } = await supabase
                 .from('tenant_members')
                 .select('tenant_id')
                 .eq('user_id', session.user.id)
+                .limit(1)
                 .single();
 
-            if (memberError || !memberData) {
-                console.error("Could not find tenant for user.", memberError);
+            // Se houver um erro que não seja 'nenhuma linha encontrada', logamos e paramos.
+            if (memberError && memberError.code !== 'PGRST116') {
+                console.error("Error fetching tenant member data:", memberError);
+                setIsInitialLoading(false);
+                return;
+            }
+            
+            // Se não encontrou o membro, este usuário não é um membro da equipe/dono.
+            // Ele pode ser um cliente que logou. Neste caso, ele não deve acessar o dashboard.
+            if (!memberData) {
+                console.warn("User is not a shop member. Redirecting or blocking dashboard access.");
+                // Força o logout ou redireciona para a tela pública se necessário.
+                // Por enquanto, apenas paramos o carregamento e mostramos uma tela de erro/bloqueio.
+                setUser(null);
                 setIsInitialLoading(false);
                 return;
             }
 
+            // 2. Busca os detalhes da loja (tenant)
             const { data: tenantData, error: tenantError } = await supabase
                 .from('tenants')
                 .select('*')
@@ -98,6 +113,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
 
+            // 3. Constrói o objeto User
             const finalUser: User = {
                 name: session.user.user_metadata.full_name || session.user.email,
                 imageUrl: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=${session.user.user_metadata.full_name}`,
@@ -224,8 +240,22 @@ const App: React.FC<AppProps> = ({ session }) => {
         }
     };
 
-    if (isInitialLoading || !user) {
+    if (isInitialLoading) {
         return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Carregando seu negócio...</p></div>;
+    }
+    
+    // Se o carregamento terminou, mas o usuário não foi definido (porque não é um membro da equipe),
+    // podemos mostrar uma mensagem de erro ou forçar o logout.
+    if (!user) {
+        return (
+            <div className="flex flex-col justify-center items-center h-screen bg-background-dark text-white p-4 text-center">
+                <h1 className="text-2xl font-bold text-red-400 mb-4">Acesso Negado</h1>
+                <p className="text-text-secondary-dark mb-6">Sua conta não está associada a um painel de gestão. Se você é um cliente, use o link de agendamento público.</p>
+                <button onClick={handleLogout} className="bg-gray-700 text-white font-bold py-2 px-4 rounded-full hover:bg-gray-600 transition-colors">
+                    Sair
+                </button>
+            </div>
+        );
     }
     
     const themeClass = `theme-${user.shopType}`;
