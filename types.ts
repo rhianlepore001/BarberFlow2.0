@@ -4,7 +4,7 @@ export interface User {
   imageUrl: string;
   shopId: string; // UUID from tenants.id
   shopName: string; // from tenants.name
-  shopType: 'barber' | 'beauty'; // from tenants.business_type
+  shopType: 'barbearia' | 'salao'; // from tenants.business_type
   currency: 'BRL' | 'EUR'; // Adicionado para internacionalização
   country: 'BR' | 'PT'; // Adicionado para internacionalização
 }
@@ -13,7 +13,7 @@ export interface Tenant {
   id: string; // UUID
   name: string;
   slug: string;
-  business_type: 'barber' | 'beauty';
+  business_type: 'barbearia' | 'salao';
   theme_config?: any; // JSONB
 }
 
@@ -107,7 +107,7 @@ export interface TeamMember {
     commissionRate: number;
     shop_id: string;
     shopName?: string;
-    shopType?: 'barber' | 'beauty';
+    shopType?: 'barbearia' | 'salao';
 }
 
 export interface BarberFinancials {

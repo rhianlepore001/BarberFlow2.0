@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import AuthInput from '../components/AuthInput';
 
 type AuthMode = 'login' | 'signup';
-type BusinessType = 'barber' | 'beauty';
+type BusinessType = 'barbearia' | 'salao'; // Usando os valores do enum do DB
 
 const AuthScreen: React.FC = () => {
     const [mode, setMode] = useState<AuthMode>('login');
@@ -13,14 +13,14 @@ const AuthScreen: React.FC = () => {
     
     const [name, setName] = useState('');
     const [tenantName, setTenantName] = useState('');
-    const [businessType, setBusinessType] = useState<BusinessType>('barber');
+    const [businessType, setBusinessType] = useState<BusinessType>('barbearia');
     
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     
-    const themeClasses = businessType === 'barber' 
-        ? { primary: 'text-yellow-400', bgPrimary: 'bg-yellow-400', focusRing: 'focus:ring-yellow-400 focus:border-yellow-400' }
-        : { primary: 'text-pink-500', bgPrimary: 'bg-pink-500', focusRing: 'focus:ring-pink-500 focus:border-pink-500' };
+    const themeClasses = businessType === 'barbearia' 
+        ? { primary: 'text-yellow-400', bgPrimary: 'bg-yellow-400', focusRing: 'focus:ring-yellow-400 focus:border-yellow-400', themeClass: 'theme-barber' }
+        : { primary: 'text-pink-500', bgPrimary: 'bg-pink-500', focusRing: 'focus:ring-pink-500 focus:border-pink-500', themeClass: 'theme-beauty' };
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,6 +28,7 @@ const AuthScreen: React.FC = () => {
         setError(null);
 
         if (mode === 'signup') {
+            // businessType já está no formato correto ('barbearia' ou 'salao')
             const { data, error } = await supabase.auth.signUp({ 
                 email, 
                 password,
@@ -35,7 +36,7 @@ const AuthScreen: React.FC = () => {
                     data: {
                         full_name: name,
                         tenant_name: tenantName,
-                        business_type: businessType,
+                        business_type: businessType, // Passando o valor correto para o DB
                     }
                 }
             });
@@ -62,7 +63,7 @@ const AuthScreen: React.FC = () => {
     };
 
     return (
-        <div className={`flex flex-col items-center justify-center min-h-screen p-4 ${businessType === 'barber' ? 'theme-barber' : 'theme-beauty'}`}>
+        <div className={`flex flex-col items-center justify-center min-h-screen p-4 ${themeClasses.themeClass}`}>
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -104,11 +105,11 @@ const AuthScreen: React.FC = () => {
                                 <div className="text-text-primary text-center">
                                     <label className="text-lg font-bold">Qual é o seu negócio?</label>
                                     <div className="flex gap-4 mt-2">
-                                        <button type="button" onClick={() => setBusinessType('barber')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'barber' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
+                                        <button type="button" onClick={() => setBusinessType('barbearia')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'barbearia' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
                                             <span className="text-4xl">💈</span>
                                             <p className="font-bold mt-1">Barbearia</p>
                                         </button>
-                                        <button type="button" onClick={() => setBusinessType('beauty')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'beauty' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
+                                        <button type="button" onClick={() => setBusinessType('salao')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'salao' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
                                             <span className="text-4xl">✂️</span>
                                             <p className="font-bold mt-1">Salão/Estúdio</p>
                                         </button>
