@@ -9,7 +9,7 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ stat, theme }) => (
     <div className="flex flex-col items-center gap-2 rounded-xl bg-card p-3 text-center">
-        <span className={`material-symbols-outlined text-3xl ${theme.primary}`}>{stat.icon}</span>
+        <i className={`fa-solid fa-${stat.icon} text-3xl ${theme.primary}`}></i>
         <p className="text-lg font-bold text-text-primary">{stat.value}</p>
         <p className="text-xs font-medium text-text-secondary">{stat.label}</p>
     </div>

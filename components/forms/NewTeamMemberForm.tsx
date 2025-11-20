@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
-import { useShopLabels } from '../../hooks/useShopLabels'; // Importa o novo hook
+import { useShopLabels } from '../../hooks/useShopLabels';
+import { mockCreateTeamMember } from '../../lib/mockData';
 
 interface NewTeamMemberFormProps {
     onClose: () => void;
@@ -16,7 +16,7 @@ const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSucces
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
-    const shopLabels = useShopLabels(user.shopType); // Usa o novo hook
+    const shopLabels = useShopLabels(user.shopType);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -31,14 +31,13 @@ const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSucces
             tenant_id: shopId,
         };
 
-        const { error: dbError } = await supabase.from('team_members').insert([memberData]);
-        if (dbError) {
-            console.error("Error saving team member:", dbError);
-            setError("Falha ao adicionar membro. Tente novamente.");
-        } else {
+        // Simulação de salvamento
+        mockCreateTeamMember(memberData);
+        
+        // Simulação de sucesso
+        setTimeout(() => {
             onSuccess();
-        }
-        setIsSaving(false);
+        }, 500);
     };
 
     return (
@@ -47,30 +46,30 @@ const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSucces
              animate={{ opacity: 1 }}
              className="space-y-4"
         >
-            <h2 className="text-xl font-bold text-center text-white">Novo Membro da Equipe</h2>
+            <h2 className="text-xl font-bold text-center text-text-primary">Novo Membro da Equipe</h2>
             
             <form className="space-y-4" onSubmit={handleSubmit}>
                 <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-text-secondary-dark mb-1">Nome</label>
-                    <input type="text" id="name" name="name" placeholder="Nome do profissional" required className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}/>
+                    <label htmlFor="name" className="block text-sm font-medium text-text-secondary mb-1">Nome</label>
+                    <input type="text" id="name" name="name" placeholder="Nome do profissional" required className={`w-full bg-background border-2 border-card rounded-full py-3 px-4 text-text-primary focus:ring-2 ${theme.ringPrimary} focus:border-primary`}/>
                 </div>
                  <div>
-                    <label htmlFor="role" className="block text-sm font-medium text-text-secondary-dark mb-1">Função</label>
+                    <label htmlFor="role" className="block text-sm font-medium text-text-secondary mb-1">Função</label>
                     <input 
                         type="text" 
                         id="role" 
                         name="role" 
-                        placeholder={shopLabels.rolePlaceholder} // Usando placeholder dinâmico
+                        placeholder={shopLabels.rolePlaceholder}
                         required 
-                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
+                        className={`w-full bg-background border-2 border-card rounded-full py-3 px-4 text-text-primary focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
 
-                {error && <p className="text-red-400 text-xs text-center pt-1">{error}</p>}
+                {error && <p className="text-red-500 text-xs text-center pt-1">{error}</p>}
 
                 <div className="flex gap-3 pt-4">
                     <button type="button" onClick={onClose} className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white">Cancelar</button>
-                    <button type="submit" disabled={isSaving} className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}>{isSaving ? 'Salvando...' : 'Salvar'}</button>
+                    <button type="submit" disabled={isSaving} className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background disabled:${theme.bgPrimary}/50`}>{isSaving ? 'Salvando...' : 'Salvar'}</button>
                 </div>
             </form>
         </motion.div>

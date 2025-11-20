@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
-import { useShopLabels } from '../../hooks/useShopLabels'; // Importa o novo hook
-import { formatCurrency } from '../../lib/utils'; // Importa a função de formatação de moeda
+import { useShopLabels } from '../../hooks/useShopLabels';
+import { formatCurrency } from '../../lib/utils';
+import { mockCreateService } from '../../lib/mockData';
 
 interface NewServiceFormProps {
     onClose: () => void;
@@ -32,14 +32,13 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
             currency: user.currency,
         };
 
-        const { error: insertError } = await supabase.from('services').insert([serviceData]);
-        if (insertError) {
-            console.error("Error saving service:", insertError);
-            setError(`Erro ao salvar: ${insertError.message}`);
-        } else {
+        // Simulação de salvamento
+        mockCreateService(serviceData);
+        
+        // Simulação de sucesso
+        setTimeout(() => {
             onSuccess();
-        }
-        setIsSaving(false);
+        }, 500);
     };
 
     return (
@@ -48,23 +47,23 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
              animate={{ opacity: 1 }}
              className="space-y-4"
         >
-            <h2 className="text-xl font-bold text-center text-white">Novo Serviço</h2>
+            <h2 className="text-xl font-bold text-center text-text-primary">Novo Serviço</h2>
             
             <form className="space-y-4" onSubmit={handleSubmit}>
                  <div>
-                    <label htmlFor="service-name" className="block text-sm font-medium text-text-secondary-dark mb-1">Nome do Serviço</label>
+                    <label htmlFor="service-name" className="block text-sm font-medium text-text-secondary mb-1">Nome do Serviço</label>
                     <input 
                         type="text" 
                         id="service-name" 
                         name="service-name" 
                         placeholder={shopLabels.serviceNamePlaceholder}
                         required 
-                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
+                        className={`w-full bg-background border-2 border-card rounded-full py-3 px-4 text-text-primary focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
                 <div className="flex gap-3">
                     <div className="w-1/2">
-                        <label htmlFor="price" className="block text-sm font-medium text-text-secondary-dark mb-1">Preço</label>
+                        <label htmlFor="price" className="block text-sm font-medium text-text-secondary mb-1">Preço</label>
                         <input 
                             type="number" 
                             step="0.01" 
@@ -72,20 +71,20 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
                             name="price" 
                             placeholder={formatCurrency(0, user.currency)}
                             required 
-                            className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
+                            className={`w-full bg-background border-2 border-card rounded-full py-3 px-4 text-text-primary focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
                         />
                     </div>
                     <div className="w-1/2">
-                         <label htmlFor="duration" className="block text-sm font-medium text-text-secondary-dark mb-1">Duração (min)</label>
-                        <input type="number" id="duration" name="duration" placeholder="Ex: 60" required className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}/>
+                         <label htmlFor="duration" className="block text-sm font-medium text-text-secondary mb-1">Duração (min)</label>
+                        <input type="number" id="duration" name="duration" placeholder="Ex: 60" required className={`w-full bg-background border-2 border-card rounded-full py-3 px-4 text-text-primary focus:ring-2 ${theme.ringPrimary} focus:border-primary`}/>
                     </div>
                 </div>
 
-                {error && <p className="text-red-400 text-xs text-center -mt-2 mb-2">{error}</p>}
+                {error && <p className="text-red-500 text-xs text-center -mt-2 mb-2">{error}</p>}
 
                 <div className="flex gap-3 pt-4">
                     <button type="button" onClick={onClose} className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white">Cancelar</button>
-                    <button type="submit" disabled={isSaving} className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}>{isSaving ? 'Adicionando...' : 'Adicionar'}</button>
+                    <button type="submit" disabled={isSaving} className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background disabled:${theme.bgPrimary}/50`}>{isSaving ? 'Adicionando...' : 'Adicionar'}</button>
                 </div>
             </form>
         </motion.div>

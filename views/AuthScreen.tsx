@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
 import AuthInput from '../components/AuthInput';
 
 type AuthMode = 'login' | 'signup';
@@ -19,39 +18,41 @@ const AuthScreen: React.FC = () => {
     const [password, setPassword] = useState('');
     
     const themeClasses = businessType === 'barbearia' 
-        ? { primary: 'text-yellow-400', bgPrimary: 'bg-yellow-400', focusRing: 'focus:ring-yellow-400 focus:border-yellow-400', themeClass: 'theme-barber' }
-        : { primary: 'text-pink-500', bgPrimary: 'bg-pink-500', focusRing: 'focus:ring-pink-500 focus:border-pink-500', themeClass: 'theme-beauty' };
+        ? { primary: 'text-primary', bgPrimary: 'bg-primary', focusRing: 'focus:ring-primary focus:border-primary', themeClass: 'theme-barber' }
+        : { primary: 'text-primary', bgPrimary: 'bg-primary', focusRing: 'focus:ring-primary focus:border-primary', themeClass: 'theme-beauty' };
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
+        // Simulação de login/signup
         if (mode === 'signup') {
-            // businessType já está no formato correto ('barbearia' ou 'salao')
-            const { data, error } = await supabase.auth.signUp({ 
-                email, 
-                password,
-                options: {
-                    data: {
+            // Simula o salvamento do tema no localStorage ou cookie
+            localStorage.setItem('user_session', JSON.stringify({
+                user: {
+                    user_metadata: {
                         full_name: name,
                         tenant_name: tenantName,
-                        business_type: businessType, // Passando o valor correto para o DB
+                        business_type: businessType,
                     }
                 }
-            });
-            
-            if (error) {
-                setError(error.message);
-            } else if (data.user && data.session === null) {
-                setError("Confirmação de e-mail necessária. Verifique sua caixa de entrada.");
-            }
+            }));
+            // Redireciona para o App (AuthGate fará o resto)
+            window.location.reload();
             
         } else {
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                setError(error.message);
-            }
+            // Simula login bem-sucedido com tema Barber padrão
+            localStorage.setItem('user_session', JSON.stringify({
+                user: {
+                    user_metadata: {
+                        full_name: 'Mestre Barbeiro',
+                        tenant_name: 'BarberFlow Central',
+                        business_type: 'barbearia',
+                    }
+                }
+            }));
+            window.location.reload();
         }
         setLoading(false);
     };
@@ -72,7 +73,7 @@ const AuthScreen: React.FC = () => {
             >
                 <div className="text-center mb-8">
                     <div className="flex justify-center items-center gap-3">
-                        <span className={`material-symbols-outlined ${themeClasses.primary} text-4xl`}>auto_awesome</span>
+                        <i className={`fa-solid fa-wand-magic-sparkles ${themeClasses.primary} text-4xl`}></i>
                         <h1 className="text-4xl font-extrabold text-text-primary">Flow<span className={themeClasses.primary}>Pro</span></h1>
                     </div>
                     <p className="text-text-secondary mt-2">A plataforma definitiva para o seu negócio.</p>
@@ -105,21 +106,23 @@ const AuthScreen: React.FC = () => {
                                 <div className="text-text-primary text-center">
                                     <label className="text-lg font-bold">Qual é o seu negócio?</label>
                                     <div className="flex gap-4 mt-2">
-                                        <button type="button" onClick={() => setBusinessType('barbearia')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'barbearia' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
-                                            <span className="text-4xl">💈</span>
+                                        <button type="button" onClick={() => setBusinessType('barbearia')} className={`flex-1 p-4 rounded-xl border-2 ${businessType === 'barbearia' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
+                                            <i className="fa-solid fa-cut text-4xl"></i>
                                             <p className="font-bold mt-1">Barbearia</p>
+                                            <p className="text-xs text-text-secondary mt-1">Quero agilidade e lucro</p>
                                         </button>
-                                        <button type="button" onClick={() => setBusinessType('salao')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'salao' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
-                                            <span className="text-4xl">✂️</span>
+                                        <button type="button" onClick={() => setBusinessType('salao')} className={`flex-1 p-4 rounded-xl border-2 ${businessType === 'salao' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
+                                            <i className="fa-solid fa-spa text-4xl"></i>
                                             <p className="font-bold mt-1">Salão/Estúdio</p>
+                                            <p className="text-xs text-text-secondary mt-1">Quero gestão e fidelidade</p>
                                         </button>
                                     </div>
                                 </div>
                                 <AuthInput icon="store" type="text" placeholder="Nome do Negócio" value={tenantName} onChange={e => setTenantName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
-                                <AuthInput icon="person" type="text" placeholder="Seu Nome" value={name} onChange={e => setName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                                <AuthInput icon="user" type="text" placeholder="Seu Nome" value={name} onChange={e => setName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                             </>
                         )}
-                        <AuthInput icon="mail" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                        <AuthInput icon="envelope" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                         <AuthInput icon="lock" type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                         
                         {error && <p className="text-red-500 text-xs text-center">{error}</p>}

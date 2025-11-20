@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
+import { mockCreateClient } from '../../lib/mockData';
 
 interface NewClientFormProps {
     onClose: () => void;
@@ -24,23 +24,13 @@ const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopI
         setIsSaving(true);
         setError(null);
         
-        const { error: insertError } = await supabase
-            .from('clients')
-            .insert([{ 
-                name,
-                phone,
-                last_visit: new Date().toISOString(),
-                image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${theme.themeColor.substring(1)}`,
-                tenant_id: shopId,
-            }]);
+        // Simulação de salvamento
+        mockCreateClient({ name, phone });
 
-        if (insertError) {
-            console.error('Error saving client:', insertError);
-            setError(`Erro ao salvar cliente: ${insertError.message}`);
-        } else {
+        // Simulação de sucesso
+        setTimeout(() => {
             onSuccess();
-        }
-        setIsSaving(false);
+        }, 500);
     };
 
     return (
@@ -49,11 +39,11 @@ const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopI
              animate={{ opacity: 1 }}
              className="space-y-4"
         >
-            <h2 className="text-xl font-bold text-center text-white">Novo Cliente</h2>
+            <h2 className="text-xl font-bold text-center text-text-primary">Novo Cliente</h2>
             
             <form className="space-y-4" onSubmit={handleSubmit}>
                 <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-text-secondary-dark mb-1">Nome</label>
+                    <label htmlFor="name" className="block text-sm font-medium text-text-secondary mb-1">Nome</label>
                     <input 
                         type="text" 
                         id="name" 
@@ -61,29 +51,29 @@ const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopI
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Nome do cliente" 
                         required
-                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
+                        className={`w-full bg-background border-2 border-card rounded-full py-3 px-4 text-text-primary focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-text-secondary-dark mb-1">Telefone (Opcional)</label>
+                    <label htmlFor="phone" className="block text-sm font-medium text-text-secondary mb-1">Telefone (Opcional)</label>
                     <input 
                         type="tel" 
                         id="phone" 
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="(99) 99999-9999" 
-                        className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
+                        className={`w-full bg-background border-2 border-card rounded-full py-3 px-4 text-text-primary focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
                     />
                 </div>
 
-                {error && <p className="text-red-400 text-xs text-center -mt-2 mb-2">{error}</p>}
+                {error && <p className="text-red-500 text-xs text-center -mt-2 mb-2">{error}</p>}
 
                 <div className="flex gap-3 pt-4">
                     <button type="button" onClick={onClose} className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white">Cancelar</button>
                     <button 
                         type="submit" 
                         disabled={isSaving}
-                        className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}
+                        className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background disabled:${theme.bgPrimary}/50`}
                     >
                         {isSaving ? 'Salvando...' : 'Salvar'}
                     </button>

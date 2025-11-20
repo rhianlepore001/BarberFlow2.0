@@ -22,7 +22,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, daily
         <div className="rounded-xl bg-card p-4">
             <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-text-secondary">Faturamento de Hoje</p>
-                <span className={`material-symbols-outlined ${theme.primary} text-xl`}>monitoring</span>
+                <i className={`fa-solid fa-chart-line ${theme.primary} text-xl`}></i>
             </div>
             <p className="text-3xl font-extrabold text-text-primary mt-1">{formatCurrency(dailyRevenue, user.currency)}</p>
             
@@ -31,7 +31,7 @@ const FinancialSummary: React.FC<FinancialSummaryProps> = ({ dailyRevenue, daily
                     <div className="flex items-center gap-1">
                         <span>Meta diária</span>
                         <button onClick={onEditGoalClick} className={`${theme.primary} hover:text-yellow-400 transition-colors`}>
-                            <span className="material-symbols-outlined text-sm">edit</span>
+                            <i className="fa-solid fa-edit text-sm"></i>
                         </button>
                     </div>
                     <span>{formatCurrency(dailyGoal, user.currency)}</span>

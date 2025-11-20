@@ -14,7 +14,7 @@ import Modal from './components/Modal';
 
 // Lazy load views
 const Home = lazy(() => import('./views/Home'));
-const Agenda = lazy(() => import('./views/Agenda'));
+const Agenda = lazy(() => import(() => import('./views/Agenda')));
 const Clients = lazy(() => import('./views/Clients'));
 const CashFlow = lazy(() => import('./views/CashFlow'));
 const Management = lazy(() => import('./views/Management'));
@@ -64,71 +64,30 @@ const App: React.FC<AppProps> = ({ session }) => {
     const refreshData = () => setDataVersion(v => v + 1);
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
+        // Simulação de Logout
+        setUser(null);
+        // Redireciona para a tela de autenticação (que agora é o Onboarding)
+        window.location.reload();
     };
 
     useEffect(() => {
-        const fetchUserAndTenant = async () => {
-            if (!session.user) {
-                setIsInitialLoading(false);
-                return;
-            }
-
-            // 1. Tenta buscar o tenant_id na tabela de membros (donos/funcionários)
-            const { data: memberData, error: memberError } = await supabase
-                .from('tenant_members')
-                .select('tenant_id')
-                .eq('user_id', session.user.id)
-                .limit(1)
-                .single();
-
-            // Se houver um erro que não seja 'nenhuma linha encontrada', logamos e paramos.
-            if (memberError && memberError.code !== 'PGRST116') {
-                console.error("Error fetching tenant member data:", memberError);
-                setIsInitialLoading(false);
-                return;
-            }
-            
-            // Se não encontrou o membro, este usuário não é um membro da equipe/dono.
-            // Ele pode ser um cliente que logou. Neste caso, ele não deve acessar o dashboard.
-            if (!memberData) {
-                console.warn("User is not a shop member. Redirecting or blocking dashboard access.");
-                // Força o logout ou redireciona para a tela pública se necessário.
-                // Por enquanto, apenas paramos o carregamento e mostramos uma tela de erro/bloqueio.
-                setUser(null);
-                setIsInitialLoading(false);
-                return;
-            }
-
-            // 2. Busca os detalhes da loja (tenant)
-            const { data: tenantData, error: tenantError } = await supabase
-                .from('tenants')
-                .select('*')
-                .eq('id', memberData.tenant_id)
-                .single();
-            
-            if (tenantError || !tenantData) {
-                console.error("Could not fetch tenant details.", tenantError);
-                setIsInitialLoading(false);
-                return;
-            }
-
-            // 3. Constrói o objeto User
+        // Simulação de carregamento de usuário e tema
+        // No protótipo, o usuário é definido no Onboarding (AuthScreen)
+        // Aqui, apenas simulamos que o usuário está logado com um tema padrão se a sessão existir.
+        if (session.user) {
+            const shopType = session.user.user_metadata.business_type || 'barbearia';
             const finalUser: User = {
-                name: session.user.user_metadata.full_name || session.user.email,
+                name: session.user.user_metadata.full_name || 'Usuário',
                 imageUrl: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=${session.user.user_metadata.full_name}`,
-                shopId: tenantData.id,
-                shopName: tenantData.name,
-                shopType: tenantData.business_type,
-                country: tenantData.country,
-                currency: tenantData.currency,
+                shopId: 'mock-tenant-id',
+                shopName: session.user.user_metadata.tenant_name || (shopType === 'barbearia' ? 'BarberFlow' : 'BeautyFlow'),
+                shopType: shopType,
+                country: 'BR',
+                currency: 'BRL',
             };
-
             setUser(finalUser);
-            setIsInitialLoading(false);
-        };
-
-        fetchUserAndTenant();
+        }
+        setIsInitialLoading(false);
     }, [session, dataVersion]);
 
     const openModal = (content: ModalContentType, data: any = null) => {
@@ -183,7 +142,8 @@ const App: React.FC<AppProps> = ({ session }) => {
             case 'caixa':
                 return <CashFlow user={user} dataVersion={dataVersion} refreshData={refreshData} />;
             case 'analise':
-                return <Analysis user={user} dataVersion={dataVersion} />;
+                // Removendo a view 'analise' conforme o novo relatório (5 telas)
+                return null; 
             case 'gestao':
                 return <Management user={user} dataVersion={dataVersion} openModal={openModal} refreshData={refreshData} />;
             default:
@@ -241,19 +201,12 @@ const App: React.FC<AppProps> = ({ session }) => {
     };
 
     if (isInitialLoading) {
-        return <div className="flex justify-center items-center h-screen bg-background text-white"><p>Carregando seu negócio...</p></div>;
+        return <div className="flex justify-center items-center h-screen bg-background text-text-primary"><p>Carregando seu negócio...</p></div>;
     }
     
     if (!user) {
-        return (
-            <div className="flex flex-col justify-center items-center h-screen bg-background text-white p-4 text-center">
-                <h1 className="text-2xl font-bold text-red-400 mb-4">Acesso Negado</h1>
-                <p className="text-text-secondary mb-6">Sua conta não está associada a um painel de gestão. Se você é um cliente, use o link de agendamento público.</p>
-                <button onClick={handleLogout} className="bg-gray-700 text-white font-bold py-2 px-4 rounded-full hover:bg-gray-600 transition-colors">
-                    Sair
-                </button>
-            </div>
-        );
+        // Se não há usuário, retorna a tela de autenticação/onboarding
+        return <AuthScreen />;
     }
     
     const themeClass = user.shopType === 'barbearia' ? 'theme-barber' : 'theme-beauty';
@@ -281,12 +234,13 @@ const App: React.FC<AppProps> = ({ session }) => {
                     </Suspense>
                 </main>
                 
+                {/* FAB - Botão de Ação Rápida */}
                 <button
                     onClick={handleFabClick}
                     className={`fixed bottom-24 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform duration-300 hover:scale-105 md:hidden ${theme.bgPrimary}`}
                     aria-label="Adicionar Novo"
                 >
-                    <span className="material-symbols-outlined text-3xl text-background">add</span>
+                    <i className="fa-solid fa-plus text-2xl text-background"></i>
                 </button>
                 <BottomNav items={navItems} activeView={activeView} setActiveView={setActiveView} user={user} />
                 

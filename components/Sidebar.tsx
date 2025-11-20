@@ -19,7 +19,7 @@ const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, isActive, onClick
         }`}
         aria-current={isActive ? 'page' : undefined}
     >
-        <span className="material-symbols-outlined">{item.icon}</span>
+        <i className={`fa-solid fa-${item.icon}`}></i>
         <span className="font-semibold capitalize">{item.label}</span>
     </button>
 );
@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, openModal, items, act
         <aside className="hidden md:flex flex-col w-64 bg-background border-r border-card fixed h-full p-4">
             <div className="flex items-center gap-3 mb-10 px-2">
                 {/* Ícone neutro para FlowPro, cor dinâmica */}
-                <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>auto_awesome</span>
+                <i className={`fa-solid fa-wand-magic-sparkles ${theme.primary} text-3xl`}></i>
                 <h1 className="text-2xl font-extrabold text-text-primary">Flow<span className={theme.primary}>Pro</span></h1>
             </div>
 
@@ -73,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, openModal, items, act
                                 transition={{ delay: 0.2 }}
                                 className="opacity-0 group-hover:opacity-100 transition-opacity"
                             >
-                               <span className="material-symbols-outlined text-text-secondary">more_vert</span>
+                               <i className="fa-solid fa-ellipsis-v text-text-secondary"></i>
                             </motion.div>
                         </div>
                     </div>
@@ -84,14 +84,14 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, openModal, items, act
                                 onClick={() => openModal('editProfile')}
                                 className="w-full text-left px-3 py-2 text-sm text-text-primary hover:bg-background rounded-md flex items-center gap-2 transition-colors"
                             >
-                                <span className="material-symbols-outlined text-base">edit</span>
+                                <i className="fa-solid fa-user-edit text-base"></i>
                                 Editar Perfil
                             </button>
                             <button 
                                 onClick={onLogout}
                                 className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-background rounded-md flex items-center gap-2 transition-colors"
                             >
-                                <span className="material-symbols-outlined text-base">logout</span>
+                                <i className="fa-solid fa-sign-out-alt text-base"></i>
                                 Sair
                             </button>
                         </div>
