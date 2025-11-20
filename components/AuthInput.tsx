@@ -14,18 +14,19 @@ const AuthInput: React.FC<AuthInputProps> = ({ icon, type, focusRingClass = 'foc
 
     return (
         <div className="relative">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">{icon}</span>
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">{icon}</span>
             <input
                 {...props}
                 type={inputType}
-                className={`w-full bg-background-dark border-2 border-card-dark rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 ${focusRingClass} transition-all`}
+                // Alterado para usar bg-card e text-text-primary para se adaptar ao tema claro/escuro
+                className={`w-full bg-card border-2 border-card rounded-full py-3 pl-12 pr-4 text-text-primary placeholder-text-secondary focus:ring-2 ${focusRingClass} transition-all`}
             />
             
             {isPassword && (
                 <button
                     type="button"
                     onClick={() => setShowPassword(prev => !prev)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary-dark hover:text-white transition-colors p-1"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors p-1"
                     aria-label={showPassword ? 'Esconder senha' : 'Mostrar senha'}
                 >
                     <span className="material-symbols-outlined text-xl">{toggleIcon}</span>
