@@ -33,12 +33,12 @@ const PeriodSelector: React.FC<{ selectedPeriod: Period; setPeriod: (p: Period) 
         { label: 'Ano', value: 'year' },
     ];
     return (
-        <div className="flex justify-center items-center bg-card-dark p-1 rounded-full">
+        <div className="flex justify-center items-center bg-card p-1 rounded-full">
             {periods.map(period => (
                  <button 
                     key={period.value}
                     onClick={() => setPeriod(period.value)}
-                    className={`relative w-full text-sm font-bold py-2 rounded-full transition-colors ${selectedPeriod === period.value ? 'text-background-dark' : 'text-text-secondary-dark'}`}
+                    className={`relative w-full text-sm font-bold py-2 rounded-full transition-colors ${selectedPeriod === period.value ? 'text-background' : 'text-text-secondary'}`}
                 >
                     {selectedPeriod === period.value && (
                         <motion.div
@@ -63,14 +63,14 @@ interface KPICardProps {
 const KPICard: React.FC<KPICardProps> = ({ label, value, percentageChange, tooltipContent }) => {
     const isPositive = percentageChange >= 0;
     return (
-        <div className="bg-card-dark p-3 rounded-xl flex-1">
+        <div className="bg-card p-3 rounded-xl flex-1">
             <div className="flex items-center gap-1">
-                <p className="text-xs text-text-secondary-dark">{label}</p>
+                <p className="text-xs text-text-secondary">{label}</p>
                 <Tooltip content={tooltipContent}>
-                    <span className="material-symbols-outlined text-xs text-text-secondary-dark cursor-pointer hover:text-white transition-colors">info</span>
+                    <span className="material-symbols-outlined text-xs text-text-secondary cursor-pointer hover:text-text-primary transition-colors">info</span>
                 </Tooltip>
             </div>
-            <p className="text-lg font-bold text-white">{value}</p>
+            <p className="text-lg font-bold text-text-primary">{value}</p>
             <div className={`flex items-center text-xs font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
                 <span className="material-symbols-outlined text-sm">{isPositive ? 'trending_up' : 'trending_down'}</span>
                 <span>{Math.abs(percentageChange).toFixed(1)}%</span>
@@ -264,7 +264,7 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
     }
 
     if (!data) {
-         return <div className="text-center p-10 text-text-secondary-dark">Nenhum dado encontrado para o período selecionado.</div>;
+         return <div className="text-center p-10 text-text-secondary">Nenhum dado encontrado para o período selecionado.</div>;
     }
 
     const calculateChange = (current: number, previous: number) => {
@@ -330,9 +330,9 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
 
             <motion.div variants={itemVariants} className="space-y-6">
                  <div className="flex items-center gap-2 mb-1 px-1">
-                    <h3 className="font-bold text-white">Ferramentas de IA</h3>
+                    <h3 className="font-bold text-text-primary">Ferramentas de IA</h3>
                     <Tooltip content={iaTooltipContent}>
-                        <span className="material-symbols-outlined text-sm text-text-secondary-dark cursor-pointer hover:text-white transition-colors">info</span>
+                        <span className="material-symbols-outlined text-sm text-text-secondary cursor-pointer hover:text-text-primary transition-colors">info</span>
                     </Tooltip>
                 </div>
                  <GeminiForecastCard data={data} period={period} user={user}/>
@@ -340,26 +340,26 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
             </motion.div>
             
             <motion.div variants={itemVariants}>
-                <h3 className="text-lg font-bold mb-2">Serviços Populares</h3>
-                <div className="bg-card-dark p-3 rounded-xl space-y-2">
+                <h3 className="text-lg font-bold mb-2 text-text-primary">Serviços Populares</h3>
+                <div className="bg-card p-3 rounded-xl space-y-2">
                     {data.topServices.length > 0 ? data.topServices.map(service => (
                         <div key={service.name} className="flex justify-between items-center text-sm">
-                            <p className="font-semibold text-white">{service.name}</p>
+                            <p className="font-semibold text-text-primary">{service.name}</p>
                             <p className={`font-bold ${theme.primary}`}>{service.value}</p>
                         </div>
-                    )) : <p className="text-sm text-center text-text-secondary-dark">Sem dados de serviços.</p>}
+                    )) : <p className="text-sm text-center text-text-secondary">Sem dados de serviços.</p>}
                 </div>
             </motion.div>
 
             <motion.div variants={itemVariants}>
-                <h3 className="text-lg font-bold mb-2">Clientes Destaque</h3>
-                <div className="bg-card-dark p-3 rounded-xl space-y-2">
+                <h3 className="text-lg font-bold mb-2 text-text-primary">Clientes Destaque</h3>
+                <div className="bg-card p-3 rounded-xl space-y-2">
                     {data.topClients.length > 0 ? data.topClients.map(client => (
                         <div key={client.name} className="flex justify-between items-center text-sm">
-                            <p className="font-semibold text-white">{client.name}</p>
-                            <p className="font-semibold text-text-secondary-dark">{client.value}</p>
+                            <p className="font-semibold text-text-primary">{client.name}</p>
+                            <p className="font-semibold text-text-secondary">{client.value}</p>
                         </div>
-                    )) : <p className="text-sm text-center text-text-secondary-dark">Sem dados de clientes.</p>}
+                    )) : <p className="text-sm text-center text-text-secondary">Sem dados de clientes.</p>}
                 </div>
             </motion.div>
 

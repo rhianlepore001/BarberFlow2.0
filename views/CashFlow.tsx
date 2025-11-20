@@ -38,12 +38,12 @@ const FilterButtons: React.FC<{ activeFilter: FilterType; setFilter: (filter: Fi
         { label: 'Saídas', value: 'expense' },
     ];
     return (
-        <div className="flex justify-center items-center bg-card-dark p-1 rounded-full">
+        <div className="flex justify-center items-center bg-card p-1 rounded-full">
             {filters.map(filter => (
                  <button 
                     key={filter.value}
                     onClick={() => setFilter(filter.value)}
-                    className={`relative w-full text-sm font-bold py-2 rounded-full transition-colors ${activeFilter === filter.value ? 'text-background-dark' : 'text-text-secondary-dark'}`}
+                    className={`relative w-full text-sm font-bold py-2 rounded-full transition-colors ${activeFilter === filter.value ? 'text-background' : 'text-text-secondary'}`}
                 >
                     {activeFilter === filter.value && (
                         <motion.div
@@ -109,7 +109,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) =
 
     return (
         <div className="px-4 pt-4 pb-6">
-            <motion.div initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} className={`mt-4 rounded-xl bg-gradient-to-br ${theme.gradientPrimary} p-5 text-background-dark shadow-lg ${theme.shadowPrimary}`}>
+            <motion.div initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} className={`mt-4 rounded-xl bg-gradient-to-br ${theme.gradientPrimary} p-5 text-background shadow-lg ${theme.shadowPrimary}`}>
                 <p className="text-sm font-medium text-black/70">Saldo Atual</p>
                 <p className="text-4xl font-extrabold">{formatCurrency(balance, user.currency)}</p>
             </motion.div>
@@ -147,7 +147,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) =
                 <motion.div layout className="mt-6">
                     <button 
                         onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
-                        className={`w-full rounded-full bg-card-dark py-3 text-center font-bold ${theme.primary} transition-colors hover:${theme.bgPrimary}/20`}
+                        className={`w-full rounded-full bg-card py-3 text-center font-bold ${theme.primary} transition-colors hover:${theme.bgPrimary}/20`}
                     >
                         Carregar Mais
                     </button>

@@ -50,19 +50,19 @@ const DaySelector: React.FC<DaySelectorProps> = ({ selectedDay, setSelectedDay, 
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between px-2">
-                <button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 text-text-secondary-dark hover:text-white transition-colors" aria-label="Semana Anterior">
+                <button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 text-text-secondary hover:text-text-primary transition-colors" aria-label="Semana Anterior">
                     <span className="material-symbols-outlined">chevron_left</span>
                 </button>
-                <h3 className="text-lg font-bold text-white capitalize">{currentMonthYear}</h3>
-                <button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 text-text-secondary-dark hover:text-white transition-colors" aria-label="Próxima Semana">
+                <h3 className="text-lg font-bold text-text-primary capitalize">{currentMonthYear}</h3>
+                <button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 text-text-secondary hover:text-text-primary transition-colors" aria-label="Próxima Semana">
                     <span className="material-symbols-outlined">chevron_right</span>
                 </button>
             </div>
-            <div className="flex justify-between items-center bg-card-dark p-1 rounded-xl">
+            <div className="flex justify-between items-center bg-card p-1 rounded-xl">
                 {days.map((dayIndex) => {
                     const { dayLabel, dateLabel } = getDateForDayIndex(dayIndex, startOfWeek);
                     return (
-                        <button key={dayIndex} onClick={() => setSelectedDay(dayIndex)} className={`relative w-full flex flex-col items-center text-sm font-bold py-2 rounded-lg transition-colors ${selectedDay === dayIndex ? 'text-background-dark' : 'text-text-secondary-dark'}`}>
+                        <button key={dayIndex} onClick={() => setSelectedDay(dayIndex)} className={`relative w-full flex flex-col items-center text-sm font-bold py-2 rounded-lg transition-colors ${selectedDay === dayIndex ? 'text-background' : 'text-text-secondary'}`}>
                             {selectedDay === dayIndex && <motion.div layoutId="day-selector-active" className={`absolute inset-0 ${theme.bgPrimary} rounded-lg z-0`} />}
                             <span className="relative z-10 text-xs">{dayLabel}</span>
                             <span className="relative z-10 text-sm font-extrabold">{dateLabel}</span>
@@ -104,15 +104,15 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
             exit={{ opacity: 0, scale: 0.9 }}
             layout
             onClick={() => onClick(appointment)}
-            className={`absolute w-[98%] p-2 rounded-lg flex flex-col justify-start overflow-hidden bg-card-dark border-l-4 ${theme.borderPrimary} shadow-md cursor-pointer hover:bg-card-dark/80 transition-colors z-10`}
+            className={`absolute w-[98%] p-2 rounded-lg flex flex-col justify-start overflow-hidden bg-card border-l-4 ${theme.borderPrimary} shadow-md cursor-pointer hover:bg-card/80 transition-colors z-10`}
             style={{ top: `${top}px`, height: `${height}px`, left: '1%' }}
         >
-            <p className="font-bold text-white text-sm leading-tight truncate">{clientName}</p>
+            <p className="font-bold text-text-primary text-sm leading-tight truncate">{clientName}</p>
             <div className={`flex items-center gap-1 text-xs font-semibold ${theme.primary} ${isSmallCard ? 'mt-0' : 'mt-auto'}`}>
                 <span className="material-symbols-outlined text-sm">schedule</span>
                 <span>{displayTime} ({appointment.duration_minutes} min)</span>
             </div>
-            {hasSpaceForServices && <p className="text-xs text-text-secondary-dark leading-snug line-clamp-2 mt-1">{serviceNames}</p>}
+            {hasSpaceForServices && <p className="text-xs text-text-secondary leading-snug line-clamp-2 mt-1">{serviceNames}</p>}
         </motion.div>
     );
 };
@@ -231,16 +231,16 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
     }, [selectedDay, appointments, teamMembers, startOfSelectedWeek]);
 
     if (loading) return <div className="text-center p-10">Carregando agenda...</div>;
-    if (teamMembers.length === 0) return <div className="text-center p-10 text-text-secondary-dark">Adicione membros à equipe na tela de Gestão para visualizar a agenda.</div>;
+    if (teamMembers.length === 0) return <div className="text-center p-10 text-text-secondary">Adicione membros à equipe na tela de Gestão para visualizar a agenda.</div>;
 
     return (
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="flex flex-col h-full">
             <motion.div variants={itemVariants} className="my-4 px-4">
                 <DaySelector selectedDay={selectedDay} setSelectedDay={setSelectedDay} weekOffset={weekOffset} setWeekOffset={setWeekOffset} startOfWeek={startOfSelectedWeek} theme={theme} />
             </motion.div>
-            <motion.div variants={itemVariants} className="sticky top-20 z-10 bg-background-dark/90 backdrop-blur-sm border-b border-card-dark pt-2 pb-2">
+            <motion.div variants={itemVariants} className="sticky top-20 z-10 bg-background/90 backdrop-blur-sm border-b border-card pt-2 pb-2">
                 <div className="flex ml-14">
-                    {teamMembers.map(member => <div key={member.id} className="flex-1 text-center px-1"><p className="text-xs font-bold text-white truncate">{member.name.split(' ')[0]}</p></div>)}
+                    {teamMembers.map(member => <div key={member.id} className="flex-1 text-center px-1"><p className="text-xs font-bold text-text-primary truncate">{member.name.split(' ')[0]}</p></div>)}
                 </div>
             </motion.div>
             <div ref={scrollContainerRef} className="flex-grow overflow-y-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -250,7 +250,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
                         const isLastMarker = marker.hour === endHour && marker.minute === 0;
                         return (
                             <div key={index} className="absolute w-full" style={{ top: `${topPosition}px` }}>
-                                {marker.isHour && !isLastMarker && <div className="absolute -left-14 w-14 text-right pr-2 -translate-y-1/2"><span className="text-xs text-text-secondary-dark">{marker.timeString}</span></div>}
+                                {marker.isHour && !isLastMarker && <div className="absolute -left-14 w-14 text-right pr-2 -translate-y-1/2"><span className="text-xs text-text-secondary">{marker.timeString}</span></div>}
                                 <div className={`h-px ${marker.isHour ? 'bg-white/10' : 'bg-white/5'}`}></div>
                             </div>
                         );

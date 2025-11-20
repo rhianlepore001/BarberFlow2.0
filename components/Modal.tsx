@@ -35,7 +35,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
                         animate={{ y: "0%" }}
                         exit={{ y: "100%" }}
                         transition={{ type: 'tween', ease: 'circOut', duration: 0.4 }}
-                        className="fixed bottom-0 left-0 w-full bg-card-dark rounded-t-2xl p-4 z-50 cursor-grab"
+                        className="fixed bottom-0 left-0 w-full bg-card rounded-t-2xl p-4 z-50 cursor-grab"
                         role="dialog"
                         aria-modal="true"
                         // Configurações de arrasto

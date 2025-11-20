@@ -52,19 +52,19 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
     return (
         <motion.div 
             layout
-            className="flex items-center gap-4 rounded-xl bg-card-dark p-3 relative"
+            className="flex items-center gap-4 rounded-xl bg-card p-3 relative"
         >
             <div className={`flex h-10 w-10 items-center justify-center rounded-full ${iconBg}`}>
                <span className="material-symbols-outlined">{iconName}</span>
             </div>
             <div className="flex-1 min-w-0">
-                <p className="font-bold text-white truncate">{description}</p>
-                <p className="text-sm text-text-secondary-dark">{transaction.date}</p>
+                <p className="font-bold text-text-primary truncate">{description}</p>
+                <p className="text-sm text-text-secondary">{transaction.date}</p>
             </div>
             
             <div className="flex items-center gap-2">
                 {isDeleting ? (
-                    <span className="text-sm text-text-secondary-dark">Removendo...</span>
+                    <span className="text-sm text-text-secondary">Removendo...</span>
                 ) : (
                     <p className={`font-bold ${amountColor}`}>{amountDisplay}</p>
                 )}
@@ -72,7 +72,7 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
                 <div className="relative">
                     <button
                         onClick={() => setIsMenuOpen(prev => !prev)}
-                        className="text-text-secondary-dark hover:text-white transition-colors p-1 rounded-full"
+                        className="text-text-secondary hover:text-text-primary transition-colors p-1 rounded-full"
                         aria-label="Opções da transação"
                         disabled={isDeleting}
                     >
@@ -85,7 +85,7 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
                                 transition={{ duration: 0.15, ease: 'easeOut' }}
-                                className="absolute top-full right-0 mt-1 w-40 bg-background-dark rounded-lg shadow-lg border border-white/10 z-20"
+                                className="absolute top-full right-0 mt-1 w-40 bg-background rounded-lg shadow-lg border border-white/10 z-20"
                             >
                                 <button
                                     onClick={handleDelete}
@@ -99,7 +99,7 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
                     </AnimatePresence>
                 </div>
             </div>
-            {error && <p className="absolute bottom-0 left-0 w-full text-red-400 text-xs text-center bg-card-dark/90 p-1 rounded-b-xl">{error}</p>}
+            {error && <p className="absolute bottom-0 left-0 w-full text-red-400 text-xs text-center bg-card/90 p-1 rounded-b-xl">{error}</p>}
         </motion.div>
     );
 };

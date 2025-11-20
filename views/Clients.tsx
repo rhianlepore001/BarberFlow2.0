@@ -49,12 +49,12 @@ const FilterButtons: React.FC<{ activeFilter: ClientFilter; setFilter: (filter: 
         { label: 'Em Risco', value: 'at_risk' },
     ];
     return (
-        <div className="flex justify-center items-center bg-card-dark p-1 rounded-full text-sm">
+        <div className="flex justify-center items-center bg-card p-1 rounded-full text-sm">
             {filters.map(filter => (
                  <button 
                     key={filter.value}
                     onClick={() => setFilter(filter.value)}
-                    className={`relative w-full font-bold py-2 px-1 rounded-full transition-colors ${activeFilter === filter.value ? 'text-background-dark' : 'text-text-secondary-dark'}`}
+                    className={`relative w-full font-bold py-2 px-1 rounded-full transition-colors ${activeFilter === filter.value ? 'text-background' : 'text-text-secondary'}`}
                 >
                     {activeFilter === filter.value && (
                         <motion.div
@@ -180,9 +180,9 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect, user }) 
                         placeholder="Buscar cliente..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className={`w-full bg-card-dark border-none rounded-full py-3 pl-12 pr-4 text-white placeholder-text-secondary-dark focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
+                        className={`w-full bg-card border-none rounded-full py-3 pl-12 pr-4 text-text-primary placeholder-text-secondary focus:ring-2 ${theme.ringPrimary} focus:border-primary`}
                     />
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary-dark">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary">
                         search
                     </span>
                 </div>
@@ -198,11 +198,11 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect, user }) 
                 {filteredClients.length > 0 ? filteredClients.map(client => {
                     const status = getClientStatus(client);
                     return (
-                        <motion.div key={client.id} variants={itemVariants} className="flex items-center gap-4 rounded-xl bg-card-dark p-3">
+                        <motion.div key={client.id} variants={itemVariants} className="flex items-center gap-4 rounded-xl bg-card p-3">
                             <img src={client.imageUrl || `https://ui-avatars.com/api/?name=${client.name}&background=E5A00D&color=101012`} alt={client.name} className="w-12 h-12 rounded-full object-cover"/>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <p className="font-bold text-white truncate">{client.name}</p>
+                                    <p className="font-bold text-text-primary truncate">{client.name}</p>
                                     {/* Ícones de status na lista (sem tooltip, apenas visual) */}
                                     {status === 'vip' && (
                                         <span title="Cliente VIP" className={`material-symbols-outlined ${theme.primary} text-base`}>workspace_premium</span>
@@ -214,18 +214,18 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect, user }) 
                                         <span title="Cliente em Risco" className="material-symbols-outlined text-red-400 text-base">hourglass_empty</span>
                                     )}
                                 </div>
-                                <p className="text-sm text-text-secondary-dark">Última visita: {client.lastVisit}</p>
+                                <p className="text-sm text-text-secondary">Última visita: {client.lastVisit}</p>
                             </div>
                             <button 
                                 onClick={() => onClientSelect(client)}
-                                className="text-text-secondary-dark hover:text-white transition-colors"
+                                className="text-text-secondary hover:text-white transition-colors"
                             >
                                  <span className="material-symbols-outlined">more_vert</span>
                             </button>
                         </motion.div>
                     )
                 }) : (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-text-secondary-dark pt-10">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-text-secondary pt-10">
                         <p>Nenhum cliente encontrado.</p>
                     </motion.div>
                 )}

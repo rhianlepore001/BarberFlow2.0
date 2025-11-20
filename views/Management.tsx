@@ -205,38 +205,38 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             animate="visible"
             className="px-4 pt-4 pb-6 space-y-8"
         >
-            <motion.div variants={itemVariants} className="flex items-center gap-4 rounded-xl bg-card-dark p-4">
+            <motion.div variants={itemVariants} className="flex items-center gap-4 rounded-xl bg-card p-4">
                 <img src={user.imageUrl || `https://ui-avatars.com/api/?name=${user.name}&background=E5A00D&color=101012`} alt={user.name} className="w-16 h-16 rounded-full object-cover"/>
                 <div>
-                    <h3 className="text-xl font-bold">{user.name}</h3>
+                    <h3 className="text-xl font-bold text-text-primary">{user.name}</h3>
                     <button onClick={() => openModal('editProfile')} className={`text-sm font-semibold ${theme.primary} hover:text-yellow-400 transition-colors`}>Editar perfil</button>
                 </div>
             </motion.div>
 
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
-                    <h4 className="text-lg font-bold">Horário de Funcionamento</h4>
+                    <h4 className="text-lg font-bold text-text-primary">Horário de Funcionamento</h4>
                     <button onClick={() => openModal('editHours')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">edit</span>
                         Editar
                     </button>
                 </div>
-                <div className="rounded-xl bg-card-dark p-4 flex justify-between items-center">
+                <div className="rounded-xl bg-card p-4 flex justify-between items-center">
                     {settings ? (
                         <>
-                            <p className="font-bold text-white text-base">{formatOpenDays(settings.open_days)}</p>
-                            <p className="text-sm font-semibold text-text-secondary-dark">{settings.start_time?.substring(0,5)} - {settings.end_time?.substring(0,5)}</p>
+                            <p className="font-bold text-text-primary text-base">{formatOpenDays(settings.open_days)}</p>
+                            <p className="text-sm font-semibold text-text-secondary">{settings.start_time?.substring(0,5)} - {settings.end_time?.substring(0,5)}</p>
                         </>
-                    ) : <p className="text-sm text-text-secondary-dark w-full text-center">Defina seu horário</p>}
+                    ) : <p className="text-sm text-text-secondary w-full text-center">Defina seu horário</p>}
                 </div>
             </motion.div>
 
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
-                    <h4 className="text-lg font-bold">Agendamento Online</h4>
+                    <h4 className="text-lg font-bold text-text-primary">Agendamento Online</h4>
                 </div>
-                <div className="rounded-xl bg-card-dark p-4">
-                    <p className="text-sm text-text-secondary-dark mb-3">
+                <div className="rounded-xl bg-card p-4">
+                    <p className="text-sm text-text-secondary mb-3">
                         Compartilhe este link com seus clientes para que eles possam agendar online e escolher o profissional.
                     </p>
                     <div className="flex items-center gap-2">
@@ -244,11 +244,11 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                             type="text" 
                             readOnly 
                             value={`${window.location.origin}/public-booking/${user.shopId}`} 
-                            className="flex-grow bg-background-dark border border-gray-700 rounded-lg py-2 px-3 text-white text-sm truncate"
+                            className="flex-grow bg-background border border-gray-700 rounded-lg py-2 px-3 text-text-primary text-sm truncate"
                         />
                         <button 
                             onClick={handleCopyGeneralLink}
-                            className={`flex-shrink-0 ${theme.bgPrimary} text-background-dark font-bold py-2 px-4 rounded-lg hover:${theme.bgPrimary}/80 transition-colors`}
+                            className={`flex-shrink-0 ${theme.bgPrimary} text-background font-bold py-2 px-4 rounded-lg hover:${theme.bgPrimary}/80 transition-colors`}
                         >
                             Copiar
                         </button>
@@ -258,22 +258,22 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
 
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
-                    <h4 className="text-lg font-bold">Acerto Mensal</h4>
+                    <h4 className="text-lg font-bold text-text-primary">Acerto Mensal</h4>
                     <button onClick={() => openModal('editSettlementDay')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">calendar_month</span>
                         Dia de Acerto: {settings?.settlement_day || 1}
                     </button>
                 </div>
-                <div className="rounded-xl bg-card-dark p-4 mb-4">
-                    <p className="text-sm font-medium text-text-secondary-dark">Período de Cálculo:</p>
-                    <p className="font-bold text-white text-base">{formatSettlementPeriod()}</p>
+                <div className="rounded-xl bg-card p-4 mb-4">
+                    <p className="text-sm font-medium text-text-secondary">Período de Cálculo:</p>
+                    <p className="font-bold text-text-primary text-base">{formatSettlementPeriod()}</p>
                 </div>
                 <FinancialSettlement financials={financials} team={team} user={user} />
             </motion.div>
 
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
-                    <h4 className="text-lg font-bold">Equipe</h4>
+                    <h4 className="text-lg font-bold text-text-primary">Equipe</h4>
                     <button onClick={() => openModal('newTeamMember')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">add</span>
                         Adicionar
@@ -285,17 +285,17 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                             key={member.id}
                             layout
                             variants={itemVariants}
-                            className="flex items-center gap-3 rounded-lg bg-card-dark p-3"
+                            className="flex items-center gap-3 rounded-lg bg-card p-3"
                         >
                             <img src={member.imageUrl} alt={member.name} className="w-10 h-10 rounded-full object-cover" />
                             <div className="flex-grow">
-                                <p className="font-semibold text-white">{member.name}</p>
-                                <p className="text-sm text-text-secondary-dark">{member.role} (ID: {member.id}) ({Math.round(member.commissionRate * 100)}%)</p>
+                                <p className="font-semibold text-text-primary">{member.name}</p>
+                                <p className="text-sm text-text-secondary">{member.role} (ID: {member.id}) ({Math.round(member.commissionRate * 100)}%)</p>
                             </div>
                             <div className="relative">
                                 <button
                                     onClick={() => setActiveMenu(activeMenu === member.id ? null : member.id)}
-                                    className="text-text-secondary-dark hover:text-white transition-colors p-1 rounded-full"
+                                    className="text-text-secondary hover:text-white transition-colors p-1 rounded-full"
                                 >
                                     <span className="material-symbols-outlined">more_vert</span>
                                 </button>
@@ -306,7 +306,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: -10, scale: 0.95 }}
                                             transition={{ duration: 0.15, ease: 'easeOut' }}
-                                            className="absolute top-full right-0 mt-1 w-48 bg-background-dark rounded-lg shadow-lg border border-white/10 z-20"
+                                            className="absolute top-full right-0 mt-1 w-48 bg-background rounded-lg shadow-lg border border-white/10 z-20"
                                         >
                                             <button
                                                 onClick={() => {
@@ -362,7 +362,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
 
             <motion.div variants={itemVariants}>
                 <div className="flex justify-between items-center mb-3 px-1">
-                    <h4 className="text-lg font-bold">Serviços</h4>
+                    <h4 className="text-lg font-bold text-text-primary">Serviços</h4>
                     <button onClick={() => openModal('newService')} className={`${theme.primary} font-semibold text-sm flex items-center gap-1 hover:text-yellow-400 transition-colors`}>
                         <span className="material-symbols-outlined text-lg">add</span>
                         Adicionar
@@ -370,10 +370,10 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                 </div>
                 <div className="space-y-2 max-h-48 overflow-y-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {services.map(service => (
-                        <div key={service.id} className="flex items-center justify-between rounded-lg bg-card-dark p-3">
+                        <div key={service.id} className="flex items-center justify-between rounded-lg bg-card p-3">
                             <div>
-                               <p className="font-semibold text-white">{service.name}</p>
-                               <p className="text-sm text-text-secondary-dark">{service.duration_minutes} min</p>
+                               <p className="font-semibold text-text-primary">{service.name}</p>
+                               <p className="text-sm text-text-secondary">{service.duration_minutes} min</p>
                             </div>
                              <p className="font-bold text-green-400">{formatCurrency(service.price, user.currency)}</p>
                         </div>

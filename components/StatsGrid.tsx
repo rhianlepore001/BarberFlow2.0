@@ -8,10 +8,10 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ stat, theme }) => (
-    <div className="flex flex-col items-center gap-2 rounded-xl bg-card-dark p-3 text-center">
+    <div className="flex flex-col items-center gap-2 rounded-xl bg-card p-3 text-center">
         <span className={`material-symbols-outlined text-3xl ${theme.primary}`}>{stat.icon}</span>
-        <p className="text-lg font-bold">{stat.value}</p>
-        <p className="text-xs font-medium text-text-secondary-dark">{stat.label}</p>
+        <p className="text-lg font-bold text-text-primary">{stat.value}</p>
+        <p className="text-xs font-medium text-text-secondary">{stat.label}</p>
     </div>
 );
 

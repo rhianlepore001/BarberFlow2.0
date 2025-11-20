@@ -118,7 +118,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     }, []);
 
     if (loading) {
-        return <div className="flex justify-center items-center h-full text-white">Carregando...</div>;
+        return <div className="flex justify-center items-center h-full text-text-primary">Carregando...</div>;
     }
 
     return (
@@ -129,12 +129,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             className="pb-6"
         >
             <motion.div variants={itemVariants} className="px-4 pb-4 pt-4">
-                <h2 className="text-3xl font-extrabold tracking-tight text-white">Bom dia, {user.name}!</h2>
-                <p className="text-base text-text-secondary-dark">Sua agenda de hoje está movimentada.</p>
+                <h2 className="text-3xl font-extrabold tracking-tight text-text-primary">Bom dia, {user.name}!</h2>
+                <p className="text-base text-text-secondary">Sua agenda de hoje está movimentada.</p>
             </motion.div>
 
             <motion.div variants={itemVariants} className="px-4 pb-3">
-                <h3 className="pb-3 text-xl font-bold tracking-tight text-white">Resumo do Dia</h3>
+                <h3 className="pb-3 text-xl font-bold tracking-tight text-text-primary">Resumo do Dia</h3>
                 <StatsGrid stats={stats} />
             </motion.div>
 

@@ -241,16 +241,14 @@ const App: React.FC<AppProps> = ({ session }) => {
     };
 
     if (isInitialLoading) {
-        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Carregando seu negócio...</p></div>;
+        return <div className="flex justify-center items-center h-screen bg-background text-white"><p>Carregando seu negócio...</p></div>;
     }
     
-    // Se o carregamento terminou, mas o usuário não foi definido (porque não é um membro da equipe),
-    // podemos mostrar uma mensagem de erro ou forçar o logout.
     if (!user) {
         return (
-            <div className="flex flex-col justify-center items-center h-screen bg-background-dark text-white p-4 text-center">
+            <div className="flex flex-col justify-center items-center h-screen bg-background text-white p-4 text-center">
                 <h1 className="text-2xl font-bold text-red-400 mb-4">Acesso Negado</h1>
-                <p className="text-text-secondary-dark mb-6">Sua conta não está associada a um painel de gestão. Se você é um cliente, use o link de agendamento público.</p>
+                <p className="text-text-secondary mb-6">Sua conta não está associada a um painel de gestão. Se você é um cliente, use o link de agendamento público.</p>
                 <button onClick={handleLogout} className="bg-gray-700 text-white font-bold py-2 px-4 rounded-full hover:bg-gray-600 transition-colors">
                     Sair
                 </button>
@@ -258,7 +256,7 @@ const App: React.FC<AppProps> = ({ session }) => {
         );
     }
     
-    const themeClass = `theme-${user.shopType}`;
+    const themeClass = user.shopType === 'barbearia' ? 'theme-barber' : 'theme-beauty';
 
     return (
         <div className={`flex min-h-screen w-full ${themeClass}`}>
@@ -288,7 +286,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                     className={`fixed bottom-24 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform duration-300 hover:scale-105 md:hidden ${theme.bgPrimary}`}
                     aria-label="Adicionar Novo"
                 >
-                    <span className="material-symbols-outlined text-3xl text-background-dark">add</span>
+                    <span className="material-symbols-outlined text-3xl text-background">add</span>
                 </button>
                 <BottomNav items={navItems} activeView={activeView} setActiveView={setActiveView} user={user} />
                 

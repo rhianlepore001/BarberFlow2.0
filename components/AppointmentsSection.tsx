@@ -33,7 +33,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = memo(({ appointment, tea
 
     return (
         <div 
-            className="flex h-full w-44 flex-shrink-0 flex-col gap-3 rounded-xl bg-card-dark p-3 cursor-pointer hover:bg-card-dark/80 transition-colors"
+            className="flex h-full w-44 flex-shrink-0 flex-col gap-3 rounded-xl bg-card p-3 cursor-pointer hover:bg-card/80 transition-colors"
             onClick={() => onClick(appointment)}
         >
             <div 
@@ -42,12 +42,12 @@ const AppointmentCard: React.FC<AppointmentCardProps> = memo(({ appointment, tea
                 style={{ backgroundImage: `url("${clientImageUrl}")` }}
             ></div>
             <div>
-                <p className="truncate text-base font-bold text-white">{clientName}</p>
-                <p className="text-sm font-medium text-text-secondary-dark truncate">{serviceName}</p>
+                <p className="truncate text-base font-bold text-text-primary">{clientName}</p>
+                <p className="text-sm font-medium text-text-secondary truncate">{serviceName}</p>
                 <p className={`mt-1 text-sm font-bold ${theme.primary}`}>
                     {displayTime} ({displayDate})
                 </p>
-                <p className="text-xs text-text-secondary-dark truncate">
+                <p className="text-xs text-text-secondary truncate">
                     com {barber?.name.split(' ')[0] || shopLabels.defaultTeamMemberRole} {/* Usando fallback dinâmico */}
                 </p>
             </div>
@@ -70,7 +70,7 @@ const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({ appointments,
     return (
         <section>
             <div className="flex items-center justify-between px-4 pb-3 pt-5">
-                <h3 className="text-xl font-bold tracking-tight text-white">Próximos Agendamentos</h3>
+                <h3 className="text-xl font-bold tracking-tight text-text-primary">Próximos Agendamentos</h3>
                 <button onClick={onViewAllClick} className={`text-sm font-semibold ${theme.primary} hover:text-yellow-400 transition-colors`}>Ver todos</button>
             </div>
             <div className="flex overflow-x-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

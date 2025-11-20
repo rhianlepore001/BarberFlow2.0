@@ -222,10 +222,10 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
             className="pb-6"
         >
             <motion.div variants={itemVariants} className="px-4 pb-4 pt-4">
-                <h2 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                <h2 className="text-3xl font-extrabold tracking-tight text-text-primary flex items-center gap-2">
                     {user.shopName} {shopLabels.shopTypeEmoji} {/* Usando emoji dinâmico */}
                 </h2>
-                <p className="text-base text-text-secondary-dark">Bem-vindo(a) ao seu painel de gestão. Foco total nos resultados de hoje!</p>
+                <p className="text-base text-text-secondary">Bem-vindo(a) ao seu painel de gestão. Foco total nos resultados de hoje!</p>
             </motion.div>
 
             <motion.div variants={itemVariants} className="px-4 pb-3">
@@ -251,7 +251,7 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
             </motion.div>
 
             <motion.div variants={itemVariants} className="px-4 pb-3 pt-6">
-                <h3 className="text-xl font-bold tracking-tight text-white">Fluxo de Caixa</h3>
+                <h3 className="text-xl font-bold tracking-tight text-text-primary">Fluxo de Caixa</h3>
             </motion.div>
             
             <motion.div variants={itemVariants} className="px-4">
