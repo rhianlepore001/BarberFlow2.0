@@ -136,7 +136,7 @@ const App: React.FC<AppProps> = ({ session }) => {
                     console.warn(`Shop ID not found. Retrying... (Attempt ${profileLoadAttempts + 1})`);
                     setProfileLoadAttempts(prev => prev + 1);
                 } else {
-                    console.error("FATAL: Could not associate user with a shop after multiple attempts.");
+                    console.error("FATAL: Could not associate user with a shop after multiple attempts. Member Data Error:", memberError?.message || 'N/A'); // LOG DE ERRO AQUI
                     setProfileError("Não foi possível carregar os dados da sua loja. Isso pode acontecer se o cadastro não foi concluído. Por favor, tente fazer login novamente ou entre em contato com o suporte.");
                     setUser(null);
                     setIsInitialLoading(false);
@@ -302,7 +302,21 @@ const App: React.FC<AppProps> = ({ session }) => {
     }
     
     if (!user) {
-        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Erro ao carregar perfil. Tentando novamente...</p></div>;
+        // Se não houver erro de perfil, mas o usuário for nulo (o que não deveria acontecer se a sessão existe), 
+        // exibimos uma mensagem de erro genérica e forçamos o logout para tentar limpar o estado.
+        return (
+            <div className="flex flex-col justify-center items-center h-screen bg-background-dark text-white text-center p-4">
+                <span className="material-symbols-outlined text-5xl text-red-500 mb-4">warning</span>
+                <h2 className="text-2xl font-bold text-red-400 mb-2">Erro de Sessão</h2>
+                <p className="mb-6 max-w-md">Sua sessão está ativa, mas não foi possível carregar os dados do usuário. Tentando sair para corrigir.</p>
+                <button
+                    onClick={handleLogout}
+                    className={`px-6 py-3 rounded-full bg-primary text-background-dark font-bold transition-transform hover:scale-105`}
+                >
+                    Sair
+                </button>
+            </div>
+        );
     }
 
     return (
