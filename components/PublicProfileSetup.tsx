@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from '../hooks/useTheme';
 import AuthInput from './AuthInput';
+import { mockUpdateClient } from '../lib/mockData'; // Usaremos para simular a atualização do cliente
 
 interface PublicProfileSetupProps {
     session: Session;
-    onSuccess: () => void;
+    onSuccess: (updatedUserMetadata: any) => void; // Retorna os metadados atualizados
     theme: ReturnType<typeof useTheme>;
 }
 
@@ -47,68 +48,27 @@ const PublicProfileSetup: React.FC<PublicProfileSetupProps> = ({ session, onSucc
 
         let avatarUrl = initialImageUrl.split('?t=')[0];
         
-        // 1. Upload da Imagem (se houver)
+        // 1. Simulação de Upload da Imagem (se houver)
         if (avatarFile) {
-            const fileExt = avatarFile.name.split('.').pop();
-            const filePath = `${user.id}/${new Date().getTime()}.${fileExt}`;
-            
-            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile, {
-                cacheControl: '3600',
-                upsert: true
-            });
-            
-            if (uploadError) {
-                console.error('Error uploading avatar:', uploadError);
-                setError(`Erro ao enviar a imagem: ${uploadError.message}`);
-                setIsSaving(false);
-                return;
-            }
-            
-            const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-            avatarUrl = data.publicUrl;
+            // Em um protótipo, não fazemos upload real. Apenas geramos uma URL mock.
+            avatarUrl = URL.createObjectURL(avatarFile);
         }
         
-        // 2. Atualizar metadados do usuário (para persistir nome/telefone na sessão)
-        const { error: userUpdateError } = await supabase.auth.updateUser({
-            data: {
-                name: name,
-                phone: phone,
-                image_url: avatarUrl,
-            }
-        });
+        // 2. Simular atualização de metadados do usuário
+        const updatedUserMetadata = {
+            name: name,
+            phone: phone,
+            image_url: avatarUrl,
+        };
         
-        if (userUpdateError) {
-            console.error('Error updating user metadata:', userUpdateError);
-            setError(`Erro ao atualizar dados: ${userUpdateError.message}`);
-            setIsSaving(false);
-            return;
-        }
-        
-        // 3. Atualizar a tabela 'clients' (o trigger handle_client_signup deve lidar com isso, mas garantimos a atualização)
-        // Como o trigger usa raw_user_meta_data, a atualização acima deve ser suficiente.
-        // No entanto, para garantir que o campo 'image_url' seja atualizado na tabela 'clients' imediatamente:
-        const { data: clientData, error: clientFetchError } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('auth_user_id', user.id)
-            .limit(1)
-            .single();
-            
-        if (clientData) {
-            const { error: clientUpdateError } = await supabase
-                .from('clients')
-                .update({ name, phone, image_url: avatarUrl })
-                .eq('id', clientData.id);
-                
-            if (clientUpdateError) {
-                console.warn('Warning: Could not update client table directly:', clientUpdateError);
-            }
-        } else if (clientFetchError && clientFetchError.code !== 'PGRST116') {
-             console.warn('Warning: Could not fetch client ID:', clientFetchError);
-        }
+        // Simular atualização na tabela 'clients' (se existir)
+        mockUpdateClient(user.id, { name, phone, image_url: avatarUrl });
 
-
-        onSuccess();
+        // Simulação de sucesso
+        setTimeout(() => {
+            onSuccess(updatedUserMetadata); // Retorna os metadados atualizados
+        }, 500);
+        setIsSaving(false);
     };
 
     const isProfileComplete = name.trim() && phone.trim() && (avatarFile || initialImageUrl);
@@ -130,14 +90,14 @@ const PublicProfileSetup: React.FC<PublicProfileSetupProps> = ({ session, onSucc
                             className={`w-28 h-28 rounded-full object-cover border-2 border-card-dark group-hover:${theme.borderPrimary} transition-colors`} 
                         />
                         <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
+                            <span className="fa-solid fa-camera text-white text-3xl"></span>
                         </div>
                     </label>
                     <input id="avatar-upload" type="file" accept="image/png, image/jpeg" onChange={handleFileChange} className="hidden" />
                 </div>
                 
                 <AuthInput 
-                    icon="person" 
+                    icon="user" 
                     type="text" 
                     placeholder="Seu Apelido" 
                     value={name} 

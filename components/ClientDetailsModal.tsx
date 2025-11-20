@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { Client, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils';
+import { mockDeleteClient, mockUpdateClient } from '../lib/mockData'; // Usaremos para simular
 
 interface ClientDetailsModalProps {
     client: Client;
@@ -25,16 +26,13 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         setIsSaving(true);
         setError(null);
 
-        const { error: updateError } = await supabase
-            .from('clients')
-            .update({ name, phone })
-            .eq('id', client.id);
+        // Simulação de atualização de cliente
+        mockUpdateClient(client.id, { name, phone });
 
-        if (updateError) {
-            setError(`Erro ao salvar: ${updateError.message}`);
-        } else {
+        // Simulação de sucesso
+        setTimeout(() => {
             onSuccess();
-        }
+        }, 500);
         setIsSaving(false);
     };
     
@@ -44,14 +42,14 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         setIsSaving(true);
         setError(null);
         
-        const { error: deleteError } = await supabase.from('clients').delete().eq('id', client.id);
+        // Simulação de exclusão de cliente
+        mockDeleteClient(client.id);
         
-        if (deleteError) {
-            setError(`Erro ao excluir: ${deleteError.message}`);
-            setIsSaving(false);
-        } else {
+        // Simulação de sucesso
+        setTimeout(() => {
             onSuccess();
-        }
+        }, 500);
+        setIsSaving(false);
     };
 
     return (

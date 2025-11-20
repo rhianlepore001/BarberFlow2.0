@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { TeamMember, Service, Appointment, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { getMockAppointments } from '../lib/mockData'; // Usaremos para simular
 
 interface BookingCalendarProps {
     selectedBarber: TeamMember;
@@ -54,22 +55,13 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
             setLoading(true);
             setError(null);
             
-            const [settingsRes, appointmentsRes] = await Promise.all([
-                supabase.from('shop_settings').select('start_time, end_time, open_days').eq('tenant_id', shopId).limit(1).single(),
-                supabase.from('appointments').select('startTime:start_time, duration_minutes').eq('professional_id', selectedBarber.id).gte('start_time', currentWeekStart.toISOString()).lte('start_time', new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1).toISOString())
-            ]);
+            // Simulação de configurações da loja
+            const mockSettings = { start_time: '09:00', end_time: '20:00', open_days: ['seg', 'ter', 'qua', 'qui', 'sex', 'sab'] };
+            setSettings(mockSettings);
 
-            if (settingsRes.error && settingsRes.error.code !== 'PGRST116') {
-                setError("Erro ao carregar configurações da loja.");
-            } else {
-                setSettings(settingsRes.data || { start_time: '09:00', end_time: '20:00', open_days: ['seg', 'ter', 'qua', 'qui', 'sex', 'sab'] });
-            }
-
-            if (appointmentsRes.error) {
-                setError("Erro ao carregar agendamentos.");
-            } else {
-                setAppointments(appointmentsRes.data as Appointment[]);
-            }
+            // Simulação de agendamentos
+            const mockAppointmentsData = getMockAppointments();
+            setAppointments(mockAppointmentsData);
 
             setLoading(false);
         };
@@ -112,8 +104,8 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     const appointmentsForSelectedDay = useMemo(() => {
         if (!selectedDate) return [];
         const selectedDateStr = selectedDate.toDateString();
-        return appointments.filter(a => new Date(a.startTime).toDateString() === selectedDateStr);
-    }, [selectedDate, appointments]);
+        return appointments.filter(a => new Date(a.startTime).toDateString() === selectedDateStr && a.barberId === selectedBarber.id);
+    }, [selectedDate, appointments, selectedBarber.id]);
 
     const getSlotStatus = (time: string): 'available' | 'past' | 'conflict' => {
         const now = new Date();
@@ -150,13 +142,13 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
             
             <div className="flex items-center justify-between bg-background-dark p-2 rounded-xl">
                 <button onClick={() => setWeekOffset(weekOffset - 1)} className="p-2 text-text-secondary-dark hover:text-white transition-colors">
-                    <span className="material-symbols-outlined">chevron_left</span>
+                    <span className="fa-solid fa-chevron-left"></span>
                 </button>
                 <h3 className="text-sm font-bold text-white text-center">
                     {currentWeekStart.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
                 </h3>
                 <button onClick={() => setWeekOffset(weekOffset + 1)} className="p-2 text-text-secondary-dark hover:text-white transition-colors">
-                    <span className="material-symbols-outlined">chevron_right</span>
+                    <span className="fa-solid fa-chevron-right"></span>
                 </button>
             </div>
             

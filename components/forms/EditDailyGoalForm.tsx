@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../../lib/supabaseClient';
+// import { supabase } from '../../lib/supabaseClient'; // Removido
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
+import { mockUpdateSettings } from '../../lib/mockData'; // Usaremos para simular
 
 interface EditDailyGoalFormProps {
     onClose: () => void;
@@ -30,22 +31,13 @@ const EditDailyGoalForm: React.FC<EditDailyGoalFormProps> = ({ onClose, onSucces
             return;
         }
         
-        const { data: existingSettings } = await supabase.from('shop_settings').select('id').eq('tenant_id', shopId).limit(1).single();
+        // Simulação de salvamento de configurações
+        mockUpdateSettings({ tenant_id: shopId, daily_goal: goalValue });
         
-        const settingsData = {
-            id: existingSettings ? existingSettings.id : undefined,
-            tenant_id: shopId,
-            daily_goal: goalValue,
-        };
-
-        const { error: dbError } = await supabase.from('shop_settings').upsert(settingsData, { onConflict: 'tenant_id' });
-        
-        if (dbError) {
-            console.error("Error saving daily goal:", dbError);
-            setError(`Falha ao salvar a meta: ${dbError.message}`);
-        } else {
+        // Simulação de sucesso
+        setTimeout(() => {
             onSuccess();
-        }
+        }, 500);
         setIsSaving(false);
     };
 

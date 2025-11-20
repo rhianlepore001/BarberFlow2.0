@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import AuthInput from './AuthInput';
 import type { User } from '../types';
 import { useTheme } from '../hooks/useTheme';
@@ -8,35 +8,36 @@ import { useTheme } from '../hooks/useTheme';
 interface PublicAuthProps {
     onAuthSuccess: (session: any) => void;
     theme: ReturnType<typeof useTheme>;
+    setSession: (session: any | null) => void; // Adicionado para atualizar a sessão
 }
 
-const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme }) => {
+const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme, setSession }) => {
     const [mode, setMode] = useState<'login' | 'signup'>('login');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    // Nome e telefone não são mais necessários aqui, pois serão coletados no PublicProfileSetup
-    // const [name, setName] = useState('');
-    // const [phone, setPhone] = useState('');
 
     const handleSocialAuth = async (provider: 'google' | 'facebook') => {
         setLoading(true);
         setError(null);
         
-        // Redireciona para a página atual após o login social
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider,
-            options: {
-                redirectTo: window.location.href,
+        // Simulação de login social
+        const mockSession = {
+            user: {
+                id: `user-${provider}-${Date.now()}`,
+                email: `${provider}@example.com`,
+                user_metadata: {
+                    name: `Cliente ${provider}`,
+                    phone: '11987654321',
+                    image_url: `https://ui-avatars.com/api/?name=Cliente+${provider}&background=${theme.themeColor}&color=101012`,
+                }
             }
-        });
-
-        if (error) {
-            setError(error.message);
-            setLoading(false);
-        }
-        // Se for bem-sucedido, o listener no AuthGate/PublicBooking cuidará da sessão.
+        };
+        setSession(mockSession);
+        localStorage.setItem('user_session', JSON.stringify(mockSession));
+        onAuthSuccess(mockSession);
+        setLoading(false);
     };
     
     const handleEmailAuth = async (e: React.FormEvent) => {
@@ -45,30 +46,37 @@ const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme }) => {
         setError(null);
         
         if (mode === 'signup') {
-            // A coleta de nome/telefone foi movida para o passo 'profileSetup'
-            
-            const { data, error } = await supabase.auth.signUp({ 
-                email, 
-                password,
-                // Não passamos mais 'name' e 'phone' aqui, pois o trigger handle_client_signup
-                // usará o email como fallback e o passo 'profileSetup' atualizará os dados.
-            });
-            
-            if (error) {
-                setError(error.message);
-            } else if (data.user && data.session === null) {
-                setError("Confirmação de e-mail necessária. Verifique sua caixa de entrada.");
-            } else if (data.session) {
-                onAuthSuccess(data.session);
-            }
+            const mockSession = {
+                user: {
+                    id: `user-${Date.now()}`,
+                    email: email,
+                    user_metadata: {
+                        name: email.split('@')[0], // Nome inicial do email
+                        phone: '', // Telefone vazio para forçar profileSetup
+                        image_url: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=${theme.themeColor}&color=101012`,
+                    }
+                }
+            };
+            setSession(mockSession);
+            localStorage.setItem('user_session', JSON.stringify(mockSession));
+            onAuthSuccess(mockSession);
             
         } else {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                setError(error.message);
-            } else if (data.session) {
-                onAuthSuccess(data.session);
-            }
+            // Simulação de login
+            const mockSession = {
+                user: {
+                    id: `user-${Date.now()}`,
+                    email: email,
+                    user_metadata: {
+                        name: email.split('@')[0],
+                        phone: '11987654321', // Telefone preenchido para simular perfil completo
+                        image_url: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=${theme.themeColor}&color=101012`,
+                    }
+                }
+            };
+            setSession(mockSession);
+            localStorage.setItem('user_session', JSON.stringify(mockSession));
+            onAuthSuccess(mockSession);
         }
         setLoading(false);
     };
@@ -105,8 +113,7 @@ const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme }) => {
             </div>
 
             <form onSubmit={handleEmailAuth} className="space-y-4">
-                {/* Campos de Nome e Telefone removidos daqui, serão coletados no passo 'profileSetup' */}
-                <AuthInput icon="mail" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={theme.ringPrimary} />
+                <AuthInput icon="envelope" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={theme.ringPrimary} />
                 <AuthInput icon="lock" type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required focusRingClass={theme.ringPrimary} />
                 
                 {error && <p className="text-red-400 text-xs text-center">{error}</p>}

@@ -4,7 +4,7 @@ import { Session } from '@supabase/supabase-js';
 
 import type { View, Appointment, User, TeamMember, Client } from './types';
 import { navItems } from './data';
-import { supabase } from './lib/supabaseClient';
+// import { supabase } from './lib/supabaseClient'; // Removido
 import { useTheme } from './hooks/useTheme';
 
 import Header from './components/Header';
@@ -38,7 +38,8 @@ const EditSettlementDayForm = lazy(() => import('./components/forms/EditSettleme
 type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails' | 'editSettlementDay';
 
 interface AppProps {
-    session: Session;
+    session: any; // Usamos 'any' para a sessão mockada
+    setSession: (session: any | null) => void; // Adicionado para logout
 }
 
 const LoadingSpinner: React.FC = () => (
@@ -47,7 +48,7 @@ const LoadingSpinner: React.FC = () => (
     </div>
 );
 
-const App: React.FC<AppProps> = ({ session }) => {
+const App: React.FC<AppProps> = ({ session, setSession }) => {
     const [activeView, setActiveView] = useState<View>('inicio');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState<ModalContentType | null>(null);
@@ -63,17 +64,12 @@ const App: React.FC<AppProps> = ({ session }) => {
     const theme = useTheme(user);
     const refreshData = () => setDataVersion(v => v + 1);
 
-    const handleLogout = async () => {
-        // Simulação de Logout
-        setUser(null);
-        // Redireciona para a tela de autenticação (que agora é o Onboarding)
-        window.location.reload();
+    const handleLogout = () => {
+        setSession(null); // Limpa a sessão mockada
+        window.location.reload(); // Recarrega para ir para AuthScreen
     };
 
     useEffect(() => {
-        // Simulação de carregamento de usuário e tema
-        // No protótipo, o usuário é definido no Onboarding (AuthScreen)
-        // Aqui, apenas simulamos que o usuário está logado com um tema padrão se a sessão existir.
         if (session.user) {
             const shopType = session.user.user_metadata.business_type || 'barbearia';
             const finalUser: User = {
@@ -206,7 +202,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     
     if (!user) {
         // Se não há usuário, retorna a tela de autenticação/onboarding
-        return <AuthScreen />;
+        return <AuthScreen setSession={setSession} />; // Passa setSession para AuthScreen
     }
     
     const themeClass = user.shopType === 'barbearia' ? 'theme-barber' : 'theme-beauty';

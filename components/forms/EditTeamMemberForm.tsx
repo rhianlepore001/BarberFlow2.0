@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../../lib/supabaseClient';
+// import { supabase } from '../../lib/supabaseClient'; // Removido
 import type { TeamMember, User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
+import { mockUpdateTeamMember } from '../../lib/mockData'; // Usaremos para simular
 
 interface EditTeamMemberFormProps {
     member: TeamMember;
@@ -24,13 +25,13 @@ const EditTeamMemberForm: React.FC<EditTeamMemberFormProps> = ({ member, onClose
         setError(null);
         const memberData = { name, role };
 
-        const { error: updateError } = await supabase.from('team_members').update(memberData).eq('id', member.id);
-        if (updateError) {
-            console.error("Error updating team member:", updateError);
-            setError(`Erro ao atualizar: ${updateError.message}`);
-        } else {
+        // Simulação de atualização do membro da equipe
+        mockUpdateTeamMember(member.id, memberData);
+        
+        // Simulação de sucesso
+        setTimeout(() => {
             onSuccess();
-        }
+        }, 500);
         setIsSaving(false);
     };
 

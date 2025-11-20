@@ -5,7 +5,11 @@ import AuthInput from '../components/AuthInput';
 type AuthMode = 'login' | 'signup';
 type BusinessType = 'barbearia' | 'salao'; // Usando os valores do enum do DB
 
-const AuthScreen: React.FC = () => {
+interface AuthScreenProps {
+    setSession: (session: any | null) => void; // Adicionado para atualizar a sessão
+}
+
+const AuthScreen: React.FC<AuthScreenProps> = ({ setSession }) => {
     const [mode, setMode] = useState<AuthMode>('login');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -28,31 +32,38 @@ const AuthScreen: React.FC = () => {
 
         // Simulação de login/signup
         if (mode === 'signup') {
-            // Simula o salvamento do tema no localStorage ou cookie
-            localStorage.setItem('user_session', JSON.stringify({
+            const mockSession = {
                 user: {
+                    id: `user-${Date.now()}`,
+                    email: email,
                     user_metadata: {
                         full_name: name,
                         tenant_name: tenantName,
                         business_type: businessType,
+                        avatar_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${themeClasses.primary.substring(1)}`,
                     }
                 }
-            }));
-            // Redireciona para o App (AuthGate fará o resto)
-            window.location.reload();
+            };
+            setSession(mockSession); // Atualiza a sessão no AuthGate
+            localStorage.setItem('user_session', JSON.stringify(mockSession));
+            window.location.reload(); // Recarrega para ir para o App
             
         } else {
-            // Simula login bem-sucedido com tema Barber padrão
-            localStorage.setItem('user_session', JSON.stringify({
+            const mockSession = {
                 user: {
+                    id: 'mock-user-id',
+                    email: email,
                     user_metadata: {
                         full_name: 'Mestre Barbeiro',
                         tenant_name: 'BarberFlow Central',
                         business_type: 'barbearia',
+                        avatar_url: `https://ui-avatars.com/api/?name=Mestre+Barbeiro&background=EAB308`,
                     }
                 }
-            }));
-            window.location.reload();
+            };
+            setSession(mockSession); // Atualiza a sessão no AuthGate
+            localStorage.setItem('user_session', JSON.stringify(mockSession));
+            window.location.reload(); // Recarrega para ir para o App
         }
         setLoading(false);
     };

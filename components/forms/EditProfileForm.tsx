@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../../lib/supabaseClient';
+// import { supabase } from '../../lib/supabaseClient'; // Removido
 import type { User } from '../../types';
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from '../../hooks/useTheme';
+import { mockUpdateTeamMember } from '../../lib/mockData'; // Usaremos para simular
 
 interface EditProfileFormProps {
     user: User;
@@ -35,41 +36,17 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ user, session, onClos
         let avatarUrl = user.imageUrl.split('?t=')[0]; // Remove o cache buster se não houver novo upload
         
         if (avatarFile) {
-            const fileExt = avatarFile.name.split('.').pop();
-            const filePath = `${session.user.id}/${new Date().getTime()}.${fileExt}`;
-            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, avatarFile, {
-                cacheControl: '3600',
-                upsert: true
-            });
-            
-            if (uploadError) {
-                console.error('Error uploading avatar:', uploadError);
-                setError(`Erro ao enviar a imagem: ${uploadError.message}`);
-                setIsSaving(false);
-                return;
-            }
-            
-            const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-            avatarUrl = data.publicUrl;
+            // Simulação de upload: apenas gera uma URL local
+            avatarUrl = URL.createObjectURL(avatarFile);
         }
 
-        // Usar 'upsert' é mais robusto: cria o perfil se não existir, atualiza se existir.
-        const { error: dbError } = await supabase
-            .from('team_members')
-            .upsert({ 
-                auth_user_id: session.user.id, 
-                name, 
-                image_url: avatarUrl 
-            }, { 
-                onConflict: 'auth_user_id' 
-            });
+        // Simulação de atualização do membro da equipe
+        mockUpdateTeamMember(session.user.id, { name, image_url: avatarUrl });
             
-        if (dbError) {
-            console.error('Error updating profile:', dbError);
-            setError(`Erro ao atualizar o perfil: ${dbError.message}`);
-        } else {
+        // Simulação de sucesso
+        setTimeout(() => {
             onSuccess();
-        }
+        }, 500);
         
         setIsSaving(false);
     };
@@ -83,7 +60,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ user, session, onClos
                     <label htmlFor="avatar-upload" className="relative cursor-pointer group">
                         <img src={previewUrl || `https://ui-avatars.com/api/?name=${name}&background=${theme.themeColor.substring(1)}&color=101012`} alt="Avatar" className={`w-28 h-28 rounded-full object-cover border-2 border-card-dark group-hover:${theme.borderPrimary} transition-colors`} />
                         <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="material-symbols-outlined text-white text-3xl">edit</span>
+                            <span className="fa-solid fa-edit text-white text-3xl"></span>
                         </div>
                     </label>
                     <input id="avatar-upload" type="file" accept="image/png, image/jpeg" onChange={handleFileChange} className="hidden" />

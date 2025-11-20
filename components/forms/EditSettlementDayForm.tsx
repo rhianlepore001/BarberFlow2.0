@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../../lib/supabaseClient';
+// import { supabase } from '../../lib/supabaseClient'; // Removido
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
+import { mockUpdateSettings } from '../../lib/mockData'; // Usaremos para simular
 
 interface EditSettlementDayFormProps {
     onClose: () => void;
@@ -19,17 +20,12 @@ const EditSettlementDayForm: React.FC<EditSettlementDayFormProps> = ({ onClose, 
     const theme = useTheme(user);
 
     useEffect(() => {
-        const fetchSettings = async () => {
-            const { data, error } = await supabase.from('shop_settings').select('settlement_day').eq('tenant_id', shopId).limit(1).single();
-            if (data && data.settlement_day !== null) {
-                setSettlementDay(data.settlement_day.toString());
-            }
-            if (error && error.code !== 'PGRST116') {
-                console.error("Error fetching settings:", error);
-            }
-            setLoading(false);
-        };
-        fetchSettings();
+        // Simulação de busca de configurações
+        const mockSettings = { settlement_day: 1 }; // Valor mockado
+        if (mockSettings && mockSettings.settlement_day !== null) {
+            setSettlementDay(mockSettings.settlement_day.toString());
+        }
+        setLoading(false);
     }, [shopId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -44,22 +40,13 @@ const EditSettlementDayForm: React.FC<EditSettlementDayFormProps> = ({ onClose, 
             return;
         }
         
-        const { data: existingSettings } = await supabase.from('shop_settings').select('id').eq('tenant_id', shopId).limit(1).single();
+        // Simulação de salvamento de configurações
+        mockUpdateSettings({ tenant_id: shopId, settlement_day: dayValue });
         
-        const settingsData = {
-            id: existingSettings ? existingSettings.id : undefined,
-            tenant_id: shopId,
-            settlement_day: dayValue,
-        };
-
-        const { error: dbError } = await supabase.from('shop_settings').upsert(settingsData, { onConflict: 'tenant_id' });
-        
-        if (dbError) {
-            console.error("Error saving settlement day:", dbError);
-            setError(`Falha ao salvar o dia de acerto: ${dbError.message}`);
-        } else {
+        // Simulação de sucesso
+        setTimeout(() => {
             onSuccess();
-        }
+        }, 500);
         setIsSaving(false);
     };
 

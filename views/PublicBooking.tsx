@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { TeamMember, Service, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { useShopLabels } from '../hooks/useShopLabels';
+import { getMockClients, getMockServices, getMockTeamMembers, mockCreateAppointment, mockUpdateClient } from '../lib/mockData';
 
 // Lazy load booking steps
 const PublicAuth = lazy(() => import('../components/PublicAuth'));
@@ -17,6 +18,7 @@ type BookingStep = 'auth' | 'profileSetup' | 'selectBarber' | 'services' | 'cale
 
 interface PublicBookingProps {
     shopId: string;
+    setSession: (session: any | null) => void; // Adicionado para logout/login
 }
 
 const LoadingSpinner: React.FC = () => (
@@ -25,7 +27,7 @@ const LoadingSpinner: React.FC = () => (
     </div>
 );
 
-const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
+const PublicBooking: React.FC<PublicBookingProps> = ({ shopId, setSession }) => {
     const [step, setStep] = useState<BookingStep>('auth');
     const [shopDetails, setShopDetails] = useState<{ name: string, type: 'barber' | 'beauty', country: 'BR' | 'PT', currency: 'BRL' | 'EUR' } | null>(null);
     const [allTeamMembers, setAllTeamMembers] = useState<TeamMember[]>([]);
@@ -41,15 +43,15 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const themeUser = useMemo(() => {
         if (!shopDetails) return null;
         return {
-            name: shopDetails.name,
-            imageUrl: '',
-            shopName: shopDetails.name,
+            name: clientSession?.user.user_metadata?.name || shopDetails.name,
+            imageUrl: clientSession?.user.user_metadata?.image_url || '',
             shopId: shopId,
+            shopName: shopDetails.name,
             shopType: shopDetails.type,
             country: shopDetails.country,
             currency: shopDetails.currency,
         };
-    }, [shopDetails, shopId]);
+    }, [shopDetails, shopId, clientSession]);
 
     const theme = useTheme(themeUser); 
     const shopLabels = useShopLabels(shopDetails?.type);
@@ -57,8 +59,9 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const totalDuration = useMemo(() => selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0), [selectedServices]);
     const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + s.price, 0), [selectedServices]);
 
-    const checkSessionAndSetStep = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
+    const checkSessionAndSetStep = () => {
+        const storedSession = localStorage.getItem('user_session');
+        const session = storedSession ? JSON.parse(storedSession) : null;
         
         if (session) {
             setClientSession(session);
@@ -82,50 +85,37 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
             setError(null);
             
             try {
-                const { data: rpcData, error: rpcError } = await supabase
-                    .rpc('get_public_shop_data', { p_shop_id: shopId })
-                    .single();
+                // Simulação de dados da loja pública
+                const mockShopDetails = { 
+                    name: "BarberFlow Public", 
+                    type: 'barber' as 'barber' | 'beauty', 
+                    country: 'BR' as 'BR' | 'PT', 
+                    currency: 'BRL' as 'BRL' | 'EUR' 
+                };
+                const mockTeamMembers = getMockTeamMembers();
+                const mockServices = getMockServices();
 
-                if (rpcError) {
-                    setError(`Erro ao carregar dados: ${rpcError.message}`);
-                    setLoading(false);
-                    return;
-                }
-
-                if (!rpcData || !rpcData.shop_data) {
-                    setError('Loja não encontrada ou dados incompletos.');
-                    setLoading(false);
-                    return;
-                }
-
-                setShopDetails(rpcData.shop_data);
-                setAllTeamMembers(rpcData.team_members_data || []);
-                setServices(rpcData.services_data || []);
+                setShopDetails(mockShopDetails);
+                setAllTeamMembers(mockTeamMembers);
+                setServices(mockServices);
                 
-                if (rpcData.team_members_data?.length > 0) {
-                    setSelectedBarber(rpcData.team_members_data[0]);
+                if (mockTeamMembers.length > 0) {
+                    setSelectedBarber(mockTeamMembers[0]);
                 }
 
             } catch (err) {
-                setError('Erro inesperado ao carregar dados');
+                setError('Erro inesperado ao carregar dados da loja');
             } finally {
                 setLoading(false);
             }
             
-            await checkSessionAndSetStep();
+            checkSessionAndSetStep();
         };
         
         fetchShopDetailsAndData();
         
-        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
-                checkSessionAndSetStep();
-            }
-        });
-
-        return () => {
-            authListener?.subscription.unsubscribe();
-        };
+        // Para fins de protótipo, não há listener de auth real aqui.
+        // A sessão será atualizada via setSession passado do AuthGate.
     }, [shopId]);
 
     const handleAuthSuccess = (session: any) => {
@@ -136,8 +126,22 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
         else setStep('selectBarber');
     };
     
-    const handleProfileSetupSuccess = () => {
-        supabase.auth.refreshSession(); 
+    const handleProfileSetupSuccess = (updatedUserMetadata: any) => {
+        // Atualiza a sessão localmente com os novos metadados
+        if (clientSession) {
+            const newSession = {
+                ...clientSession,
+                user: {
+                    ...clientSession.user,
+                    user_metadata: {
+                        ...clientSession.user.user_metadata,
+                        ...updatedUserMetadata,
+                    },
+                },
+            };
+            setClientSession(newSession);
+            localStorage.setItem('user_session', JSON.stringify(newSession));
+        }
         setStep('selectBarber');
     };
     
@@ -181,7 +185,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
 
         switch (step) {
             case 'auth':
-                return <PublicAuth onAuthSuccess={handleAuthSuccess} theme={theme} />;
+                return <PublicAuth onAuthSuccess={handleAuthSuccess} theme={theme} setSession={setSession} />;
             case 'profileSetup':
                 if (!clientSession) return null;
                 return <PublicProfileSetup session={clientSession} onSuccess={handleProfileSetupSuccess} theme={theme} />;

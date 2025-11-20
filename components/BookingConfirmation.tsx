@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { TeamMember, Service, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils';
+import { mockCreateAppointment, mockUpdateClient } from '../lib/mockData'; // Usaremos para simular
 
 interface BookingConfirmationProps {
     selectedBarber: TeamMember;
@@ -44,43 +45,26 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
         const start_time = new Date(`${selectedDate.toISOString().split('T')[0]}T${selectedTime}:00`).toISOString();
         const servicesToSave = selectedServices.map(s => ({ id: s.id, name: s.name, price: s.price, duration_minutes: s.duration_minutes }));
         
-        const { data: clientData, error: clientError } = await supabase
-            .from('clients')
-            .select('id, tenant_id')
-            .eq('auth_user_id', clientSession.user.id)
-            .limit(1)
-            .single();
-            
-        if (clientError || !clientData) {
-            setError("Erro ao identificar seu perfil de cliente. Tente fazer login novamente.");
-            setIsBooking(false);
-            return;
-        }
-        
-        if (!clientData.tenant_id) {
-            await supabase.from('clients').update({ tenant_id: selectedBarber.shop_id }).eq('id', clientData.id);
-        }
+        // Simulação de busca de cliente e atualização de tenant_id
+        // Em um protótipo, apenas simulamos o sucesso.
+        // mockUpdateClient(clientSession.user.id, { tenant_id: selectedBarber.shop_id }); // Não é necessário mockar aqui, pois o cliente já está 'associado' à loja pública.
         
         const appointmentData = {
             start_time,
             professional_id: selectedBarber.id,
-            client_id: clientData.id,
+            client_id: clientSession.user.id, // Usamos o ID do usuário da sessão mockada como client_id
             duration_minutes: totalDuration, 
             services_json: servicesToSave,
             tenant_id: selectedBarber.shop_id,
         };
         
-        const { error: dbError } = await supabase.from('appointments').insert([appointmentData]);
+        // Simulação de agendamento
+        mockCreateAppointment(appointmentData);
         
-        if (dbError) {
-            let errorMessage = `Falha ao agendar: ${dbError.message}. Tente outro horário.`;
-            if (dbError.message.includes('Conflito de agendamento')) {
-                 errorMessage = "Conflito de horário! Este horário foi reservado. Por favor, selecione outro slot.";
-            }
-            setError(errorMessage);
-        } else {
+        // Simulação de sucesso
+        setTimeout(() => {
             onSuccess();
-        }
+        }, 500);
         setIsBooking(false);
     };
 
@@ -90,14 +74,14 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             <div className="bg-background-dark p-4 rounded-xl space-y-3">
                 <p className="text-sm font-medium text-text-secondary-dark">Resumo do Agendamento</p>
                 <div className="flex items-center gap-3">
-                    <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>schedule</span>
+                    <span className={`fa-solid fa-calendar-alt ${theme.primary} text-3xl`}></span>
                     <div>
                         <p className="font-bold text-white">{selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</p>
                         <p className="text-sm text-text-secondary-dark">Às {selectedTime} ({totalDuration} min)</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>content_cut</span>
+                    <span className={`fa-solid fa-cut ${theme.primary} text-3xl`}></span>
                     <div>
                         <p className="font-bold text-white">{selectedBarber.name}</p>
                         <p className="text-sm text-text-secondary-dark">Seu profissional</p>

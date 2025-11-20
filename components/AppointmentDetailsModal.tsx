@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { Appointment, Service, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils';
+import { mockCreateTransaction, mockDeleteAppointment } from '../lib/mockData'; // Usaremos para simular
 
 interface AppointmentDetailsModalProps {
     appointment: Appointment;
@@ -26,7 +27,7 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
     const services: Service[] = appointment.services_json || [];
     const totalAmount = services.reduce((sum, s) => sum + s.price, 0);
     const serviceNames = services.map(s => s.name).join(', ');
-    const totalDuration = appointment.duration_minutes;
+    // const totalDuration = appointment.duration_minutes; // Não usado diretamente no display aqui
 
     const handleCompleteAppointment = async () => {
         setIsProcessing(true);
@@ -54,25 +55,17 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             client_id: appointment.clientId,
         };
 
-        const { error: transactionError } = await supabase.from('transactions').insert([transactionData]);
+        // Simulação de inserção de transação
+        mockCreateTransaction(transactionData);
 
-        if (transactionError) {
-            console.error("Error inserting transaction:", transactionError);
-            setError(`Falha ao registrar pagamento: ${transactionError.message}`);
-            setIsProcessing(false);
-            return;
-        }
+        // Simulação de exclusão de agendamento
+        mockDeleteAppointment(appointment.id);
 
-        const { error: deleteError } = await supabase.from('appointments').delete().eq('id', appointment.id);
-
-        if (deleteError) {
-            console.error("Error deleting appointment:", deleteError);
-            setError(`Pagamento registrado, mas falha ao remover agendamento: ${deleteError.message}`);
-            setIsProcessing(false);
-            return;
-        }
-
-        onSuccess();
+        // Simulação de sucesso
+        setTimeout(() => {
+            onSuccess();
+        }, 500);
+        setIsProcessing(false);
     };
     
     const handleCancelAppointment = async () => {
@@ -81,16 +74,14 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
         setIsProcessing(true);
         setError(null);
         
-        const { error: deleteError } = await supabase.from('appointments').delete().eq('id', appointment.id);
+        // Simulação de exclusão de agendamento
+        mockDeleteAppointment(appointment.id);
 
-        if (deleteError) {
-            console.error("Error deleting appointment:", deleteError);
-            setError(`Falha ao cancelar agendamento: ${deleteError.message}`);
-            setIsProcessing(false);
-            return;
-        }
-        
-        onSuccess();
+        // Simulação de sucesso
+        setTimeout(() => {
+            onSuccess();
+        }, 500);
+        setIsProcessing(false);
     }
 
     return (
@@ -99,14 +90,14 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             
             <div className="bg-background-dark p-4 rounded-xl space-y-3">
                 <div className="flex items-center gap-3">
-                    <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>person</span>
+                    <span className={`fa-solid fa-user ${theme.primary} text-3xl`}></span>
                     <div>
                         <p className="font-bold text-white">{clientName}</p>
                         <p className="text-sm text-text-secondary-dark">Cliente</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>schedule</span>
+                    <span className={`fa-solid fa-clock ${theme.primary} text-3xl`}></span>
                     <div>
                         <p className="font-bold text-white">{startTime}</p>
                         <p className="text-sm text-text-secondary-dark">Horário com {barberName}</p>
@@ -114,7 +105,7 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
                 </div>
                 
                 <div className="border-t border-white/10 pt-3">
-                    <p className="text-sm font-medium text-text-secondary-dark mb-1">Serviços ({totalDuration} min)</p>
+                    <p className="text-sm font-medium text-text-secondary-dark mb-1">Serviços ({appointment.duration_minutes} min)</p>
                     <ul className="space-y-1">
                         {services.map((s, index) => (
                             <li key={index} className="flex justify-between text-white text-sm">
