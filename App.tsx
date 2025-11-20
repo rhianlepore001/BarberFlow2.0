@@ -6,7 +6,7 @@ import type { View, Appointment, User, TeamMember, Client } from './types';
 import { navItems } from './data';
 import { supabase } from './lib/supabaseClient';
 import { useTheme } from '@/hooks/useTheme';
-import { useShopLabels } from '@/hooks/useShopLabels';
+import { useShopLabels } from '@/hooks/useShopLabels'; // Importa o novo hook
 
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -49,9 +49,6 @@ const LoadingSpinner: React.FC = () => (
     </div>
 );
 
-// Função auxiliar para aguardar
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-
 const App: React.FC<AppProps> = ({ session }) => {
     const [activeView, setActiveView] = useState<View>('inicio');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,101 +58,121 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [user, setUser] = useState<User | null>(null);
     const [dataVersion, setDataVersion] = useState(0);
+    const [profileLoadAttempts, setProfileLoadAttempts] = useState(0);
     const [dailyGoal, setDailyGoal] = useState(500);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     
     const theme = useTheme(user);
-    const shopLabels = useShopLabels(user?.shopType);
+    const shopLabels = useShopLabels(user?.shopType); // Usa o novo hook aqui também
 
     const refreshData = () => setDataVersion(v => v + 1);
 
     const handleLogout = async () => {
-        console.log("App: Executing handleLogout.");
         await supabase.auth.signOut();
     };
 
     useEffect(() => {
+        const MAX_ATTEMPTS = 5;
+        
         const fetchUserProfile = async () => {
             if (!session.user) {
                 setIsInitialLoading(false);
                 return;
             }
 
-            let memberData = null;
-            // Tenta buscar o perfil do membro da equipe por até 5 segundos
-            for (let i = 0; i < 5; i++) {
-                console.log(`App: Tentativa ${i + 1} de buscar o perfil...`);
-                const { data, error } = await supabase
-                    .from('team_members')
-                    .select('name, image_url, shop_id, role')
-                    .eq('auth_user_id', session.user.id)
-                    .limit(1)
-                    .single();
+            const { data: memberData, error: memberError } = await supabase
+                .from('team_members')
+                .select('name, image_url, shop_id')
+                .eq('auth_user_id', session.user.id)
+                .limit(1)
+                .single();
 
-                if (data) {
-                    memberData = data;
-                    console.log("App: Perfil encontrado!", memberData);
-                    break; // Sai do loop se encontrar os dados
-                }
-                
-                if (error && error.code !== 'PGRST116') {
-                    console.error("App: Erro no DB ao buscar perfil:", error.message);
-                    await handleLogout();
-                    setIsInitialLoading(false);
-                    return;
-                }
-                
-                await delay(1000); // Espera 1 segundo antes de tentar novamente
-            }
-
-            if (!memberData) {
-                console.warn("App: Perfil não encontrado após 5 tentativas. Forçando logout.");
-                await handleLogout();
-                setIsInitialLoading(false);
-                return;
-            }
-
-            // Se memberData for encontrado, prossegue para carregar os detalhes da loja
             let shopName = "Barbearia";
-            let name = memberData.name;
-            let imageUrl = memberData.image_url || '';
-            let shopId: number = memberData.shop_id;
+            let name = session.user.email?.split('@')[0] || "Usuário";
+            let imageUrl = "";
+            let shopId: number | null = null;
             let shopType: 'barbearia' | 'salao' = 'barbearia';
             let country: 'BR' | 'PT' = 'BR';
-            let currency: 'BRL' | 'EUR' = 'BRL';
-            let role: string = memberData.role;
+            let currency: 'BRL' | 'EUR' = 'BRL'; // Inicializa com BRL
 
-            const [shopRes, settingsRes] = await Promise.all([
-                supabase.from('shops').select('name, type, country, currency').eq('id', shopId).limit(1).single(),
-                supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
-            ]);
+            if (memberError && memberError.code !== 'PGRST116') {
+                console.error("Error fetching user profile from DB:", memberError.message);
+            }
+
+            if (memberData) {
+                name = memberData.name;
+                imageUrl = memberData.image_url || ''; // Não adiciona cache buster aqui, será feito no final
+                shopId = memberData.shop_id;
+            } else {
+                const metadataName = session.user.user_metadata?.name;
+                const metadataImageUrl = session.user.user_metadata?.image_url;
+                if (metadataName) name = metadataName;
+                if (metadataImageUrl) imageUrl = metadataImageUrl; // Não adiciona cache buster aqui
+            }
             
-            if (shopRes.data) {
-                shopName = shopRes.data.name;
-                shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
-                country = (shopRes.data.country as 'BR' | 'PT') || 'BR';
-                currency = (shopRes.data.currency as 'BRL' | 'EUR') || 'BRL';
-            } else if (shopRes.error && shopRes.error.code !== 'PGRST116') {
-                console.error("App: Erro ao buscar detalhes da loja:", shopRes.error.message);
-                await handleLogout();
-                setIsInitialLoading(false);
+            if (shopId) {
+                const [shopRes, settingsRes] = await Promise.all([
+                    supabase.from('shops').select('name, type, country, currency').eq('id', shopId).limit(1).single(), // Busca currency
+                    supabase.from('shop_settings').select('daily_goal').eq('shop_id', shopId).limit(1).single()
+                ]);
+                
+                if (shopRes.data) {
+                    shopName = shopRes.data.name;
+                    shopType = (shopRes.data.type as 'barbearia' | 'salao') || 'barbearia';
+                    country = (shopRes.data.country as 'BR' | 'PT') || 'BR';
+                    currency = (shopRes.data.currency as 'BRL' | 'EUR') || 'BRL'; // Define currency
+                    
+                    // console.log('🏪 Shop loaded:', {
+                    //     shopId,
+                    //     shopName,
+                    //     country,
+                    //     currency,
+                    //     rawData: shopRes.data
+                    // });
+                }
+                
+                if (settingsRes.data && settingsRes.data.daily_goal !== null) {
+                    setDailyGoal(settingsRes.data.daily_goal);
+                } else {
+                    setDailyGoal(500);
+                }
+            }
+
+            if (!shopId) {
+                if (profileLoadAttempts < MAX_ATTEMPTS) {
+                    console.warn(`Shop ID not found. Retrying... (Attempt ${profileLoadAttempts + 1})`);
+                    setProfileLoadAttempts(prev => prev + 1);
+                    setTimeout(fetchUserProfile, 1000);
+                } else {
+                    console.error("FATAL: Could not associate user with a shop. Forcing logout.");
+                    await handleLogout(); 
+                    setUser(null);
+                    setIsInitialLoading(false);
+                }
                 return;
             }
             
-            if (settingsRes.data && settingsRes.data.daily_goal !== null) {
-                setDailyGoal(settingsRes.data.daily_goal);
-            }
-            
+            // Adiciona cache buster à URL da imagem APENAS no final, se houver uma URL
             const finalImageUrl = imageUrl ? `${imageUrl.split('?')[0]}?t=${new Date().getTime()}` : `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${shopType === 'salao' ? '8A2BE2' : 'E5A00D'}&color=101012`;
-            const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country, currency, role };
+
+            const finalUser: User = { name, imageUrl: finalImageUrl, shopName, shopId, shopType, country, currency }; // Inclui currency
             
+            // console.log('👤 Setting user:', finalUser);
+
             setUser(finalUser);
+            // console.log("User profile loaded:", finalUser); // LOG PARA DEBUG
+            setProfileLoadAttempts(0);
             setIsInitialLoading(false);
         };
         
         fetchUserProfile();
-    }, [session, dataVersion]);
+    }, [session, dataVersion, profileLoadAttempts]);
 
+    // Log para o estado atual do usuário
+    useEffect(() => {
+        // console.log('👤 Current user state:', user);
+    }, [user]);
+    
     const openModal = (content: ModalContentType, data: any = null) => {
         if (!user) return;
         
@@ -285,7 +302,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     }
     
     if (!user) {
-        return null; 
+        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Erro ao carregar perfil. Tentando novamente...</p></div>;
     }
 
     return (

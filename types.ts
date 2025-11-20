@@ -6,7 +6,6 @@ export interface User {
   shopType: 'barbearia' | 'salao';
   country: 'BR' | 'PT';
   currency: 'BRL' | 'EUR'; // Adicionado
-  role: string; // NOVO: Função do usuário (ex: 'Proprietário', 'Barbeiro')
 }
 
 export type View = 'inicio' | 'agenda' | 'clientes' | 'caixa' | 'gestao' | 'analise';
