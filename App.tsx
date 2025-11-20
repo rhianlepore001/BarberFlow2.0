@@ -43,7 +43,7 @@ interface AppProps {
 
 const LoadingSpinner: React.FC = () => (
     <div className="flex justify-center items-center h-full w-full p-10">
-        <p>Loading...</p>
+        <p>Carregando...</p>
     </div>
 );
 
@@ -225,7 +225,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     };
 
     if (isInitialLoading || !user) {
-        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Loading your empire...</p></div>;
+        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Carregando seu império...</p></div>;
     }
     
     const themeClass = `theme-${user.shopType}`;

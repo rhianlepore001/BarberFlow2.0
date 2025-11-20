@@ -8,7 +8,7 @@ import { useShopLabels } from '../../hooks/useShopLabels'; // Importa o novo hoo
 interface NewTeamMemberFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: number; // Adicionado shopId
+    shopId: string;
     user: User;
 }
 
@@ -28,8 +28,7 @@ const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSucces
             name,
             role: formData.get('role') as string,
             image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${theme.themeColor.substring(1)}`,
-            shop_id: shopId, // Adicionado shop_id
-            // commission_rate será 0.5 por padrão do BD
+            tenant_id: shopId,
         };
 
         const { error: dbError } = await supabase.from('team_members').insert([memberData]);

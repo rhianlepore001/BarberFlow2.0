@@ -7,7 +7,7 @@ import { useTheme } from '../../hooks/useTheme';
 interface NewClientFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: number; // Adicionado shopId
+    shopId: string;
     user: User;
 }
 
@@ -31,7 +31,7 @@ const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopI
                 phone,
                 last_visit: new Date().toISOString(),
                 image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${theme.themeColor.substring(1)}`,
-                shop_id: shopId, // Adicionado shop_id
+                tenant_id: shopId,
             }]);
 
         if (insertError) {

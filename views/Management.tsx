@@ -70,10 +70,10 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             setLoading(true);
             
             const [teamRes, servicesRes, transactionsRes, settingsRes] = await Promise.all([
-                supabase.from('team_members').select('*, commission_rate'),
-                supabase.from('services').select('*'),
-                supabase.from('transactions').select('amount, barber_id, type, transaction_date'),
-                supabase.from('shop_settings').select('*').limit(1).single()
+                supabase.from('team_members').select('*, commission_rate').eq('tenant_id', user.shopId),
+                supabase.from('services').select('*').eq('tenant_id', user.shopId),
+                supabase.from('transactions').select('amount, barber_id, type, transaction_date').eq('tenant_id', user.shopId),
+                supabase.from('shop_settings').select('*').eq('tenant_id', user.shopId).limit(1).single()
             ]);
 
             let fetchedTeam: TeamMember[] = [];
@@ -131,7 +131,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             setLoading(false);
         };
         fetchData();
-    }, [dataVersion]);
+    }, [dataVersion, user.shopId]);
     
     const handleDeleteMember = async (memberId: number) => {
         if (window.confirm('Tem certeza que deseja remover este membro da equipe? Essa ação não pode ser desfeita.')) {
@@ -290,7 +290,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                             <img src={member.imageUrl} alt={member.name} className="w-10 h-10 rounded-full object-cover" />
                             <div className="flex-grow">
                                 <p className="font-semibold text-white">{member.name}</p>
-                                <p className="text-sm text-text-secondary-dark">{member.role} ({Math.round(member.commissionRate * 100)}%)</p> {/* ID removido aqui */}
+                                <p className="text-sm text-text-secondary-dark">{member.role} ({Math.round(member.commissionRate * 100)}%)</p>
                             </div>
                             <div className="relative">
                                 <button

@@ -10,7 +10,7 @@ interface NewAppointmentFormProps {
     onClose: () => void;
     onSuccess: () => void;
     appointment?: Appointment | null;
-    shopId: number;
+    shopId: string;
     user: User; // Adiciona user para obter o tema
 }
 
@@ -37,12 +37,9 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
     useEffect(() => {
         const fetchData = async () => {
             const [clientsRes, servicesRes, teamRes] = await Promise.all([
-                // FILTRO CORRETO: Clientes desta loja
-                supabase.from('clients').select('id, name, image_url').eq('shop_id', shopId).order('name'),
-                // FILTRO CORRETO: Serviços desta loja
-                supabase.from('services').select('id, name, price, duration_minutes').eq('shop_id', shopId).order('name'),
-                // FILTRO CORRETO: Membros da equipe desta loja
-                supabase.from('team_members').select('id, name').eq('shop_id', shopId).order('name')
+                supabase.from('clients').select('id, name, image_url').eq('tenant_id', shopId).order('name'),
+                supabase.from('services').select('id, name, price, duration_minutes').eq('tenant_id', shopId).order('name'),
+                supabase.from('team_members').select('id, name').eq('tenant_id', shopId).order('name')
             ]);
             if (clientsRes.data) setClients(clientsRes.data);
             if (servicesRes.data) setAllServices(servicesRes.data);
@@ -83,7 +80,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
             return;
         }
         if (!barberId || !clientId) {
-            setError("Selecione o cliente e o profissional."); // Rótulo dinâmico
+            setError(`Selecione o cliente e o ${shopLabels.defaultTeamMemberRole.toLowerCase()}.`);
             setIsSaving(false);
             return;
         }
@@ -95,7 +92,6 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
 
         const start_time = new Date(`${date}T${time}:00`).toISOString();
         
-        // Prepara os dados dos serviços para salvar como JSONB
         const servicesToSave = selectedServices.map(s => ({
             id: s.id,
             name: s.name,
@@ -105,11 +101,11 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
 
         const appointmentData = {
             start_time: start_time,
-            barber_id: parseInt(barberId as string),
+            professional_id: parseInt(barberId as string),
             client_id: parseInt(clientId as string),
             duration_minutes: totalDuration, 
-            services_json: servicesToSave, // Novo campo JSONB
-            shop_id: shopId,
+            services_json: servicesToSave,
+            tenant_id: shopId,
         };
 
         const { error: dbError } = isEditing
@@ -119,9 +115,8 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
         if (dbError) {
             let errorMessage = `Falha ao salvar o agendamento: ${dbError.message}`;
             
-            // Verifica se é o erro de conflito do trigger
             if (dbError.message.includes('Conflito de agendamento')) {
-                 errorMessage = `Conflito de horário! O ${shopLabels.defaultTeamMemberRole} já tem um agendamento neste período.`; // Rótulo dinâmico
+                 errorMessage = `Conflito de horário! O ${shopLabels.defaultTeamMemberRole} já tem um agendamento neste período.`;
             }
             
             console.error('Error saving appointment:', dbError);
@@ -172,7 +167,7 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
                     required 
                     className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                 >
-                     <option value="" disabled>Selecione um profissional</option> {/* Rótulo dinâmico */}
+                     <option value="" disabled>Selecione um {shopLabels.defaultTeamMemberRole.toLowerCase()}</option>
                     {teamMembers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
 

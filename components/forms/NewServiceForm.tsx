@@ -9,7 +9,7 @@ import { formatCurrency } from '../../lib/utils'; // Importa a função de forma
 interface NewServiceFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: number; // Adicionado shopId
+    shopId: string;
     user: User;
 }
 
@@ -17,11 +17,7 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
-    const shopLabels = useShopLabels(user.shopType); // Usa o novo hook
-
-    // Logs para debug
-    console.log('💰 NewServiceForm - user.currency:', user.currency);
-    console.log('💰 NewServiceForm - full user:', user);
+    const shopLabels = useShopLabels(user.shopType);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -32,8 +28,8 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
             name: formData.get('service-name') as string,
             price: parseFloat(formData.get('price') as string),
             duration_minutes: parseInt(formData.get('duration') as string),
-            shop_id: shopId, // Adicionado shop_id
-            currency: user.currency, // ← ADICIONADO: Envia a moeda da loja
+            tenant_id: shopId,
+            currency: user.currency,
         };
 
         const { error: insertError } = await supabase.from('services').insert([serviceData]);
@@ -61,7 +57,7 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
                         type="text" 
                         id="service-name" 
                         name="service-name" 
-                        placeholder={shopLabels.serviceNamePlaceholder} // Usando placeholder dinâmico
+                        placeholder={shopLabels.serviceNamePlaceholder}
                         required 
                         className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                     />
@@ -74,7 +70,7 @@ const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, sho
                             step="0.01" 
                             id="price" 
                             name="price" 
-                            placeholder={formatCurrency(0, user.currency)} // Placeholder dinâmico
+                            placeholder={formatCurrency(0, user.currency)}
                             required 
                             className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                         />

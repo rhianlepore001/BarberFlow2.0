@@ -47,7 +47,7 @@ const AuthScreen: React.FC = () => {
             if (error) {
                 setError(error.message);
             } else if (data.user && data.session === null) {
-                setError("Email confirmation required. Please check your inbox.");
+                setError("Confirmação de e-mail necessária. Por favor, verifique sua caixa de entrada.");
             }
             
         } else {
@@ -79,17 +79,17 @@ const AuthScreen: React.FC = () => {
                         <span className={`material-symbols-outlined ${themeClasses.primary} text-4xl`}>auto_awesome</span>
                         <h1 className="text-4xl font-extrabold text-text-primary">Alpha<span className={themeClasses.primary}>Core</span></h1>
                     </div>
-                    <p className="text-text-secondary mt-2">The ultimate platform for your business.</p>
+                    <p className="text-text-secondary mt-2">A plataforma definitiva para o seu negócio.</p>
                 </div>
                 
                 <div className="bg-card p-2 rounded-full flex items-center gap-2 mb-6">
                     <button onClick={() => setMode('login')} className="w-full relative py-2 rounded-full text-sm font-bold">
                         {mode === 'login' && <motion.div layoutId="auth-mode" className={`absolute inset-0 ${themeClasses.bgPrimary} rounded-full z-0`} />}
-                        <span className={`relative z-10 transition-colors ${mode === 'login' ? 'text-card' : 'text-text-secondary'}`}>Login</span>
+                        <span className={`relative z-10 transition-colors ${mode === 'login' ? 'text-card' : 'text-text-secondary'}`}>Entrar</span>
                     </button>
                     <button onClick={() => setMode('signup')} className="w-full relative py-2 rounded-full text-sm font-bold">
                         {mode === 'signup' && <motion.div layoutId="auth-mode" className={`absolute inset-0 ${themeClasses.bgPrimary} rounded-full z-0`} />}
-                        <span className={`relative z-10 transition-colors ${mode === 'signup' ? 'text-card' : 'text-text-secondary'}`}>Sign Up</span>
+                        <span className={`relative z-10 transition-colors ${mode === 'signup' ? 'text-card' : 'text-text-secondary'}`}>Cadastrar</span>
                     </button>
                 </div>
 
@@ -107,29 +107,29 @@ const AuthScreen: React.FC = () => {
                         {mode === 'signup' && (
                             <>
                                 <div className="text-text-primary text-center">
-                                    <label className="text-lg font-bold">What's your empire?</label>
+                                    <label className="text-lg font-bold">Qual é o seu império?</label>
                                     <div className="flex gap-4 mt-2">
                                         <button type="button" onClick={() => setBusinessType('barber')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'barber' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
                                             <span className="text-4xl">💈</span>
-                                            <p className="font-bold mt-1">Barbershop</p>
+                                            <p className="font-bold mt-1">Barbearia</p>
                                         </button>
                                         <button type="button" onClick={() => setBusinessType('beauty')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'beauty' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
                                             <span className="text-4xl">✂️</span>
-                                            <p className="font-bold mt-1">Salon/Studio</p>
+                                            <p className="font-bold mt-1">Salão/Estúdio</p>
                                         </button>
                                     </div>
                                 </div>
-                                <AuthInput icon="store" type="text" placeholder="Business Name" value={tenantName} onChange={e => setTenantName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
-                                <AuthInput icon="person" type="text" placeholder="Your Name" value={name} onChange={e => setName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                                <AuthInput icon="store" type="text" placeholder="Nome do Negócio" value={tenantName} onChange={e => setTenantName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                                <AuthInput icon="person" type="text" placeholder="Seu Nome" value={name} onChange={e => setName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                             </>
                         )}
                         <AuthInput icon="mail" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={themeClasses.focusRing} />
-                        <AuthInput icon="lock" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                        <AuthInput icon="lock" type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                         
                         {error && <p className="text-red-500 text-xs text-center">{error}</p>}
 
                         <button type="submit" disabled={loading} className={`w-full ${themeClasses.bgPrimary} text-background font-bold py-3 rounded-full transition-colors disabled:opacity-50`}>
-                            {loading ? 'Please wait...' : (mode === 'login' ? 'Login' : 'Create Empire')}
+                            {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar' : 'Criar Império')}
                         </button>
                     </motion.form>
                 </AnimatePresence>

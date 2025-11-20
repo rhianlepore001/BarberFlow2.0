@@ -8,7 +8,7 @@ import { formatCurrency } from '../../lib/utils'; // Importação adicionada
 interface NewTransactionFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: number; // Adicionado shopId
+    shopId: string;
     user: User;
 }
 
@@ -22,8 +22,7 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
 
     useEffect(() => {
         const fetchTeamMembers = async () => {
-            // FILTRO CORRETO: Buscar apenas membros da equipe desta loja
-            const { data, error } = await supabase.from('team_members').select('id, name').eq('shop_id', shopId).order('name');
+            const { data, error } = await supabase.from('team_members').select('id, name').eq('tenant_id', shopId).order('name');
             if (error) {
                 console.error("Error fetching team members:", error);
             } else {
@@ -41,10 +40,10 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
         const formData = new FormData(e.currentTarget);
         
         const type = formData.get('type') as 'income' | 'expense';
-        const barberId = type === 'income' ? (formData.get('barber') as string) : null;
+        const professionalId = type === 'income' ? (formData.get('barber') as string) : null;
         
-        if (type === 'income' && !barberId) {
-            setError("Selecione um barbeiro para registrar a entrada.");
+        if (type === 'income' && !professionalId) {
+            setError("Selecione um profissional para registrar a entrada.");
             setIsSaving(false);
             return;
         }
@@ -54,8 +53,8 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
             amount: parseFloat(formData.get('amount') as string),
             type: type,
             transaction_date: new Date().toISOString(),
-            shop_id: shopId,
-            barber_id: barberId ? parseInt(barberId) : null, // Adiciona o ID do barbeiro
+            tenant_id: shopId,
+            professional_id: professionalId ? parseInt(professionalId) : null,
         };
 
         const { error: dbError } = await supabase.from('transactions').insert([transactionData]);
@@ -90,7 +89,7 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
                             step="0.01" 
                             id="amount" 
                             name="amount" 
-                            placeholder={formatCurrency(0, user.currency)} // Placeholder dinâmico
+                            placeholder={formatCurrency(0, user.currency)}
                             required 
                             className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
                         />
@@ -117,7 +116,7 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
                         exit={{ opacity: 0, height: 0 }}
                         className="overflow-hidden"
                     >
-                        <label htmlFor="barber" className="block text-sm font-medium text-text-secondary-dark mb-1">Barbeiro Responsável</label>
+                        <label htmlFor="barber" className="block text-sm font-medium text-text-secondary-dark mb-1">Profissional Responsável</label>
                         <select 
                             id="barber" 
                             name="barber" 
