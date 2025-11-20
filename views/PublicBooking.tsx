@@ -47,14 +47,14 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId, setSession }) => 
             imageUrl: clientSession?.user.user_metadata?.image_url || '',
             shopId: shopId,
             shopName: shopDetails.name,
-            shopType: shopDetails.type,
+            shopType: shopDetails.type === 'barber' ? 'barbearia' : 'salao', // Mapear para o tipo User
             country: shopDetails.country,
             currency: shopDetails.currency,
         };
     }, [shopDetails, shopId, clientSession]);
 
     const theme = useTheme(themeUser); 
-    const shopLabels = useShopLabels(shopDetails?.type);
+    const shopLabels = useShopLabels(shopDetails?.type === 'barber' ? 'barbearia' : 'salao'); // Mapear para o tipo User
 
     const totalDuration = useMemo(() => selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0), [selectedServices]);
     const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + s.price, 0), [selectedServices]);
@@ -178,7 +178,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId, setSession }) => 
             imageUrl: clientSession?.user.user_metadata?.image_url || '',
             shopName: shopDetails.name,
             shopId: shopId,
-            shopType: shopDetails.type,
+            shopType: shopDetails.type === 'barber' ? 'barbearia' : 'salao',
             country: shopDetails.country,
             currency: shopDetails.currency,
         };

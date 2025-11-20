@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { PeriodData, User } from '../types';
 import PerformanceChart from '../components/PerformanceChart';
 import GeminiInsightCard from '../components/GeminiInsightCard';
@@ -8,6 +8,7 @@ import GeminiForecastCard from '../components/GeminiForecastCard';
 import Tooltip from '../components/Tooltip';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils'; // Importa a nova função
+import { getMockAnalysisData } from '../lib/mockData'; // Importa dados mockados
 
 type Period = 'week' | 'month' | 'year';
 
@@ -140,115 +141,17 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
             setData(null);
             setFetchError(null);
 
-            const { startDate, endDate, previousStartDate, previousEndDate } = getDateRanges(period);
+            // Simulação de dados de análise
+            const mockData = getMockAnalysisData();
             
-            const [transactionsRes, clientsRes, appointmentsRes] = await Promise.all([
-                 supabase.from('transactions').select('amount, type, transaction_date, client_id').gte('transaction_date', previousStartDate.toISOString()).lte('transaction_date', endDate.toISOString()),
-                 supabase.from('clients').select('id, name, created_at').gte('created_at', previousStartDate.toISOString()).lte('created_at', endDate.toISOString()),
-                 supabase.from('appointments').select('services_json, start_time').gte('start_time', startDate.toISOString()).lte('start_time', endDate.toISOString())
-            ]);
+            // Para o protótipo, vamos simular os dados do período anterior
+            const fullMockData: FullAnalysisData = {
+                ...mockData,
+                previousAvgTicket: mockData.avgTicket * 0.9, // Simula uma pequena variação
+                previousNewClients: Math.floor(mockData.newClients * 0.8), // Simula uma pequena variação
+            };
 
-            const reqError = transactionsRes.error || clientsRes.error || appointmentsRes.error;
-            if (reqError) {
-                console.error("Error fetching analysis data:", reqError);
-                setFetchError("Falha ao carregar dados de análise. Verifique sua conexão ou se há dados registrados.");
-                setLoading(false);
-                return;
-            }
-            
-            type TransactionData = {amount: number; type: 'income' | 'expense'; transaction_date: string; client_id: number | null};
-            type ClientData = {id: number; name: string; created_at: string};
-            type AppointmentData = {services_json: {name: string, price: number}[] | null; start_time: string};
-
-            const allTransactions: TransactionData[] = transactionsRes.data || [];
-            const allClients: ClientData[] = clientsRes.data || [];
-            const currentAppointments: AppointmentData[] = appointmentsRes.data || [];
-
-            const currentPeriodIncome = allTransactions.filter(t => new Date(t.transaction_date) >= startDate && t.type === 'income');
-            const previousPeriodIncome = allTransactions.filter(t => new Date(t.transaction_date) >= previousStartDate && new Date(t.transaction_date) <= previousEndDate && t.type === 'income');
-
-            const totalRevenue = currentPeriodIncome.reduce((acc, t) => acc + t.amount, 0);
-            const previousTotalRevenue = previousPeriodIncome.reduce((acc, t) => acc + t.amount, 0);
-            
-            const currentTransactionCount = currentPeriodIncome.length;
-            const previousTransactionCount = previousPeriodIncome.length;
-            
-            const avgTicket = currentTransactionCount > 0 ? totalRevenue / currentTransactionCount : 0;
-            const previousAvgTicket = previousTransactionCount > 0 ? previousTotalRevenue / previousTransactionCount : 0;
-
-            const newClients = allClients.filter(c => new Date(c.created_at) >= startDate && new Date(c.created_at) <= endDate).length;
-            const previousNewClients = allClients.filter(c => new Date(c.created_at) >= previousStartDate && new Date(c.created_at) <= previousEndDate).length;
-
-            let trendLength: number;
-            let getTrendIndex: (date: Date) => number;
-            let xAxisLabels: string[] = [];
-            
-            if (period === 'week') {
-                trendLength = 7;
-                const dayLabels = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
-                getTrendIndex = (date) => (date.getDay() + 6) % 7;
-                xAxisLabels = dayLabels;
-            } else if (period === 'month') {
-                trendLength = 4;
-                getTrendIndex = (date) => Math.floor((date.getDate() - 1) / 7);
-                xAxisLabels = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'];
-            } else {
-                trendLength = 12;
-                getTrendIndex = (date) => date.getMonth();
-                xAxisLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-            }
-
-            const revenueTrend = Array(trendLength).fill(0);
-            currentPeriodIncome.forEach(t => {
-                const date = new Date(t.transaction_date);
-                const index = getTrendIndex(date);
-                if (index >= 0 && index < trendLength) {
-                    revenueTrend[index] += t.amount;
-                }
-            });
-            
-            const serviceCounts: Record<string, number> = {};
-            currentAppointments.forEach(a => {
-                if (a.services_json && Array.isArray(a.services_json)) {
-                    a.services_json.forEach(s => {
-                        if (s.name) {
-                            serviceCounts[s.name] = (serviceCounts[s.name] || 0) + 1;
-                        }
-                    });
-                }
-            });
-
-            const topServices = Object.entries(serviceCounts).sort((a,b) => b[1] - a[1]).slice(0,3).map(([name, value]) => ({name, value: `${value}x`}));
-
-            const clientMap = new Map(allClients.map(c => [c.id, c.name]));
-            const clientSpending: Record<number, {name: string, total: number}> = {};
-            currentPeriodIncome.forEach(t => {
-                 if (t.client_id) {
-                     const clientName = clientMap.get(t.client_id);
-                     if (clientName) {
-                         if (!clientSpending[t.client_id]) {
-                            clientSpending[t.client_id] = {name: clientName, total: 0};
-                         }
-                         clientSpending[t.client_id].total += t.amount;
-                     }
-                 }
-            });
-            const topClients = Object.values(clientSpending).sort((a,b) => b.total - a.total).slice(0,3).map(c => ({name: c.name, value: formatCurrency(c.total, user.currency)}));
-
-
-            setData({
-                totalRevenue,
-                previousTotalRevenue,
-                avgTicket,
-                newClients,
-                retentionRate: 78,
-                revenueTrend,
-                xAxisLabels,
-                topServices,
-                topClients,
-                previousAvgTicket,
-                previousNewClients
-            });
+            setData(fullMockData);
             setLoading(false);
         };
 

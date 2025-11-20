@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { Client, User } from '../types';
 import Tooltip from '../components/Tooltip';
 import { useTheme } from '../hooks/useTheme';
+import { getMockClients } from '../lib/mockData'; // Importa dados mockados
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -124,21 +125,17 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect, user }) 
     useEffect(() => {
         const fetchClients = async () => {
             setLoading(true);
-            // Busca todos os campos, incluindo total_spent e last_visit
-            const { data, error } = await supabase.from('clients').select('*').order('name');
-            if (error) {
-                console.error("Error fetching clients:", error);
-            } else {
-                setClients(data.map(c => ({
-                    id: c.id,
-                    name: c.name,
-                    imageUrl: c.image_url,
-                    lastVisitRaw: c.last_visit, // Data bruta para cálculo
-                    lastVisit: getRelativeDate(c.last_visit), // Data formatada para exibição
-                    totalSpent: c.total_spent,
-                    phone: c.phone,
-                })));
-            }
+            // Simulação de busca de clientes
+            const mockClientsData = getMockClients();
+            setClients(mockClientsData.map(c => ({
+                id: c.id,
+                name: c.name,
+                imageUrl: c.imageUrl,
+                lastVisitRaw: c.lastVisitRaw, // Data bruta para cálculo
+                lastVisit: getRelativeDate(c.lastVisitRaw), // Data formatada para exibição
+                totalSpent: c.totalSpent,
+                phone: c.phone,
+            })));
             setLoading(false);
         };
         fetchClients();

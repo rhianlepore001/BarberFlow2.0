@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+// import { supabase } from '../../lib/supabaseClient'; // Removido
 import type { TeamMember, User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../lib/utils';

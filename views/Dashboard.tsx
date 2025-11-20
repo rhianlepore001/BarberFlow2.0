@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import StatsGrid from '../components/StatsGrid';
 import AppointmentsSection from '../components/AppointmentsSection';
 import CashFlowChart from '../components/CashFlowChart';
 import type { User, Stat, Appointment, CashFlowDay, TeamMember } from '../types';
+import { getMockAppointments, getMockTeamMembers, getMockCashFlow, getMockClients } from '../lib/mockData'; // Importa dados mockados
 
 interface DashboardProps {
     user: User;
@@ -52,64 +53,57 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             // Calculate start of the current week for chart filtering
             const startOfWeek = getStartOfWeek(today);
 
-            const [appointmentsRes, teamMembersRes, transactionsRes, clientsRes] = await Promise.all([
-                supabase.from('appointments').select('*').gte('start_time', todayStrStart).lte('start_time', todayStrEnd).order('start_time').limit(5),
-                supabase.from('team_members').select('*'),
-                // Fetch transactions only from the start of the current week
-                supabase.from('transactions').select('amount, transaction_date, type').gte('transaction_date', startOfWeek.toISOString()),
-                supabase.from('clients').select('created_at').gte('created_at', todayStrStart)
-            ]);
-            
-            if (teamMembersRes.error) console.error("Error fetching team members:", teamMembersRes.error);
-            else setTeamMembers(teamMembersRes.data.map((t: any) => ({...t, imageUrl: t.image_url})));
+            // Simulação de dados
+            const mockAppointmentsData = getMockAppointments();
+            const mockTeamMembersData = getMockTeamMembers();
+            const mockTransactionsData = getMockCashFlow(); // Retorna CashFlowDay[]
+            const mockClientsData = getMockClients();
+
+            setTeamMembers(mockTeamMembersData.map((t: any) => ({...t, imageUrl: t.image_url})));
 
             let completedAppointments = 0;
-            if (appointmentsRes.error) console.error("Error fetching appointments:", appointmentsRes.error);
-            else {
-                const now = new Date();
-                setAppointments(appointmentsRes.data.map((a: any) => ({ 
-                    ...a, 
-                    id: a.id, 
-                    barberId: a.barber_id, 
-                    imageUrl: a.image_url, 
-                    startTime: a.start_time
-                })));
-                completedAppointments = appointmentsRes.data.filter(a => new Date(a.start_time) < now).length;
-            }
+            // Filtrar agendamentos mockados para hoje e limitar
+            const todayAppointments = mockAppointmentsData.filter(a => {
+                const apptDate = new Date(a.startTime);
+                return apptDate.toDateString() === today.toDateString();
+            }).slice(0, 5); // Limita a 5 agendamentos
+            
+            setAppointments(todayAppointments.map((a: any) => ({ 
+                ...a, 
+                id: a.id, 
+                barberId: a.barberId, 
+                imageUrl: a.imageUrl, 
+                startTime: a.startTime
+            })));
+            completedAppointments = todayAppointments.filter(a => new Date(a.startTime) < today).length;
 
             let newClientsToday = 0;
-            if (clientsRes.error) console.error("Error fetching new clients:", clientsRes.error);
-            else {
-                newClientsToday = clientsRes.data.length;
-            }
+            // Filtrar clientes mockados criados hoje
+            newClientsToday = mockClientsData.filter(c => {
+                const clientCreationDate = new Date(c.lastVisitRaw || ''); // Usando lastVisitRaw como proxy para created_at
+                return clientCreationDate.toDateString() === today.toDateString();
+            }).length;
             
-            if (transactionsRes.error) {
-                console.error("Error fetching transactions:", transactionsRes.error);
-            } else {
-                const weeklyFlow: CashFlowDay[] = Array(7).fill(null).map((_, i) => ({ day: ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'][i], revenue: 0, isCurrent: false }));
-                let dailyRevenue = 0;
+            const weeklyFlow: CashFlowDay[] = Array(7).fill(null).map((_, i) => ({ day: ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'][i], revenue: 0, isCurrent: false }));
+            let dailyRevenue = 0;
 
-                transactionsRes.data.forEach((t: any) => {
-                    const tDate = new Date(t.transaction_date);
-                    if (t.type === 'income') {
-                        const dayIndex = (tDate.getDay() + 6) % 7;
-                        // Now only processes transactions from the current week
-                        weeklyFlow[dayIndex].revenue += t.amount;
-                        if (tDate.toDateString() === today.toDateString()) {
-                            dailyRevenue += t.amount;
-                        }
-                    }
-                });
-                const currentDayIndex = (today.getDay() + 6) % 7;
-                weeklyFlow[currentDayIndex].isCurrent = true;
-                setCashFlowData(weeklyFlow);
-                
-                setStats([
-                    { icon: 'attach_money', value: `R$ ${dailyRevenue.toFixed(2).replace('.',',')}`, label: 'Faturamento' },
-                    { icon: 'cut', value: `${completedAppointments}`, label: 'Cortes Concluídos' },
-                    { icon: 'person_add', value: `${newClientsToday}`, label: 'Novos Clientes' }
-                ]);
-            }
+            // Usar mockTransactionsData (que já é CashFlowDay[])
+            // Ajustar o isCurrent com base no dia atual
+            const currentDayIndex = (today.getDay() + 6) % 7; // Segunda=0, Domingo=6
+            const updatedWeeklyFlow = mockTransactionsData.map((day, index) => {
+                const isCurrent = (currentDayIndex === index);
+                if (isCurrent) {
+                    dailyRevenue = day.revenue; // Assumindo que o mock já tem a receita do dia
+                }
+                return { ...day, isCurrent };
+            });
+            setCashFlowData(updatedWeeklyFlow);
+            
+            setStats([
+                { icon: 'attach_money', value: `R$ ${dailyRevenue.toFixed(2).replace('.',',')}`, label: 'Faturamento' },
+                { icon: 'cut', value: `${completedAppointments}`, label: 'Cortes Concluídos' },
+                { icon: 'person_add', value: `${newClientsToday}`, label: 'Novos Clientes' }
+            ]);
 
             setLoading(false);
         };
@@ -135,15 +129,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
             <motion.div variants={itemVariants} className="px-4 pb-3">
                 <h3 className="pb-3 text-xl font-bold tracking-tight text-text-primary">Resumo do Dia</h3>
-                <StatsGrid stats={stats} />
+                <StatsGrid stats={stats} user={user} />
             </motion.div>
 
             <motion.div variants={itemVariants}>
-                <AppointmentsSection appointments={appointments} teamMembers={teamMembers} />
+                <AppointmentsSection appointments={appointments} teamMembers={teamMembers} onViewAllClick={() => {}} onAppointmentClick={() => {}} user={user} />
             </motion.div>
 
             <motion.div variants={itemVariants}>
-                <CashFlowChart data={cashFlowData} />
+                <CashFlowChart data={cashFlowData} onDetailsClick={() => {}} user={user} />
             </motion.div>
         </motion.div>
     );

@@ -1,9 +1,10 @@
 import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { Transaction, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils';
+import { mockDeleteTransaction } from '../lib/mockData'; // Importa a função mockada
 
 interface TransactionItemProps {
     transaction: Transaction;
@@ -39,14 +40,13 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
         setError(null);
         setIsMenuOpen(false);
 
-        const { error: deleteError } = await supabase.from('transactions').delete().eq('id', transaction.id);
+        // Simulação de exclusão
+        mockDeleteTransaction(transaction.id);
 
-        if (deleteError) {
-            setError(`Falha ao remover: ${deleteError.message}`);
-            setIsDeleting(false);
-        } else {
+        // Simulação de sucesso
+        setTimeout(() => {
             onDeleteSuccess();
-        }
+        }, 500);
     };
 
     return (

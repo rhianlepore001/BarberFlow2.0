@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { User, Service, TeamMember, BarberFinancials } from '../types';
 import FinancialSettlement from '../components/FinancialSettlement';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils'; // Importa a nova função
+import { getMockServices, getMockTeamMembers } from '../lib/mockData'; // Importa dados mockados
 
 interface ManagementProps {
     user: User;
@@ -69,79 +70,53 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
         const fetchData = async () => {
             setLoading(true);
             
-            const [teamRes, servicesRes, transactionsRes, settingsRes] = await Promise.all([
-                supabase.from('team_members').select('*, commission_rate'),
-                supabase.from('services').select('*'),
-                supabase.from('transactions').select('amount, barber_id, type, transaction_date'),
-                supabase.from('shop_settings').select('*').limit(1).single()
-            ]);
-
-            let fetchedTeam: TeamMember[] = [];
-            if (teamRes.error) console.error("Error fetching team members:", teamRes.error.message);
-            else {
-                fetchedTeam = teamRes.data.map((t: any) => ({
-                    ...t, 
-                    imageUrl: t.image_url,
-                    commissionRate: t.commission_rate || 0.5
-                }));
-                setTeam(fetchedTeam);
-            }
-
-            if (servicesRes.error) console.error("Error fetching services:", servicesRes.error.message);
-            else setServices(servicesRes.data);
-
-            let currentSettings: ShopSettings | null = null;
-            if (settingsRes.error && settingsRes.error.code !== 'PGRST116') {
-                console.error("Error fetching settings: ", settingsRes.error.message);
-            } else if (settingsRes.data) {
-                currentSettings = settingsRes.data as ShopSettings;
-                setSettings(currentSettings);
-            }
+            // Simulação de dados
+            const fetchedTeam = getMockTeamMembers();
+            const fetchedServices = getMockServices();
             
+            // Simulação de configurações da loja
+            const currentSettings: ShopSettings = {
+                open_days: ['seg', 'ter', 'qua', 'qui', 'sex', 'sab'],
+                start_time: '09:00',
+                end_time: '20:00',
+                settlement_day: 1, // Mocked value
+            };
+            setSettings(currentSettings);
+
+            setTeam(fetchedTeam);
+            setServices(fetchedServices);
+
             const settlementDay = currentSettings?.settlement_day || 1;
             const { periodStart, periodEnd } = getSettlementPeriod(settlementDay);
             
-            if (transactionsRes.error) console.error("Error fetching transactions:", transactionsRes.error.message);
-            else {
-                const barberRevenues: { [key: number]: number } = {};
-                
-                transactionsRes.data
-                    .filter(t => 
-                        t.type === 'income' && 
-                        new Date(t.transaction_date) >= periodStart && 
-                        new Date(t.transaction_date) <= periodEnd && 
-                        t.barber_id
-                    )
-                    .forEach(t => {
-                        barberRevenues[t.barber_id] = (barberRevenues[t.barber_id] || 0) + t.amount;
-                    });
-                
-                const barberFinancials: BarberFinancials[] = fetchedTeam
-                    .filter(member => member.id in barberRevenues)
-                    .map(member => {
-                        return {
-                            barberId: member.id,
-                            monthRevenue: barberRevenues[member.id] || 0,
-                            commissionRate: member.commissionRate || 0.5
-                        };
-                    });
-                setFinancials(barberFinancials);
-            }
+            // Simulação de transações para cálculo de financials
+            // Para o protótipo, vamos criar dados financeiros mockados
+            const barberRevenues: { [key: string]: number } = {}; // Usar string para IDs
+            fetchedTeam.forEach(member => {
+                barberRevenues[member.id] = Math.floor(Math.random() * 1000) + 500; // Receita aleatória
+            });
+            
+            const barberFinancials: BarberFinancials[] = fetchedTeam
+                .filter(member => member.id in barberRevenues)
+                .map(member => {
+                    return {
+                        barberId: member.id,
+                        monthRevenue: barberRevenues[member.id] || 0,
+                        commissionRate: member.commissionRate || 0.5
+                    };
+                });
+            setFinancials(barberFinancials);
 
             setLoading(false);
         };
         fetchData();
     }, [dataVersion]);
     
-    const handleDeleteMember = async (memberId: number) => {
+    const handleDeleteMember = async (memberId: string) => { // Alterado para string
         if (window.confirm('Tem certeza que deseja remover este membro da equipe? Essa ação não pode ser desfeita.')) {
-            const { error } = await supabase.from('team_members').delete().eq('id', memberId);
-            if (error) {
-                console.error('Error deleting team member:', error);
-                alert('Não foi possível remover o membro da equipe.');
-            } else {
-                refreshData();
-            }
+            // Simulação de exclusão
+            console.log(`Simulando exclusão do membro: ${memberId}`);
+            refreshData(); // Força a atualização da lista
         }
     };
     

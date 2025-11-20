@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { Appointment, TeamMember, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { getMockAppointments, getMockTeamMembers } from '../lib/mockData'; // Importa dados mockados
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -163,30 +164,18 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
         const fetchData = async () => {
             setLoading(true);
             
-            const { data: settingsData, error: settingsError } = await supabase.from('shop_settings').select('start_time, end_time').eq('tenant_id', user.shopId).limit(1).single();
-            if (settingsError && settingsError.code !== 'PGRST116') console.error("Error fetching shop settings:", settingsError);
-            else if (settingsData) {
-                setStartHour(settingsData.start_time ? parseInt(settingsData.start_time.split(':')[0]) : 8);
-                setEndHour(settingsData.end_time ? parseInt(settingsData.end_time.split(':')[0]) : 20);
-            }
+            // Simulação de configurações da loja
+            const settingsData = { start_time: '08:00', end_time: '20:00' }; // Mocked values
+            setStartHour(settingsData.start_time ? parseInt(settingsData.start_time.split(':')[0]) : 8);
+            setEndHour(settingsData.end_time ? parseInt(settingsData.end_time.split(':')[0]) : 20);
 
-            const { data: teamMembersData, error: teamMembersError } = await supabase.from('team_members').select('id, name').eq('tenant_id', user.shopId);
-            if (teamMembersError) {
-                console.error(teamMembersError);
-                setLoading(false);
-                return;
-            }
+            // Simulação de membros da equipe
+            const teamMembersData = getMockTeamMembers();
             setTeamMembers(teamMembersData as TeamMember[]);
 
-            const startOfWeekISO = startOfSelectedWeek.toISOString();
-            const endOfWeek = new Date(startOfSelectedWeek);
-            endOfWeek.setDate(startOfSelectedWeek.getDate() + 6);
-            endOfWeek.setHours(23, 59, 59, 999);
-            const endOfWeekISO = endOfWeek.toISOString();
-
-            const { data: appointmentsData, error: appointmentsError } = await supabase.from('appointments').select('*, clients(id, name, image_url), team_members(id, name)').eq('tenant_id', user.shopId).gte('start_time', startOfWeekISO).lte('start_time', endOfWeekISO).order('start_time');
-            if (appointmentsError) console.error(appointmentsError);
-            else setAppointments(appointmentsData as unknown as Appointment[]);
+            // Simulação de agendamentos
+            const appointmentsData = getMockAppointments();
+            setAppointments(appointmentsData as unknown as Appointment[]);
 
             setLoading(false);
         };

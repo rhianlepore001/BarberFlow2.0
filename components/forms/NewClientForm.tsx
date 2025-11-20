@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+// import { supabase } from '../../lib/supabaseClient'; // Removido
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
 import { mockCreateClient } from '../../lib/mockData';

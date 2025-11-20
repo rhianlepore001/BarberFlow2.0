@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient';
+// import { supabase } from '../lib/supabaseClient'; // Removido
 import type { Transaction, User } from '../types';
 import TransactionItem from '../components/TransactionItem';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils'; // Importa a nova função
+import { getMockCashFlow } from '../lib/mockData'; // Importa dados mockados
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -69,20 +70,20 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) =
     useEffect(() => {
         const fetchTransactions = async () => {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('transactions')
-                .select('*, team_members(name)')
-                .order('transaction_date', { ascending: false });
-                
-            if (error) {
-                console.error("Error fetching transactions:", error);
-            } else {
-                setTransactions(data.map((t: any) => ({
-                    ...t, 
-                    date: new Date(t.transaction_date).toLocaleDateString('pt-BR'),
-                    barberName: t.team_members?.name || null,
-                })));
-            }
+            // Simulação de busca de transações
+            const mockCashFlowData = getMockCashFlow();
+            
+            // Transformar mockCashFlowData em um formato de Transaction[]
+            const mockTransactions: Transaction[] = mockCashFlowData.map((day, index) => ({
+                id: `t${index}-${Date.now()}`,
+                description: `Faturamento ${day.day}`,
+                amount: day.revenue,
+                type: 'income',
+                date: new Date().toLocaleDateString('pt-BR'), // Data atual para o mock
+                barberName: null, // Mock simples, sem barbeiro
+            }));
+
+            setTransactions(mockTransactions);
             setLoading(false);
         };
         fetchTransactions();
