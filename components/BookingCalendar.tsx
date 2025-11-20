@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { TeamMember, Service, Appointment, User } from '../types'; // Importa User
+import type { TeamMember, Service, Appointment, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 
 interface BookingCalendarProps {
@@ -11,7 +11,7 @@ interface BookingCalendarProps {
     onTimeSelect: (date: Date, time: string) => void;
     onBack: () => void;
     theme: ReturnType<typeof useTheme>;
-    user: User; // Adiciona user
+    user: User;
 }
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -55,12 +55,12 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
             setError(null);
             
             const [settingsRes, appointmentsRes] = await Promise.all([
-                supabase.from('shop_settings').select('start_time, end_time, open_days').eq('shop_id', shopId).limit(1).single(),
-                supabase.from('appointments').select('startTime:start_time, duration_minutes').eq('barber_id', selectedBarber.id).gte('start_time', currentWeekStart.toISOString()).lte('start_time', new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1).toISOString())
+                supabase.from('shop_settings').select('start_time, end_time, open_days').eq('tenant_id', shopId).limit(1).single(),
+                supabase.from('appointments').select('startTime:start_time, duration_minutes').eq('professional_id', selectedBarber.id).gte('start_time', currentWeekStart.toISOString()).lte('start_time', new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1).toISOString())
             ]);
 
             if (settingsRes.error && settingsRes.error.code !== 'PGRST116') {
-                setError("Erro ao carregar configurações da barbearia.");
+                setError("Erro ao carregar configurações da loja.");
             } else {
                 setSettings(settingsRes.data || { start_time: '09:00', end_time: '20:00', open_days: ['seg', 'ter', 'qua', 'qui', 'sex', 'sab'] });
             }
@@ -133,7 +133,6 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
             const existingApptStart = existingApptDate.getHours() * 60 + existingApptDate.getMinutes();
             const existingApptEnd = existingApptStart + existingAppt.duration_minutes;
             
-            // Condição de sobreposição: (InícioA < FimB) E (FimA > InícioB)
             return newApptStart < existingApptEnd && newApptEnd > existingApptStart;
         });
 

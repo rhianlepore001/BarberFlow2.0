@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { Client, User } from '../types'; // Adicionado User
+import type { Client, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
-import { formatCurrency } from '../lib/utils'; // Importa a nova função
+import { formatCurrency } from '../lib/utils';
 
 interface ClientDetailsModalProps {
     client: Client;
@@ -31,7 +31,6 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
             .eq('id', client.id);
 
         if (updateError) {
-            console.error('Error updating client:', updateError);
             setError(`Erro ao salvar: ${updateError.message}`);
         } else {
             onSuccess();
@@ -48,7 +47,6 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         const { error: deleteError } = await supabase.from('clients').delete().eq('id', client.id);
         
         if (deleteError) {
-            console.error('Error deleting client:', deleteError);
             setError(`Erro ao excluir: ${deleteError.message}`);
             setIsSaving(false);
         } else {
@@ -68,35 +66,16 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                 <form className="space-y-4" onSubmit={handleSave}>
                     <div>
                         <label htmlFor="client-name" className="block text-sm font-medium text-text-secondary-dark mb-1">Nome</label>
-                        <input 
-                            type="text" 
-                            id="client-name" 
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                            className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
-                        />
+                        <input type="text" id="client-name" value={name} onChange={(e) => setName(e.target.value)} required className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`} />
                     </div>
                     <div>
                         <label htmlFor="client-phone" className="block text-sm font-medium text-text-secondary-dark mb-1">Telefone</label>
-                        <input 
-                            type="tel" 
-                            id="client-phone" 
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`}
-                        />
+                        <input type="tel" id="client-phone" value={phone} onChange={(e) => setPhone(e.target.value)} className={`w-full bg-background-dark border-2 border-gray-700 rounded-lg py-2 px-3 text-white focus:ring-primary ${theme.ringPrimary} focus:border-primary`} />
                     </div>
-                    
                     {error && <p className="text-red-400 text-xs text-center pt-1">{error}</p>}
-
                     <div className="flex gap-3 pt-4">
                         <button type="button" onClick={() => setIsEditing(false)} className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white">Cancelar</button>
-                        <button 
-                            type="submit" 
-                            disabled={isSaving}
-                            className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}
-                        >
+                        <button type="submit" disabled={isSaving} className={`w-full rounded-full ${theme.bgPrimary} py-3 text-center font-bold text-background-dark disabled:${theme.bgPrimary}/50`}>
                             {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                         </button>
                     </div>
@@ -115,14 +94,9 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                         <p className="text-sm font-medium text-text-secondary-dark">Telefone</p>
                         <p className="font-bold text-white">{client.phone || 'Não informado'}</p>
                     </div>
-                    
                     <div className="flex gap-3 pt-4">
-                        <button type="button" onClick={() => setIsEditing(true)} className={`w-full rounded-full ${theme.bgPrimary}/20 py-3 text-center font-bold ${theme.primary} hover:${theme.bgPrimary}/30 transition-colors`}>
-                            Editar
-                        </button>
-                        <button type="button" onClick={onClose} className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white hover:bg-gray-600 transition-colors">
-                            Fechar
-                        </button>
+                        <button type="button" onClick={() => setIsEditing(true)} className={`w-full rounded-full ${theme.bgPrimary}/20 py-3 text-center font-bold ${theme.primary} hover:${theme.bgPrimary}/30 transition-colors`}>Editar</button>
+                        <button type="button" onClick={onClose} className="w-full rounded-full bg-gray-700 py-3 text-center font-bold text-white hover:bg-gray-600 transition-colors">Fechar</button>
                     </div>
                     <div className="!mt-2">
                         <button type="button" onClick={handleDelete} disabled={isSaving} className="w-full py-2 text-center font-semibold text-red-500 hover:text-red-400 transition-colors disabled:opacity-50">Excluir Cliente</button>

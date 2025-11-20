@@ -20,7 +20,7 @@ export interface Tenant {
 export type View = 'inicio' | 'agenda' | 'clientes' | 'caixa' | 'gestao' | 'analise';
 
 export interface Service {
-    id: number;
+    id: string;
     tenant_id: string;
     name: string;
     price: number;
@@ -30,7 +30,7 @@ export interface Service {
 }
 
 export interface Client {
-    id: number;
+    id: string;
     tenant_id: string;
     name: string;
     phone?: string;
@@ -46,11 +46,11 @@ export interface Client {
 }
 
 export interface Appointment {
-    id: number;
+    id: string;
     tenant_id: string;
-    clientId: number;
+    clientId: string;
     service_id: string;
-    barberId: number;
+    barberId: string;
     startTime: string; // Timestamp
     end_time: string; // Timestamp
     status: 'pending' | 'confirmed' | 'completed' | 'canceled' | 'noshow';
@@ -58,7 +58,7 @@ export interface Appointment {
     duration_minutes: number;
     services_json: Service[];
     // Propriedades aninhadas que virão da query com JOIN
-    clients?: Pick<Client, 'id' | 'name' | 'image_url'>;
+    clients?: Pick<Client, 'id' | 'name' | 'imageUrl'>;
     team_members?: Pick<TeamMember, 'id' | 'name'>;
 }
 
@@ -91,7 +91,7 @@ export interface CashFlowDay {
 }
 
 export interface Transaction {
-    id: number;
+    id: string;
     description: string;
     amount: number;
     type: 'income' | 'expense';
@@ -100,18 +100,18 @@ export interface Transaction {
 }
 
 export interface TeamMember {
-    id: number;
+    id: string;
     name: string;
     role: string;
     image_url: string;
     commissionRate: number;
-    shop_id: number;
+    shop_id: string;
     shopName?: string;
     shopType?: 'barber' | 'beauty';
 }
 
 export interface BarberFinancials {
-    barberId: number;
+    barberId: string;
     monthRevenue: number;
     commissionRate: number;
 }

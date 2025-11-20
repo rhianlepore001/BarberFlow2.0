@@ -8,17 +8,17 @@ import PublicBooking from './views/PublicBooking'; // Importa a nova view
 const AuthGate: React.FC = () => {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
-    const [publicShopId, setPublicShopId] = useState<number | null>(null); // Alterado de publicBarberId para publicShopId
+    const [publicShopId, setPublicShopId] = useState<string | null>(null);
 
     useEffect(() => {
         // Verifica a URL para a rota pública
         const path = window.location.pathname;
-        // Nova regex para /public-booking/:shopId
-        const match = path.match(/^\/public-booking\/(\d+)$/);
+        // Regex para /public-booking/:shopId (UUID)
+        const match = path.match(/^\/public-booking\/([0-9a-fA-F-]+)$/);
         const isPublicRoute = !!match;
         
         if (isPublicRoute) {
-            setPublicShopId(parseInt(match[1]));
+            setPublicShopId(match[1]);
         } else {
             setPublicShopId(null);
         }
@@ -33,14 +33,12 @@ const AuthGate: React.FC = () => {
 
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
-            // Se estiver em uma rota pública, não faz nada além de atualizar a sessão.
-            // Se não estiver em uma rota pública, o App.tsx ou AuthScreen reagirão à sessão.
         });
 
         return () => {
             authListener?.subscription.unsubscribe();
         };
-    }, []); // Dependência vazia para rodar apenas uma vez na montagem
+    }, []);
 
     if (loading) {
         return (
@@ -50,12 +48,10 @@ const AuthGate: React.FC = () => {
         );
     }
     
-    // Se for uma rota pública, renderiza o PublicBooking
     if (publicShopId !== null) {
-        return <PublicBooking shopId={publicShopId} />; // Passa shopId para PublicBooking
+        return <PublicBooking shopId={publicShopId} />;
     }
 
-    // Se não for rota pública, segue o fluxo normal de autenticação do dashboard
     return session ? <App session={session} /> : <AuthScreen />;
 };
 

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { Transaction, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
-import { formatCurrency } from '../lib/utils'; // Importa a nova função
+import { formatCurrency } from '../lib/utils';
 
 interface TransactionItemProps {
     transaction: Transaction;
@@ -42,7 +42,6 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
         const { error: deleteError } = await supabase.from('transactions').delete().eq('id', transaction.id);
 
         if (deleteError) {
-            console.error("Error deleting transaction:", deleteError);
             setError(`Falha ao remover: ${deleteError.message}`);
             setIsDeleting(false);
         } else {

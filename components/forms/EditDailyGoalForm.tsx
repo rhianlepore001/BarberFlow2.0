@@ -7,7 +7,7 @@ import { useTheme } from '../../hooks/useTheme';
 interface EditDailyGoalFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: number;
+    shopId: string;
     currentGoal: number;
     user: User;
 }
@@ -30,17 +30,15 @@ const EditDailyGoalForm: React.FC<EditDailyGoalFormProps> = ({ onClose, onSucces
             return;
         }
         
-        // Tenta buscar o ID da linha de settings existente para o shopId
-        const { data: existingSettings } = await supabase.from('shop_settings').select('id').eq('shop_id', shopId).limit(1).single();
+        const { data: existingSettings } = await supabase.from('shop_settings').select('id').eq('tenant_id', shopId).limit(1).single();
         
         const settingsData = {
             id: existingSettings ? existingSettings.id : undefined,
-            shop_id: shopId,
+            tenant_id: shopId,
             daily_goal: goalValue,
         };
 
-        // Usa upsert para criar ou atualizar a linha de settings
-        const { error: dbError } = await supabase.from('shop_settings').upsert(settingsData, { onConflict: 'shop_id' });
+        const { error: dbError } = await supabase.from('shop_settings').upsert(settingsData, { onConflict: 'tenant_id' });
         
         if (dbError) {
             console.error("Error saving daily goal:", dbError);

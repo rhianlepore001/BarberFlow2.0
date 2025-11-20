@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import type { TeamMember, Service, Appointment } from '../types';
+import type { TeamMember, Service, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
-import { useShopLabels } from '../hooks/useShopLabels'; // Importa o novo hook
+import { useShopLabels } from '../hooks/useShopLabels';
 
 // Lazy load booking steps
 const PublicAuth = lazy(() => import('../components/PublicAuth'));
@@ -16,7 +16,7 @@ const BookingConfirmation = lazy(() => import('../components/BookingConfirmation
 type BookingStep = 'auth' | 'profileSetup' | 'selectBarber' | 'services' | 'calendar' | 'confirm';
 
 interface PublicBookingProps {
-    shopId: number;
+    shopId: string;
 }
 
 const LoadingSpinner: React.FC = () => (
@@ -27,7 +27,7 @@ const LoadingSpinner: React.FC = () => (
 
 const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const [step, setStep] = useState<BookingStep>('auth');
-    const [shopDetails, setShopDetails] = useState<{ name: string, type: 'barbearia' | 'salao', country: 'BR' | 'PT', currency: 'BRL' | 'EUR' } | null>(null); // Adicionado country e currency
+    const [shopDetails, setShopDetails] = useState<{ name: string, type: 'barber' | 'beauty', country: 'BR' | 'PT', currency: 'BRL' | 'EUR' } | null>(null);
     const [allTeamMembers, setAllTeamMembers] = useState<TeamMember[]>([]);
     const [selectedBarber, setSelectedBarber] = useState<TeamMember | null>(null);
     const [services, setServices] = useState<Service[]>([]);
@@ -38,13 +38,11 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
-    // O useTheme agora recebe um objeto User completo, mas para PublicBooking,
-    // podemos simular um user com base nos shopDetails para obter o tema correto.
     const themeUser = useMemo(() => {
         if (!shopDetails) return null;
         return {
             name: shopDetails.name,
-            imageUrl: '', // Não relevante para o tema
+            imageUrl: '',
             shopName: shopDetails.name,
             shopId: shopId,
             shopType: shopDetails.type,
@@ -54,7 +52,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     }, [shopDetails, shopId]);
 
     const theme = useTheme(themeUser); 
-    const shopLabels = useShopLabels(shopDetails?.type); // Usa o novo hook com o tipo de loja
+    const shopLabels = useShopLabels(shopDetails?.type);
 
     const totalDuration = useMemo(() => selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0), [selectedServices]);
     const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + s.price, 0), [selectedServices]);
@@ -82,30 +80,17 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
         const fetchShopDetailsAndData = async () => {
             setLoading(true);
             setError(null);
-
-            if (isNaN(shopId) || shopId <= 0) {
-                setError("ID da loja inválido na URL.");
-                setLoading(false);
-                return;
-            }
             
             try {
-                // console.log('🔍 Buscando dados para shopId:', shopId);
-                
-                // A função get_public_shop_data retorna um TABLE, que o cliente Supabase
-                // encapsula em um array. Usamos .single() para pegar o primeiro (e único) elemento.
                 const { data: rpcData, error: rpcError } = await supabase
                     .rpc('get_public_shop_data', { p_shop_id: shopId })
-                    .single(); // .single() aqui é para pegar o único objeto do array
+                    .single();
 
                 if (rpcError) {
-                    console.error('❌ Erro RPC:', rpcError);
                     setError(`Erro ao carregar dados: ${rpcError.message}`);
                     setLoading(false);
                     return;
                 }
-
-                // console.log('✅ Dados recebidos:', rpcData);
 
                 if (!rpcData || !rpcData.shop_data) {
                     setError('Loja não encontrada ou dados incompletos.');
@@ -118,11 +103,10 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                 setServices(rpcData.services_data || []);
                 
                 if (rpcData.team_members_data?.length > 0) {
-                    setSelectedBarber(rpcData.team_members_data[0]); // Define o primeiro barbeiro como selecionado por padrão
+                    setSelectedBarber(rpcData.team_members_data[0]);
                 }
 
             } catch (err) {
-                console.error('❌ Erro inesperado:', err);
                 setError('Erro inesperado ao carregar dados');
             } finally {
                 setLoading(false);
@@ -185,7 +169,6 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const renderStep = () => {
         if (!shopDetails) return null;
         
-        // Cria um objeto User simulado para passar o country para os componentes de booking
         const simulatedUser: User = {
             name: clientSession?.user.user_metadata?.name || 'Cliente',
             imageUrl: clientSession?.user.user_metadata?.image_url || '',
@@ -206,13 +189,13 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
                 return <BookingBarberSelector teamMembers={allTeamMembers} onSelectBarber={handleSelectBarber} theme={theme} />;
             case 'services':
                 if (!selectedBarber) return null; 
-                return <BookingServiceSelector services={services} onNext={handleServiceSelect} theme={theme} user={simulatedUser} />; {/* Passa user */}
+                return <BookingServiceSelector services={services} onNext={handleServiceSelect} theme={theme} user={simulatedUser} />;
             case 'calendar':
                 if (!selectedBarber || selectedServices.length === 0) return null;
-                return <BookingCalendar selectedBarber={selectedBarber} selectedServices={selectedServices} totalDuration={totalDuration} onTimeSelect={handleTimeSelect} onBack={() => setStep('services')} theme={theme} user={simulatedUser} />; {/* Passa user */}
+                return <BookingCalendar selectedBarber={selectedBarber} selectedServices={selectedServices} totalDuration={totalDuration} onTimeSelect={handleTimeSelect} onBack={() => setStep('services')} theme={theme} user={simulatedUser} />;
             case 'confirm':
                 if (!selectedBarber || !clientSession || selectedServices.length === 0 || !selectedDate || !selectedTime) return null;
-                return <BookingConfirmation selectedBarber={selectedBarber} clientSession={clientSession} selectedServices={selectedServices} totalDuration={totalDuration} totalPrice={totalPrice} selectedDate={selectedDate!} selectedTime={selectedTime!} onSuccess={handleBookingSuccess} onBack={() => setStep('calendar')} theme={theme} user={simulatedUser} />; {/* Passa user */}
+                return <BookingConfirmation selectedBarber={selectedBarber} clientSession={clientSession} selectedServices={selectedServices} totalDuration={totalDuration} totalPrice={totalPrice} selectedDate={selectedDate!} selectedTime={selectedTime!} onSuccess={handleBookingSuccess} onBack={() => setStep('calendar')} theme={theme} user={simulatedUser} />;
             default:
                 return null;
         }
@@ -226,7 +209,6 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
         return <div className="flex justify-center items-center h-screen text-red-400 text-center p-4">{error}</div>;
     }
     
-    // Usando shopLabels para emojis e rótulos
     const shopEmoji = shopLabels.shopTypeEmoji;
     const profileImageUrl = selectedBarber?.image_url || clientSession?.user.user_metadata?.image_url || `https://ui-avatars.com/api/?name=${shopDetails?.name || shopLabels.defaultAvatarName}&background=${theme.themeColor}&color=101012`;
     const profileName = selectedBarber ? `Agende com ${selectedBarber.name}` : `Agende em ${shopDetails?.name}`;

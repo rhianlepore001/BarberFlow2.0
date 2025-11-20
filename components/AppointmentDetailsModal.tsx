@@ -3,13 +3,13 @@ import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import type { Appointment, Service, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
-import { formatCurrency } from '../lib/utils'; // Importa a nova função
+import { formatCurrency } from '../lib/utils';
 
 interface AppointmentDetailsModalProps {
     appointment: Appointment;
     onClose: () => void;
     onSuccess: () => void;
-    shopId: number;
+    shopId: string;
     onEditClick: (appointment: Appointment) => void;
     user: User;
 }
@@ -20,7 +20,7 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
     const theme = useTheme(user);
 
     const clientName = appointment.clients?.name || 'Cliente Desconhecido';
-    const barberName = appointment.team_members?.name || 'Barbeiro';
+    const barberName = appointment.team_members?.name || 'Profissional';
     const startTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
     const services: Service[] = appointment.services_json || [];
@@ -33,7 +33,7 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
         setError(null);
 
         if (!appointment.barberId) {
-            setError("Dados de barbeiro ausentes.");
+            setError("Dados do profissional ausentes.");
             setIsProcessing(false);
             return;
         }
@@ -49,8 +49,8 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             amount: totalAmount,
             type: 'income',
             transaction_date: new Date().toISOString(),
-            shop_id: shopId,
-            barber_id: appointment.barberId,
+            tenant_id: shopId,
+            professional_id: appointment.barberId,
             client_id: appointment.clientId,
         };
 

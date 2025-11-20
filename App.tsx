@@ -225,7 +225,7 @@ const App: React.FC<AppProps> = ({ session }) => {
     };
 
     if (isInitialLoading || !user) {
-        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Carregando seu império...</p></div>;
+        return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Carregando seu negócio...</p></div>;
     }
     
     const themeClass = `theme-${user.shopType}`;
@@ -235,7 +235,7 @@ const App: React.FC<AppProps> = ({ session }) => {
             <Sidebar user={user} onLogout={handleLogout} items={navItems} activeView={activeView} setActiveView={setActiveView} openModal={() => openModal('editProfile')} />
             
             <div className="relative flex flex-col w-full md:ml-64 bg-background">
-                <Header activeViewLabel={navItems.find(item => item.id === activeView)?.label || 'AlphaCore'}/>
+                <Header activeViewLabel={navItems.find(item => item.id === activeView)?.label || 'FlowPro'}/>
                 
                 <main className="flex-grow overflow-y-auto pb-20 md:pb-4 text-text-primary">
                     <Suspense fallback={<LoadingSpinner />}>

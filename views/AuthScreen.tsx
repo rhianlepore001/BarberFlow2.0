@@ -11,12 +11,10 @@ const AuthScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
-    // Signup fields
     const [name, setName] = useState('');
     const [tenantName, setTenantName] = useState('');
     const [businessType, setBusinessType] = useState<BusinessType>('barber');
     
-    // Common fields
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     
@@ -30,14 +28,12 @@ const AuthScreen: React.FC = () => {
         setError(null);
 
         if (mode === 'signup') {
-            // Onboarding Logic
             const { data, error } = await supabase.auth.signUp({ 
                 email, 
                 password,
                 options: {
                     data: {
                         full_name: name,
-                        // This data will be used by a trigger to create the tenant
                         tenant_name: tenantName,
                         business_type: businessType,
                     }
@@ -47,11 +43,10 @@ const AuthScreen: React.FC = () => {
             if (error) {
                 setError(error.message);
             } else if (data.user && data.session === null) {
-                setError("Confirmação de e-mail necessária. Por favor, verifique sua caixa de entrada.");
+                setError("Confirmação de e-mail necessária. Verifique sua caixa de entrada.");
             }
             
         } else {
-            // Login Logic
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
                 setError(error.message);
@@ -77,7 +72,7 @@ const AuthScreen: React.FC = () => {
                 <div className="text-center mb-8">
                     <div className="flex justify-center items-center gap-3">
                         <span className={`material-symbols-outlined ${themeClasses.primary} text-4xl`}>auto_awesome</span>
-                        <h1 className="text-4xl font-extrabold text-text-primary">Alpha<span className={themeClasses.primary}>Core</span></h1>
+                        <h1 className="text-4xl font-extrabold text-text-primary">Flow<span className={themeClasses.primary}>Pro</span></h1>
                     </div>
                     <p className="text-text-secondary mt-2">A plataforma definitiva para o seu negócio.</p>
                 </div>
@@ -107,7 +102,7 @@ const AuthScreen: React.FC = () => {
                         {mode === 'signup' && (
                             <>
                                 <div className="text-text-primary text-center">
-                                    <label className="text-lg font-bold">Qual é o seu império?</label>
+                                    <label className="text-lg font-bold">Qual é o seu negócio?</label>
                                     <div className="flex gap-4 mt-2">
                                         <button type="button" onClick={() => setBusinessType('barber')} className={`flex-1 p-4 rounded-lg border-2 ${businessType === 'barber' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
                                             <span className="text-4xl">💈</span>
@@ -129,7 +124,7 @@ const AuthScreen: React.FC = () => {
                         {error && <p className="text-red-500 text-xs text-center">{error}</p>}
 
                         <button type="submit" disabled={loading} className={`w-full ${themeClasses.bgPrimary} text-background font-bold py-3 rounded-full transition-colors disabled:opacity-50`}>
-                            {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar' : 'Criar Império')}
+                            {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar' : 'Criar Conta')}
                         </button>
                     </motion.form>
                 </AnimatePresence>

@@ -1,20 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import type { Service, User } from '../types'; // Importa User
+import type { Service, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
-import { formatCurrency } from '../lib/utils'; // Importa formatCurrency
+import { formatCurrency } from '../lib/utils';
 
 interface BookingServiceSelectorProps {
     services: Service[];
     onNext: (services: Service[]) => void;
     theme: ReturnType<typeof useTheme>;
-    user: User; // Adiciona user
+    user: User;
 }
 
 const BookingServiceSelector: React.FC<BookingServiceSelectorProps> = ({ services, onNext, theme, user }) => {
-    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     
-    const handleToggle = (id: number) => {
+    const handleToggle = (id: string) => {
         setSelectedIds(prev => 
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
         );
@@ -53,7 +53,7 @@ const BookingServiceSelector: React.FC<BookingServiceSelectorProps> = ({ service
                                 <p className="text-xs text-text-secondary-dark">{service.duration_minutes} min</p>
                             </div>
                         </div>
-                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(service.price, user.currency)}</p> {/* Usa user.currency */}
+                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(service.price, user.currency)}</p>
                     </div>
                 ))}
             </div>
@@ -65,7 +65,7 @@ const BookingServiceSelector: React.FC<BookingServiceSelectorProps> = ({ service
                 </div>
                 <div className="flex justify-between text-lg font-bold">
                     <span>Total:</span>
-                    <span className={theme.primary}>{formatCurrency(totalPrice, user.currency)}</span> {/* Usa user.currency */}
+                    <span className={theme.primary}>{formatCurrency(totalPrice, user.currency)}</span>
                 </div>
             </div>
 

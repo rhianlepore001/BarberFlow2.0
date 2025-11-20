@@ -7,12 +7,12 @@ import { useTheme } from '../../hooks/useTheme';
 interface EditWorkingHoursFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: number; // Adicionado shopId
+    shopId: string;
     user: User;
 }
 
 const ALL_DAYS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
-const DAY_LABELS: Record<string, string> = { seg: 'S', ter: 'T', qua: 'Q', qui: 'Q', sex: 'S', sab: 'D' }; // Corrigido: D para Dom
+const DAY_LABELS: Record<string, string> = { seg: 'S', ter: 'T', qua: 'Q', qui: 'Q', sex: 'S', sab: 'S', dom: 'D' };
 
 const EditWorkingHoursForm: React.FC<EditWorkingHoursFormProps> = ({ onClose, onSuccess, shopId, user }) => {
     const [openDays, setOpenDays] = useState<string[]>([]);
@@ -25,14 +25,13 @@ const EditWorkingHoursForm: React.FC<EditWorkingHoursFormProps> = ({ onClose, on
 
     useEffect(() => {
         const fetchSettings = async () => {
-            // Busca as configurações para o shopId atual
-            const { data, error } = await supabase.from('shop_settings').select('*').eq('shop_id', shopId).limit(1).single();
+            const { data, error } = await supabase.from('shop_settings').select('*').eq('tenant_id', shopId).limit(1).single();
             if (data) {
                 setOpenDays(data.open_days || []);
                 setStartTime(data.start_time || '09:00');
                 setEndTime(data.end_time || '20:00');
             }
-            if (error && error.code !== 'PGRST116') { // Ignore "exact one row was not found"
+            if (error && error.code !== 'PGRST116') {
                 console.error("Error fetching settings:", error);
             }
             setLoading(false);
@@ -52,18 +51,17 @@ const EditWorkingHoursForm: React.FC<EditWorkingHoursFormProps> = ({ onClose, on
         setIsSaving(true);
         setError(null);
         
-        // Tenta buscar o ID da linha de settings existente para o shopId
-        const { data: existingSettings } = await supabase.from('shop_settings').select('id').eq('shop_id', shopId).limit(1).single();
+        const { data: existingSettings } = await supabase.from('shop_settings').select('id').eq('tenant_id', shopId).limit(1).single();
         
         const settingsData = {
-            id: existingSettings ? existingSettings.id : undefined, // Se existir, usa o ID para UPDATE
-            shop_id: shopId, // Garante que o shop_id está sempre presente
+            id: existingSettings ? existingSettings.id : undefined,
+            tenant_id: shopId,
             open_days: openDays,
             start_time: startTime,
             end_time: endTime
         };
 
-        const { error: dbError } = await supabase.from('shop_settings').upsert(settingsData, { onConflict: 'shop_id' });
+        const { error: dbError } = await supabase.from('shop_settings').upsert(settingsData, { onConflict: 'tenant_id' });
         
         if (dbError) {
             console.error("Error saving settings:", dbError);

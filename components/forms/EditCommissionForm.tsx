@@ -12,7 +12,6 @@ interface EditCommissionFormProps {
 }
 
 const EditCommissionForm: React.FC<EditCommissionFormProps> = ({ member, onClose, onSuccess, user }) => {
-    // Converte a taxa de 0.5 (50%) para 50 para exibição no input
     const [commissionRate, setCommissionRate] = useState((member.commissionRate * 100).toString());
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -30,7 +29,6 @@ const EditCommissionForm: React.FC<EditCommissionFormProps> = ({ member, onClose
             return;
         }
         
-        // Converte de volta para o formato decimal (ex: 50 -> 0.5)
         const rateDecimal = ratePercentage / 100;
 
         const { error: updateError } = await supabase
