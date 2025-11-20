@@ -2,9 +2,10 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Session } from '@supabase/supabase-js';
 
-import type { View, Appointment, User, TeamMember, Client, Tenant } from './types';
+import type { View, Appointment, User, TeamMember, Client } from './types';
 import { navItems } from './data';
 import { supabase } from './lib/supabaseClient';
+import { useTheme } from './hooks/useTheme';
 
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -16,12 +17,23 @@ const Home = lazy(() => import('./views/Home'));
 const Agenda = lazy(() => import('./views/Agenda'));
 const Clients = lazy(() => import('./views/Clients'));
 const CashFlow = lazy(() => import('./views/CashFlow'));
-const Management = lazy(() => import('./views/Management'));
+const Management = lazy(() => import('./management'));
 const Analysis = lazy(() => import('./views/Analysis'));
 
-// Forms...
+// Lazy load forms
 const NewAppointmentForm = lazy(() => import('./components/forms/NewAppointmentForm'));
-// ... other forms will be lazy loaded as needed
+const NewClientForm = lazy(() => import('./components/forms/NewClientForm'));
+const NewTransactionForm = lazy(() => import('./components/forms/NewTransactionForm'));
+const NewTeamMemberForm = lazy(() => import('./components/forms/NewTeamMemberForm'));
+const NewServiceForm = lazy(() => import('./components/forms/NewServiceForm'));
+const EditProfileForm = lazy(() => import('./components/forms/EditProfileForm'));
+const EditWorkingHoursForm = lazy(() => import('./components/forms/EditWorkingHoursForm'));
+const EditTeamMemberForm = lazy(() => import('./components/forms/EditTeamMemberForm'));
+const EditCommissionForm = lazy(() => import('./components/forms/EditCommissionForm'));
+const AppointmentDetailsModal = lazy(() => import('./components/AppointmentDetailsModal'));
+const EditDailyGoalForm = lazy(() => import('./components/forms/EditDailyGoalForm'));
+const ClientDetailsModal = lazy(() => import('./components/ClientDetailsModal'));
+const EditSettlementDayForm = lazy(() => import('./components/forms/EditSettlementDayForm'));
 
 type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails' | 'editSettlementDay';
 
@@ -43,13 +55,12 @@ const App: React.FC<AppProps> = ({ session }) => {
     const [dataVersion, setDataVersion] = useState(0);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     
-    // State for modal data
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [dailyGoal, setDailyGoal] = useState(500);
 
-
+    const theme = useTheme(user);
     const refreshData = () => setDataVersion(v => v + 1);
 
     const handleLogout = async () => {
@@ -63,7 +74,6 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
 
-            // 1. Get the user's tenant_id
             const { data: memberData, error: memberError } = await supabase
                 .from('tenant_members')
                 .select('tenant_id')
@@ -76,7 +86,6 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
 
-            // 2. Get the tenant details
             const { data: tenantData, error: tenantError } = await supabase
                 .from('tenants')
                 .select('*')
@@ -89,17 +98,14 @@ const App: React.FC<AppProps> = ({ session }) => {
                 return;
             }
 
-            const tenant: Tenant = {
-                id: tenantData.id,
-                name: tenantData.name,
-                slug: tenantData.slug,
-                business_type: tenantData.business_type,
-            };
-
             const finalUser: User = {
                 name: session.user.user_metadata.full_name || session.user.email,
                 imageUrl: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=${session.user.user_metadata.full_name}`,
-                tenant: tenant,
+                shopId: tenantData.id,
+                shopName: tenantData.name,
+                shopType: tenantData.business_type,
+                country: tenantData.country,
+                currency: tenantData.currency,
             };
 
             setUser(finalUser);
@@ -109,33 +115,120 @@ const App: React.FC<AppProps> = ({ session }) => {
         fetchUserAndTenant();
     }, [session, dataVersion]);
 
-    const openModal = (content: ModalContentType, data: any = null) => { /* ... implementation ... */ };
-    const closeModal = () => { /* ... implementation ... */ };
-    const handleSuccess = () => { /* ... implementation ... */ };
-    const handleAppointmentSelect = (appointment: Appointment) => { /* ... implementation ... */ };
-    const handleClientSelect = (client: Client) => { /* ... implementation ... */ };
-    const handleEditAppointment = (appointment: Appointment) => { /* ... implementation ... */ };
+    const openModal = (content: ModalContentType, data: any = null) => {
+        if (data) {
+            if (content === 'editAppointment' || content === 'appointmentDetails') setEditingAppointment(data);
+            if (content === 'editTeamMember' || content === 'editCommission') setEditingMember(data);
+            if (content === 'clientDetails') setSelectedClient(data);
+        }
+        setModalContent(content);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setTimeout(() => {
+            setModalContent(null);
+            setEditingAppointment(null);
+            setEditingMember(null);
+            setSelectedClient(null);
+        }, 300);
+    };
+
+    const handleSuccess = () => {
+        refreshData();
+        closeModal();
+    };
+
+    const handleAppointmentSelect = (appointment: Appointment) => {
+        openModal('appointmentDetails', appointment);
+    };
+
+    const handleClientSelect = (client: Client) => {
+        openModal('clientDetails', client);
+    };
+
+    const handleEditAppointment = (appointment: Appointment) => {
+        closeModal();
+        setTimeout(() => {
+            openModal('editAppointment', appointment);
+        }, 300);
+    };
     
     const renderView = () => {
         if (!user) return null;
-        // This will be expanded to render the correct view component
-        return <p className="p-4">Current View: {activeView}</p>;
+        switch (activeView) {
+            case 'inicio':
+                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} openModal={openModal} onAppointmentSelect={handleAppointmentSelect} />;
+            case 'agenda':
+                return <Agenda user={user} dataVersion={dataVersion} onAppointmentSelect={handleAppointmentSelect} initialAppointment={editingAppointment} />;
+            case 'clientes':
+                return <Clients user={user} dataVersion={dataVersion} onClientSelect={handleClientSelect} />;
+            case 'caixa':
+                return <CashFlow user={user} dataVersion={dataVersion} refreshData={refreshData} />;
+            case 'analise':
+                return <Analysis user={user} dataVersion={dataVersion} />;
+            case 'gestao':
+                return <Management user={user} dataVersion={dataVersion} openModal={openModal} refreshData={refreshData} />;
+            default:
+                return <Home user={user} dataVersion={dataVersion} setActiveView={setActiveView} openModal={openModal} onAppointmentSelect={handleAppointmentSelect} />;
+        }
     };
 
     const getModalContent = () => {
         if (!user) return null;
-        // This will be expanded to render the correct form in the modal
-        return null;
+        switch (modalContent) {
+            case 'newAppointment':
+                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+            case 'editAppointment':
+                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} shopId={user.shopId} user={user} />;
+            case 'appointmentDetails':
+                if (!editingAppointment) return null;
+                return <AppointmentDetailsModal appointment={editingAppointment} onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} onEditClick={handleEditAppointment} user={user} />;
+            case 'newClient':
+                return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+            case 'clientDetails':
+                if (!selectedClient) return null;
+                return <ClientDetailsModal client={selectedClient} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
+            case 'newTransaction':
+                return <NewTransactionForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+            case 'newTeamMember':
+                return <NewTeamMemberForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+            case 'editTeamMember':
+                if (!editingMember) return null;
+                return <EditTeamMemberForm member={editingMember} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
+            case 'newService':
+                return <NewServiceForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+            case 'editProfile':
+                return <EditProfileForm user={user} session={session} onClose={closeModal} onSuccess={handleSuccess} />;
+            case 'editHours':
+                return <EditWorkingHoursForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+            case 'editCommission':
+                if (!editingMember) return null;
+                return <EditCommissionForm member={editingMember} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
+            case 'editDailyGoal':
+                return <EditDailyGoalForm currentGoal={dailyGoal} onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+            case 'editSettlementDay':
+                return <EditSettlementDayForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+            default:
+                return null;
+        }
     };
 
-    const handleFabClick = () => { /* ... implementation ... */ };
-
+    const handleFabClick = () => {
+        switch (activeView) {
+            case 'agenda': openModal('newAppointment'); break;
+            case 'clientes': openModal('newClient'); break;
+            case 'caixa': openModal('newTransaction'); break;
+            default: openModal('newAppointment'); break;
+        }
+    };
 
     if (isInitialLoading || !user) {
         return <div className="flex justify-center items-center h-screen bg-background-dark text-white"><p>Loading your empire...</p></div>;
     }
     
-    const themeClass = `theme-${user.tenant.business_type}`;
+    const themeClass = `theme-${user.shopType}`;
 
     return (
         <div className={`flex min-h-screen w-full ${themeClass}`}>
@@ -144,10 +237,10 @@ const App: React.FC<AppProps> = ({ session }) => {
             <div className="relative flex flex-col w-full md:ml-64 bg-background">
                 <Header activeViewLabel={navItems.find(item => item.id === activeView)?.label || 'AlphaCore'}/>
                 
-                <div className="flex-grow overflow-y-auto pb-20 md:pb-4 text-text-primary">
+                <main className="flex-grow overflow-y-auto pb-20 md:pb-4 text-text-primary">
                     <Suspense fallback={<LoadingSpinner />}>
                         <AnimatePresence mode="wait">
-                            <motion.main
+                            <motion.div
                                 key={activeView}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -155,12 +248,19 @@ const App: React.FC<AppProps> = ({ session }) => {
                                 transition={{ duration: 0.2 }}
                             >
                                 {renderView()}
-                            </motion.main>
+                            </motion.div>
                         </AnimatePresence>
                     </Suspense>
-                </div>
+                </main>
                 
-                {/* FAB and BottomNav will be added here */}
+                <button
+                    onClick={handleFabClick}
+                    className={`fixed bottom-24 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform duration-300 hover:scale-105 md:hidden ${theme.bgPrimary}`}
+                    aria-label="Adicionar Novo"
+                >
+                    <span className="material-symbols-outlined text-3xl text-background-dark">add</span>
+                </button>
+                <BottomNav items={navItems} activeView={activeView} setActiveView={setActiveView} user={user} />
                 
                 <Modal isOpen={isModalOpen} onClose={closeModal}>
                     <Suspense fallback={<LoadingSpinner />}>

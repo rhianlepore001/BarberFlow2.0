@@ -2,7 +2,11 @@
 export interface User {
   name: string;
   imageUrl: string;
-  tenant: Tenant; // Aninhando os detalhes do tenant
+  shopId: string; // UUID from tenants.id
+  shopName: string; // from tenants.name
+  shopType: 'barber' | 'beauty'; // from tenants.business_type
+  currency: 'BRL' | 'EUR'; // Adicionado para internacionalização
+  country: 'BR' | 'PT'; // Adicionado para internacionalização
 }
 
 export interface Tenant {
@@ -16,7 +20,7 @@ export interface Tenant {
 export type View = 'inicio' | 'agenda' | 'clientes' | 'caixa' | 'gestao' | 'analise';
 
 export interface Service {
-    id: string; // UUID
+    id: number;
     tenant_id: string;
     name: string;
     price: number;
@@ -26,30 +30,36 @@ export interface Service {
 }
 
 export interface Client {
-    id: string; // UUID
+    id: number;
     tenant_id: string;
     name: string;
     phone?: string;
     last_visit?: string; // Date
+    lastVisitRaw?: string;
+    lastVisit: string;
     total_spent?: number;
+    totalSpent: number;
     tags?: string[];
     anamnese_data?: any; // JSONB
     visagism_data?: any; // JSONB
+    imageUrl?: string;
 }
 
 export interface Appointment {
-    id: string; // UUID
+    id: number;
     tenant_id: string;
-    client_id: string;
+    clientId: number;
     service_id: string;
-    professional_id: string;
-    start_time: string; // Timestamp
+    barberId: number;
+    startTime: string; // Timestamp
     end_time: string; // Timestamp
     status: 'pending' | 'confirmed' | 'completed' | 'canceled' | 'noshow';
     revenue_generated?: number;
+    duration_minutes: number;
+    services_json: Service[];
     // Propriedades aninhadas que virão da query com JOIN
-    clients?: Pick<Client, 'id' | 'name'>;
-    services?: Pick<Service, 'id' | 'name'>;
+    clients?: Pick<Client, 'id' | 'name' | 'image_url'>;
+    team_members?: Pick<TeamMember, 'id' | 'name'>;
 }
 
 export interface PortfolioPost {
