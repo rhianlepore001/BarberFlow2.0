@@ -1,10 +1,10 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Session } from '@supabase/supabase-js';
+import { Session } from '@supabase/supabase-js'; // Manter para tipagem, mas não usar a instância
 
 import type { View, Appointment, User, TeamMember, Client } from './types';
 import { navItems } from './data';
-// import { supabase } from './lib/supabaseClient'; // Removido
+// import { supabase } from './lib/supabaseClient'; // REMOVIDO
 import { useTheme } from './hooks/useTheme';
 
 import Header from './components/Header';
