@@ -17,7 +17,7 @@ const Home = lazy(() => import('./views/Home'));
 const Agenda = lazy(() => import('./views/Agenda'));
 const Clients = lazy(() => import('./views/Clients'));
 const CashFlow = lazy(() => import('./views/CashFlow'));
-const Management = lazy(() => import('./management'));
+const Management = lazy(() => import('./views/Management'));
 const Analysis = lazy(() => import('./views/Analysis'));
 
 // Lazy load forms
