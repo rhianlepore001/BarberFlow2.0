@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from '../hooks/useTheme';
 import AuthInput from './AuthInput';
-import { mockUpdateClient } from '../lib/mockData'; // Usaremos para simular a atualização do cliente
 
 interface PublicProfileSetupProps {
     session: Session;
-    onSuccess: (updatedUserMetadata: any) => void; // Retorna os metadados atualizados
+    onSuccess: (updatedUserMetadata: any) => void;
     theme: ReturnType<typeof useTheme>;
 }
 
 const PublicProfileSetup: React.FC<PublicProfileSetupProps> = ({ session, onSuccess, theme }) => {
     const user = session.user;
     
-    // Inicializa com dados existentes ou vazios
     const initialName = user.user_metadata?.name || '';
     const initialPhone = user.user_metadata?.phone || '';
     const initialImageUrl = user.user_metadata?.image_url || '';
@@ -48,32 +46,49 @@ const PublicProfileSetup: React.FC<PublicProfileSetupProps> = ({ session, onSucc
 
         let avatarUrl = initialImageUrl.split('?t=')[0];
         
-        // 1. Simulação de Upload da Imagem (se houver)
         if (avatarFile) {
-            // Em um protótipo, não fazemos upload real. Apenas geramos uma URL mock.
-            avatarUrl = URL.createObjectURL(avatarFile);
+            const filePath = `public/${user.id}/${Date.now()}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, avatarFile);
+
+            if (uploadError) {
+                setError("Erro ao enviar a imagem. Tente novamente.");
+                setIsSaving(false);
+                return;
+            }
+            
+            const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(uploadData.path);
+            avatarUrl = urlData.publicUrl;
         }
         
-        // 2. Simular atualização de metadados do usuário
-        const updatedUserMetadata = {
-            name: name,
-            phone: phone,
-            image_url: avatarUrl,
-        };
+        const updatedUserMetadata = { name, phone, image_url: avatarUrl };
         
-        // Simular atualização na tabela 'clients' (se existir)
-        mockUpdateClient(user.id, { name, phone, image_url: avatarUrl });
+        const { data: updatedUser, error: userUpdateError } = await supabase.auth.updateUser({
+            data: updatedUserMetadata
+        });
 
-        // Simulação de sucesso
-        setTimeout(() => {
-            onSuccess(updatedUserMetadata); // Retorna os metadados atualizados
-        }, 500);
+        if (userUpdateError) {
+            setError(userUpdateError.message);
+            setIsSaving(false);
+            return;
+        }
+
+        const { error: clientUpdateError } = await supabase
+            .from('clients')
+            .update({ name, phone, image_url: avatarUrl })
+            .eq('auth_user_id', user.id);
+
+        if (clientUpdateError) {
+            setError("Não foi possível salvar os dados do perfil.");
+            setIsSaving(false);
+            return;
+        }
+
+        onSuccess(updatedUserMetadata);
         setIsSaving(false);
     };
-
-    const isProfileComplete = name.trim() && phone.trim() && (avatarFile || initialImageUrl);
     
-    // Cor de fallback para o avatar (usando a cor primária do tema)
     const fallbackColor = theme.themeColor;
 
     return (

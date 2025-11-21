@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { TeamMember, Service, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils';
-import { mockCreateAppointment, mockUpdateClient } from '../lib/mockData'; // Usaremos para simular
 
 interface BookingConfirmationProps {
     selectedBarber: TeamMember;
@@ -45,27 +44,42 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
         const start_time = new Date(`${selectedDate.toISOString().split('T')[0]}T${selectedTime}:00`).toISOString();
         const servicesToSave = selectedServices.map(s => ({ id: s.id, name: s.name, price: s.price, duration_minutes: s.duration_minutes }));
         
-        // Simulação de busca de cliente e atualização de tenant_id
-        // Em um protótipo, apenas simulamos o sucesso.
-        // mockUpdateClient(clientSession.user.id, { tenant_id: selectedBarber.shop_id }); // Não é necessário mockar aqui, pois o cliente já está 'associado' à loja pública.
+        const { data: clientData, error: clientError } = await supabase
+            .from('clients')
+            .select('id, tenant_id')
+            .eq('auth_user_id', clientSession.user.id)
+            .single();
+
+        if (clientError || !clientData) {
+            setError("Não foi possível encontrar os dados do cliente.");
+            setIsBooking(false);
+            return;
+        }
+
+        // Associa o cliente ao tenant no primeiro agendamento
+        if (!clientData.tenant_id) {
+            await supabase
+                .from('clients')
+                .update({ tenant_id: selectedBarber.tenant_id })
+                .eq('id', clientData.id);
+        }
         
-        const appointmentData = {
+        const { error: bookingError } = await supabase.from('appointments').insert({
             start_time,
             professional_id: selectedBarber.id,
-            client_id: clientSession.user.id, // Usamos o ID do usuário da sessão mockada como client_id
+            client_id: clientData.id,
             duration_minutes: totalDuration, 
             services_json: servicesToSave,
-            tenant_id: selectedBarber.shop_id,
-        };
+            tenant_id: selectedBarber.tenant_id,
+            status: 'confirmed'
+        });
         
-        // Simulação de agendamento
-        mockCreateAppointment(appointmentData);
-        
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (bookingError) {
+            setError(bookingError.message);
+            setIsBooking(false);
+        } else {
             onSuccess();
-        }, 500);
-        setIsBooking(false);
+        }
     };
 
     return (

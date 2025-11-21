@@ -1,43 +1,36 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import AuthInput from './AuthInput';
 import type { User } from '../types';
 import { useTheme } from '../hooks/useTheme';
+import { Provider } from '@supabase/supabase-js';
 
 interface PublicAuthProps {
     onAuthSuccess: (session: any) => void;
     theme: ReturnType<typeof useTheme>;
-    setSession: (session: any | null) => void; // Adicionado para atualizar a sessão
 }
 
-const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme, setSession }) => {
+const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme }) => {
     const [mode, setMode] = useState<'login' | 'signup'>('login');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    const handleSocialAuth = async (provider: 'google' | 'facebook') => {
+    const handleSocialAuth = async (provider: Provider) => {
         setLoading(true);
         setError(null);
-        
-        // Simulação de login social
-        const mockSession = {
-            user: {
-                id: `user-${provider}-${Date.now()}`,
-                email: `${provider}@example.com`,
-                user_metadata: {
-                    name: `Cliente ${provider}`,
-                    phone: '11987654321',
-                    image_url: `https://ui-avatars.com/api/?name=Cliente+${provider}&background=${theme.themeColor}&color=101012`,
-                }
-            }
-        };
-        setSession(mockSession);
-        localStorage.setItem('user_session', JSON.stringify(mockSession));
-        onAuthSuccess(mockSession);
-        setLoading(false);
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider,
+            options: {
+                redirectTo: window.location.href,
+            },
+        });
+        if (error) {
+            setError(error.message);
+            setLoading(false);
+        }
     };
     
     const handleEmailAuth = async (e: React.FormEvent) => {
@@ -46,37 +39,23 @@ const PublicAuth: React.FC<PublicAuthProps> = ({ onAuthSuccess, theme, setSessio
         setError(null);
         
         if (mode === 'signup') {
-            const mockSession = {
-                user: {
-                    id: `user-${Date.now()}`,
-                    email: email,
-                    user_metadata: {
-                        name: email.split('@')[0], // Nome inicial do email
-                        phone: '', // Telefone vazio para forçar profileSetup
-                        image_url: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=${theme.themeColor}&color=101012`,
-                    }
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    // Não passamos metadados aqui para que o trigger handle_client_signup seja acionado corretamente
                 }
-            };
-            setSession(mockSession);
-            localStorage.setItem('user_session', JSON.stringify(mockSession));
-            onAuthSuccess(mockSession);
-            
+            });
+            if (error) setError(error.message);
+            else if (data.session) onAuthSuccess(data.session);
+
         } else {
-            // Simulação de login
-            const mockSession = {
-                user: {
-                    id: `user-${Date.now()}`,
-                    email: email,
-                    user_metadata: {
-                        name: email.split('@')[0],
-                        phone: '11987654321', // Telefone preenchido para simular perfil completo
-                        image_url: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=${theme.themeColor}&color=101012`,
-                    }
-                }
-            };
-            setSession(mockSession);
-            localStorage.setItem('user_session', JSON.stringify(mockSession));
-            onAuthSuccess(mockSession);
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            if (error) setError(error.message);
+            else if (data.session) onAuthSuccess(data.session);
         }
         setLoading(false);
     };

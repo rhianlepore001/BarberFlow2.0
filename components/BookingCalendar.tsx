@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { TeamMember, Service, Appointment, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
-import { getMockAppointments } from '../lib/mockData'; // Usaremos para simular
 
 interface BookingCalendarProps {
+    tenantId: string;
     selectedBarber: TeamMember;
     selectedServices: Service[];
     totalDuration: number;
@@ -25,7 +25,7 @@ const getStartOfWeek = (date: Date): Date => {
     return d;
 };
 
-const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, totalDuration, onTimeSelect, onBack, theme, user }) => {
+const BookingCalendar: React.FC<BookingCalendarProps> = ({ tenantId, selectedBarber, totalDuration, onTimeSelect, onBack, theme, user }) => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -33,7 +33,6 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const shopId = selectedBarber.shop_id;
     const dayMap: Record<number, string> = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' };
 
     const currentWeekStart = useMemo(() => {
@@ -55,18 +54,40 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
             setLoading(true);
             setError(null);
             
-            // Simulação de configurações da loja
-            const mockSettings = { start_time: '09:00', end_time: '20:00', open_days: ['seg', 'ter', 'qua', 'qui', 'sex', 'sab'] };
-            setSettings(mockSettings);
+            const { data: settingsData, error: settingsError } = await supabase
+                .from('shop_settings')
+                .select('start_time, end_time, open_days')
+                .eq('tenant_id', tenantId)
+                .single();
 
-            // Simulação de agendamentos
-            const mockAppointmentsData = getMockAppointments();
-            setAppointments(mockAppointmentsData);
+            if (settingsError || !settingsData) {
+                setError("Não foi possível carregar as configurações da loja.");
+                setLoading(false);
+                return;
+            }
+            setSettings(settingsData);
+
+            const weekEnd = new Date(currentWeekStart);
+            weekEnd.setDate(currentWeekStart.getDate() + 7);
+
+            const { data: apptData, error: apptError } = await supabase
+                .from('appointments')
+                .select('start_time, duration_minutes')
+                .eq('tenant_id', tenantId)
+                .eq('professional_id', selectedBarber.id)
+                .gte('start_time', currentWeekStart.toISOString())
+                .lt('start_time', weekEnd.toISOString());
+
+            if (apptError) {
+                setError("Não foi possível carregar os agendamentos.");
+            } else {
+                setAppointments(apptData as any);
+            }
 
             setLoading(false);
         };
         fetchData();
-    }, [shopId, selectedBarber.id, currentWeekStart]);
+    }, [tenantId, selectedBarber.id, currentWeekStart]);
 
     useEffect(() => {
         if (settings && !loading) {
@@ -104,8 +125,8 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
     const appointmentsForSelectedDay = useMemo(() => {
         if (!selectedDate) return [];
         const selectedDateStr = selectedDate.toDateString();
-        return appointments.filter(a => new Date(a.startTime).toDateString() === selectedDateStr && a.barberId === selectedBarber.id);
-    }, [selectedDate, appointments, selectedBarber.id]);
+        return appointments.filter(a => new Date(a.start_time).toDateString() === selectedDateStr);
+    }, [selectedDate, appointments]);
 
     const getSlotStatus = (time: string): 'available' | 'past' | 'conflict' => {
         const now = new Date();
@@ -121,7 +142,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ selectedBarber, total
         }
 
         const hasConflict = appointmentsForSelectedDay.some(existingAppt => {
-            const existingApptDate = new Date(existingAppt.startTime);
+            const existingApptDate = new Date(existingAppt.start_time);
             const existingApptStart = existingApptDate.getHours() * 60 + existingApptDate.getMinutes();
             const existingApptEnd = existingApptStart + existingAppt.duration_minutes;
             

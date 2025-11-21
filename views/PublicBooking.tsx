@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { TeamMember, Service, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { useShopLabels } from '../hooks/useShopLabels';
-import { getMockClients, getMockServices, getMockTeamMembers, mockCreateAppointment, mockUpdateClient } from '../lib/mockData';
 
 // Lazy load booking steps
 const PublicAuth = lazy(() => import('../components/PublicAuth'));
@@ -18,7 +17,6 @@ type BookingStep = 'auth' | 'profileSetup' | 'selectBarber' | 'services' | 'cale
 
 interface PublicBookingProps {
     shopId: string;
-    setSession: (session: any | null) => void; // Adicionado para logout/login
 }
 
 const LoadingSpinner: React.FC = () => (
@@ -27,9 +25,9 @@ const LoadingSpinner: React.FC = () => (
     </div>
 );
 
-const PublicBooking: React.FC<PublicBookingProps> = ({ shopId, setSession }) => {
+const PublicBooking: React.FC<PublicBookingProps> = ({ shopId }) => {
     const [step, setStep] = useState<BookingStep>('auth');
-    const [shopDetails, setShopDetails] = useState<{ name: string, type: 'barber' | 'beauty', country: 'BR' | 'PT', currency: 'BRL' | 'EUR' } | null>(null);
+    const [shopDetails, setShopDetails] = useState<{ name: string, business_type: 'barbearia' | 'salao', country: 'BR' | 'PT', currency: 'BRL' | 'EUR' } | null>(null);
     const [allTeamMembers, setAllTeamMembers] = useState<TeamMember[]>([]);
     const [selectedBarber, setSelectedBarber] = useState<TeamMember | null>(null);
     const [services, setServices] = useState<Service[]>([]);
@@ -43,41 +41,22 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId, setSession }) => 
     const themeUser = useMemo(() => {
         if (!shopDetails) return null;
         return {
+            id: clientSession?.user.id || '',
             name: clientSession?.user.user_metadata?.name || shopDetails.name,
-            imageUrl: clientSession?.user.user_metadata?.image_url || '',
-            shopId: shopId,
-            shopName: shopDetails.name,
-            shopType: shopDetails.type === 'barber' ? 'barbearia' : 'salao', // Mapear para o tipo User
+            image_url: clientSession?.user.user_metadata?.image_url || '',
+            tenant_id: shopId,
+            tenant_name: shopDetails.name,
+            business_type: shopDetails.business_type,
             country: shopDetails.country,
             currency: shopDetails.currency,
         };
     }, [shopDetails, shopId, clientSession]);
 
     const theme = useTheme(themeUser); 
-    const shopLabels = useShopLabels(shopDetails?.type === 'barber' ? 'barbearia' : 'salao'); // Mapear para o tipo User
+    const shopLabels = useShopLabels(shopDetails?.business_type);
 
     const totalDuration = useMemo(() => selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0), [selectedServices]);
     const totalPrice = useMemo(() => selectedServices.reduce((sum, s) => sum + s.price, 0), [selectedServices]);
-
-    const checkSessionAndSetStep = () => {
-        const storedSession = localStorage.getItem('user_session');
-        const session = storedSession ? JSON.parse(storedSession) : null;
-        
-        if (session) {
-            setClientSession(session);
-            const name = session.user.user_metadata?.name;
-            const phone = session.user.user_metadata?.phone;
-            
-            if (!name || !phone) {
-                setStep('profileSetup');
-            } else {
-                setStep('selectBarber');
-            }
-        } else {
-            setClientSession(null);
-            setStep('auth');
-        }
-    };
 
     useEffect(() => {
         const fetchShopDetailsAndData = async () => {
@@ -85,62 +64,72 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId, setSession }) => 
             setError(null);
             
             try {
-                // Simulação de dados da loja pública
-                const mockShopDetails = { 
-                    name: "BarberFlow Public", 
-                    type: 'barber' as 'barber' | 'beauty', 
-                    country: 'BR' as 'BR' | 'PT', 
-                    currency: 'BRL' as 'BRL' | 'EUR' 
-                };
-                const mockTeamMembers = getMockTeamMembers();
-                const mockServices = getMockServices();
+                const { data: tenantData, error: tenantError } = await supabase
+                    .from('tenants')
+                    .select('name, business_type, country, currency')
+                    .eq('id', shopId)
+                    .single();
 
-                setShopDetails(mockShopDetails);
-                setAllTeamMembers(mockTeamMembers);
-                setServices(mockServices);
-                
-                if (mockTeamMembers.length > 0) {
-                    setSelectedBarber(mockTeamMembers[0]);
-                }
+                if (tenantError) throw new Error("Não foi possível encontrar o estabelecimento.");
+                setShopDetails(tenantData);
 
-            } catch (err) {
-                setError('Erro inesperado ao carregar dados da loja');
+                const { data: teamData, error: teamError } = await supabase
+                    .from('team_members')
+                    .select('*')
+                    .eq('tenant_id', shopId);
+                if (teamError) throw new Error("Erro ao carregar a equipe.");
+                setAllTeamMembers(teamData);
+
+                const { data: servicesData, error: servicesError } = await supabase
+                    .from('services')
+                    .select('*')
+                    .eq('tenant_id', shopId)
+                    .eq('active', true);
+                if (servicesError) throw new Error("Erro ao carregar os serviços.");
+                setServices(servicesData);
+
+            } catch (err: any) {
+                setError(err.message || 'Erro inesperado ao carregar dados da loja');
             } finally {
                 setLoading(false);
             }
-            
-            checkSessionAndSetStep();
         };
         
         fetchShopDetailsAndData();
-        
-        // Para fins de protótipo, não há listener de auth real aqui.
-        // A sessão será atualizada via setSession passado do AuthGate.
+
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setClientSession(session);
+            if (session) {
+                const { name, phone } = session.user.user_metadata;
+                setStep(name && phone ? 'selectBarber' : 'profileSetup');
+            } else {
+                setStep('auth');
+            }
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setClientSession(session);
+            if (session) {
+                const { name, phone } = session.user.user_metadata;
+                setStep(name && phone ? 'selectBarber' : 'profileSetup');
+            } else {
+                setStep('auth');
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, [shopId]);
 
     const handleAuthSuccess = (session: any) => {
         setClientSession(session);
-        const name = session.user.user_metadata?.name;
-        const phone = session.user.user_metadata?.phone;
-        if (!name || !phone) setStep('profileSetup');
-        else setStep('selectBarber');
+        const { name, phone } = session.user.user_metadata;
+        setStep(name && phone ? 'selectBarber' : 'profileSetup');
     };
     
     const handleProfileSetupSuccess = (updatedUserMetadata: any) => {
-        // Atualiza a sessão localmente com os novos metadados
         if (clientSession) {
-            const newSession = {
-                ...clientSession,
-                user: {
-                    ...clientSession.user,
-                    user_metadata: {
-                        ...clientSession.user.user_metadata,
-                        ...updatedUserMetadata,
-                    },
-                },
-            };
+            const newSession = { ...clientSession, user: { ...clientSession.user, user_metadata: { ...clientSession.user.user_metadata, ...updatedUserMetadata } } };
             setClientSession(newSession);
-            localStorage.setItem('user_session', JSON.stringify(newSession));
         }
         setStep('selectBarber');
     };
@@ -171,21 +160,11 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId, setSession }) => 
     };
     
     const renderStep = () => {
-        if (!shopDetails) return null;
-        
-        const simulatedUser: User = {
-            name: clientSession?.user.user_metadata?.name || 'Cliente',
-            imageUrl: clientSession?.user.user_metadata?.image_url || '',
-            shopName: shopDetails.name,
-            shopId: shopId,
-            shopType: shopDetails.type === 'barber' ? 'barbearia' : 'salao',
-            country: shopDetails.country,
-            currency: shopDetails.currency,
-        };
+        if (!shopDetails || !themeUser) return null;
 
         switch (step) {
             case 'auth':
-                return <PublicAuth onAuthSuccess={handleAuthSuccess} theme={theme} setSession={setSession} />;
+                return <PublicAuth onAuthSuccess={handleAuthSuccess} theme={theme} />;
             case 'profileSetup':
                 if (!clientSession) return null;
                 return <PublicProfileSetup session={clientSession} onSuccess={handleProfileSetupSuccess} theme={theme} />;
@@ -193,13 +172,13 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ shopId, setSession }) => 
                 return <BookingBarberSelector teamMembers={allTeamMembers} onSelectBarber={handleSelectBarber} theme={theme} />;
             case 'services':
                 if (!selectedBarber) return null; 
-                return <BookingServiceSelector services={services} onNext={handleServiceSelect} theme={theme} user={simulatedUser} />;
+                return <BookingServiceSelector services={services} onNext={handleServiceSelect} theme={theme} user={themeUser} />;
             case 'calendar':
                 if (!selectedBarber || selectedServices.length === 0) return null;
-                return <BookingCalendar selectedBarber={selectedBarber} selectedServices={selectedServices} totalDuration={totalDuration} onTimeSelect={handleTimeSelect} onBack={() => setStep('services')} theme={theme} user={simulatedUser} />;
+                return <BookingCalendar tenantId={shopId} selectedBarber={selectedBarber} selectedServices={selectedServices} totalDuration={totalDuration} onTimeSelect={handleTimeSelect} onBack={() => setStep('services')} theme={theme} user={themeUser} />;
             case 'confirm':
                 if (!selectedBarber || !clientSession || selectedServices.length === 0 || !selectedDate || !selectedTime) return null;
-                return <BookingConfirmation selectedBarber={selectedBarber} clientSession={clientSession} selectedServices={selectedServices} totalDuration={totalDuration} totalPrice={totalPrice} selectedDate={selectedDate!} selectedTime={selectedTime!} onSuccess={handleBookingSuccess} onBack={() => setStep('calendar')} theme={theme} user={simulatedUser} />;
+                return <BookingConfirmation selectedBarber={selectedBarber} clientSession={clientSession} selectedServices={selectedServices} totalDuration={totalDuration} totalPrice={totalPrice} selectedDate={selectedDate!} selectedTime={selectedTime!} onSuccess={handleBookingSuccess} onBack={() => setStep('calendar')} theme={theme} user={themeUser} />;
             default:
                 return null;
         }
