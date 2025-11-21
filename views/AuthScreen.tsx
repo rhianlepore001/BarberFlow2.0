@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../lib/supabaseClient';
 import AuthInput from '../components/AuthInput';
 
 type AuthMode = 'login' | 'signup';
-type BusinessType = 'barbearia' | 'salao'; // Usando os valores do enum do DB
+type BusinessType = 'barbearia' | 'salao';
 
-interface AuthScreenProps {
-    setSession: (session: any | null) => void; // Adicionado para atualizar a sessão
-}
-
-const AuthScreen: React.FC<AuthScreenProps> = ({ setSession }) => {
+const AuthScreen: React.FC = () => {
     const [mode, setMode] = useState<AuthMode>('login');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -30,40 +27,27 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ setSession }) => {
         setLoading(true);
         setError(null);
 
-        // Simulação de login/signup
         if (mode === 'signup') {
-            const mockSession = {
-                user: {
-                    id: `user-${Date.now()}`,
-                    email: email,
-                    user_metadata: {
+            const { error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
                         full_name: name,
                         tenant_name: tenantName,
                         business_type: businessType,
-                        avatar_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${themeClasses.primary.substring(1)}`,
+                        country: 'BR',
+                        currency: 'BRL',
                     }
                 }
-            };
-            setSession(mockSession); // Atualiza a sessão no AuthGate
-            localStorage.setItem('user_session', JSON.stringify(mockSession));
-            window.location.reload(); // Recarrega para ir para o App
-            
+            });
+            if (error) setError(error.message);
         } else {
-            const mockSession = {
-                user: {
-                    id: 'mock-user-id',
-                    email: email,
-                    user_metadata: {
-                        full_name: 'Mestre Barbeiro',
-                        tenant_name: 'BarberFlow Central',
-                        business_type: 'barbearia',
-                        avatar_url: `https://ui-avatars.com/api/?name=Mestre+Barbeiro&background=EAB308`,
-                    }
-                }
-            };
-            setSession(mockSession); // Atualiza a sessão no AuthGate
-            localStorage.setItem('user_session', JSON.stringify(mockSession));
-            window.location.reload(); // Recarrega para ir para o App
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            if (error) setError(error.message);
         }
         setLoading(false);
     };
@@ -84,7 +68,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ setSession }) => {
             >
                 <div className="text-center mb-8">
                     <div className="flex justify-center items-center gap-3">
-                        <i className={`fa-solid fa-wand-magic-sparkles ${themeClasses.primary} text-4xl`}></i>
+                        <span className={`material-symbols-outlined ${themeClasses.primary} text-4xl`}>auto_awesome</span>
                         <h1 className="text-4xl font-extrabold text-text-primary">Flow<span className={themeClasses.primary}>Pro</span></h1>
                     </div>
                     <p className="text-text-secondary mt-2">A plataforma definitiva para o seu negócio.</p>
@@ -118,14 +102,12 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ setSession }) => {
                                     <label className="text-lg font-bold">Qual é o seu negócio?</label>
                                     <div className="flex gap-4 mt-2">
                                         <button type="button" onClick={() => setBusinessType('barbearia')} className={`flex-1 p-4 rounded-xl border-2 ${businessType === 'barbearia' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
-                                            <i className="fa-solid fa-cut text-4xl"></i>
+                                            <span className="material-symbols-outlined text-4xl">content_cut</span>
                                             <p className="font-bold mt-1">Barbearia</p>
-                                            <p className="text-xs text-text-secondary mt-1">Quero agilidade e lucro</p>
                                         </button>
                                         <button type="button" onClick={() => setBusinessType('salao')} className={`flex-1 p-4 rounded-xl border-2 ${businessType === 'salao' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
-                                            <i className="fa-solid fa-spa text-4xl"></i>
+                                            <span className="material-symbols-outlined text-4xl">spa</span>
                                             <p className="font-bold mt-1">Salão/Estúdio</p>
-                                            <p className="text-xs text-text-secondary mt-1">Quero gestão e fidelidade</p>
                                         </button>
                                     </div>
                                 </div>

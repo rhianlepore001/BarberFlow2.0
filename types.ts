@@ -1,20 +1,15 @@
 // types.ts
-export interface User {
-  name: string;
-  imageUrl: string;
-  shopId: string; // UUID from tenants.id
-  shopName: string; // from tenants.name
-  shopType: 'barbearia' | 'salao'; // from tenants.business_type
-  currency: 'BRL' | 'EUR'; // Adicionado para internacionalização
-  country: 'BR' | 'PT'; // Adicionado para internacionalização
-}
 
-export interface Tenant {
-  id: string; // UUID
+// Tipo derivado para uso na UI, montado após o login
+export interface User {
+  id: string; // auth.users.id
   name: string;
-  slug: string;
+  image_url: string;
+  tenant_id: string;
+  tenant_name: string;
   business_type: 'barbearia' | 'salao';
-  theme_config?: any; // JSONB
+  currency: 'BRL' | 'EUR';
+  country: 'BR' | 'PT';
 }
 
 export type View = 'inicio' | 'agenda' | 'clientes' | 'caixa' | 'gestao' | 'analise';
@@ -25,45 +20,37 @@ export interface Service {
     name: string;
     price: number;
     duration_minutes: number;
-    category?: 'corte' | 'quimica' | 'tratamento' | 'barba' | 'outro';
     active: boolean;
 }
 
 export interface Client {
     id: string;
     tenant_id: string;
+    auth_user_id?: string;
     name: string;
     phone?: string;
+    image_url?: string;
     last_visit?: string; // Date
-    lastVisitRaw?: string;
-    lastVisit: string;
     total_spent?: number;
-    totalSpent: number;
-    tags?: string[];
-    anamnese_data?: any; // JSONB
-    visagism_data?: any; // JSONB
-    imageUrl?: string;
+    created_at: string;
 }
 
 export interface Appointment {
     id: string;
     tenant_id: string;
-    clientId: string;
-    service_id: string;
-    barberId: string;
-    startTime: string; // Timestamp
-    end_time: string; // Timestamp
-    status: 'pending' | 'confirmed' | 'completed' | 'canceled' | 'noshow';
-    revenue_generated?: number;
+    client_id: string;
+    professional_id: string;
+    start_time: string; // Timestamp
     duration_minutes: number;
     services_json: Service[];
+    status: 'pending' | 'confirmed' | 'completed' | 'canceled' | 'noshow';
     // Propriedades aninhadas que virão da query com JOIN
-    clients?: Pick<Client, 'id' | 'name' | 'imageUrl'>;
+    clients?: Pick<Client, 'id' | 'name' | 'image_url'>;
     team_members?: Pick<TeamMember, 'id' | 'name'>;
 }
 
 export interface PortfolioPost {
-    id: string; // UUID
+    id: string;
     tenant_id: string;
     image_url: string;
     caption_ai?: string;
@@ -71,7 +58,6 @@ export interface PortfolioPost {
     is_public_showcase: boolean;
 }
 
-// Tipos utilitários que podem ser mantidos/adaptados
 export interface NavItemData {
   id: View;
   icon: string;
@@ -92,28 +78,30 @@ export interface CashFlowDay {
 
 export interface Transaction {
     id: string;
+    tenant_id: string;
+    professional_id?: string;
+    client_id?: string;
     description: string;
     amount: number;
     type: 'income' | 'expense';
-    date: string;
-    barberName?: string;
+    transaction_date: string;
+    team_members?: { name: string };
 }
 
 export interface TeamMember {
     id: string;
+    tenant_id: string;
+    auth_user_id?: string;
     name: string;
     role: string;
     image_url: string;
-    commissionRate: number;
-    shop_id: string;
-    shopName?: string;
-    shopType?: 'barbearia' | 'salao';
+    commission_rate: number;
 }
 
 export interface BarberFinancials {
-    barberId: string;
+    professional_id: string;
     monthRevenue: number;
-    commissionRate: number;
+    commission_rate: number;
 }
 
 export interface PeriodData {
@@ -126,4 +114,14 @@ export interface PeriodData {
   xAxisLabels: string[];
   topServices: { name: string; value: string }[];
   topClients: { name: string; value: string }[];
+}
+
+export interface ShopSettings {
+    id: string;
+    tenant_id: string;
+    daily_goal: number;
+    open_days: string[];
+    start_time: string;
+    end_time: string;
+    settlement_day: number;
 }

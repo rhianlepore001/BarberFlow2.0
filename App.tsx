@@ -1,10 +1,10 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Session } from '@supabase/supabase-js'; // Manter para tipagem, mas não usar a instância
+import { Session } from '@supabase/supabase-js';
 
-import type { View, Appointment, User, TeamMember, Client } from './types';
+import type { View, Appointment, User, TeamMember, Client, ShopSettings } from './types';
 import { navItems } from './data';
-// import { supabase } from './lib/supabaseClient'; // REMOVIDO
+import { supabase } from './lib/supabaseClient';
 import { useTheme } from './hooks/useTheme';
 
 import Header from './components/Header';
@@ -38,8 +38,7 @@ const EditSettlementDayForm = lazy(() => import('./components/forms/EditSettleme
 type ModalContentType = 'newAppointment' | 'editAppointment' | 'newClient' | 'newTransaction' | 'newTeamMember' | 'newService' | 'editProfile' | 'editHours' | 'editTeamMember' | 'editCommission' | 'appointmentDetails' | 'editDailyGoal' | 'clientDetails' | 'editSettlementDay';
 
 interface AppProps {
-    session: any; // Usamos 'any' para a sessão mockada
-    setSession: (session: any | null) => void; // Adicionado para logout
+    session: Session;
 }
 
 const LoadingSpinner: React.FC = () => (
@@ -48,7 +47,7 @@ const LoadingSpinner: React.FC = () => (
     </div>
 );
 
-const App: React.FC<AppProps> = ({ session, setSession }) => {
+const App: React.FC<AppProps> = ({ session }) => {
     const [activeView, setActiveView] = useState<View>('inicio');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState<ModalContentType | null>(null);
@@ -59,31 +58,56 @@ const App: React.FC<AppProps> = ({ session, setSession }) => {
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-    const [dailyGoal, setDailyGoal] = useState(500);
+    const [shopSettings, setShopSettings] = useState<ShopSettings | null>(null);
 
     const theme = useTheme(user);
     const refreshData = () => setDataVersion(v => v + 1);
 
-    const handleLogout = () => {
-        setSession(null); // Limpa a sessão mockada
-        window.location.reload(); // Recarrega para ir para AuthScreen
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
     };
 
     useEffect(() => {
-        if (session.user) {
-            const shopType = session.user.user_metadata.business_type || 'barbearia';
-            const finalUser: User = {
-                name: session.user.user_metadata.full_name || 'Usuário',
-                imageUrl: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=${session.user.user_metadata.full_name}`,
-                shopId: 'mock-tenant-id',
-                shopName: session.user.user_metadata.tenant_name || (shopType === 'barbearia' ? 'BarberFlow' : 'BeautyFlow'),
-                shopType: shopType,
-                country: 'BR',
-                currency: 'BRL',
-            };
-            setUser(finalUser);
-        }
-        setIsInitialLoading(false);
+        const fetchUserData = async () => {
+            if (session.user) {
+                const { data: tenantMember, error: tenantMemberError } = await supabase
+                    .from('tenant_members')
+                    .select('*, tenants(*)')
+                    .eq('user_id', session.user.id)
+                    .single();
+
+                if (tenantMemberError || !tenantMember || !tenantMember.tenants) {
+                    console.error("Error fetching tenant data:", tenantMemberError);
+                    setIsInitialLoading(false);
+                    return;
+                }
+                
+                const tenant = tenantMember.tenants;
+                const finalUser: User = {
+                    id: session.user.id,
+                    name: session.user.user_metadata.full_name || 'Usuário',
+                    image_url: session.user.user_metadata.avatar_url || `https://ui-avatars.com/api/?name=${session.user.user_metadata.full_name}`,
+                    tenant_id: tenant.id,
+                    tenant_name: tenant.name,
+                    business_type: tenant.business_type,
+                    country: tenant.country,
+                    currency: tenant.currency,
+                };
+                setUser(finalUser);
+
+                const { data: settingsData, error: settingsError } = await supabase
+                    .from('shop_settings')
+                    .select('*')
+                    .eq('tenant_id', tenant.id)
+                    .single();
+                
+                if (settingsData) {
+                    setShopSettings(settingsData);
+                }
+            }
+            setIsInitialLoading(false);
+        };
+        fetchUserData();
     }, [session, dataVersion]);
 
     const openModal = (content: ModalContentType, data: any = null) => {
@@ -138,8 +162,7 @@ const App: React.FC<AppProps> = ({ session, setSession }) => {
             case 'caixa':
                 return <CashFlow user={user} dataVersion={dataVersion} refreshData={refreshData} />;
             case 'analise':
-                // Removendo a view 'analise' conforme o novo relatório (5 telas)
-                return null; 
+                return <Analysis user={user} dataVersion={dataVersion} />;
             case 'gestao':
                 return <Management user={user} dataVersion={dataVersion} openModal={openModal} refreshData={refreshData} />;
             default:
@@ -151,37 +174,37 @@ const App: React.FC<AppProps> = ({ session, setSession }) => {
         if (!user) return null;
         switch (modalContent) {
             case 'newAppointment':
-                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'editAppointment':
-                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} shopId={user.shopId} user={user} />;
+                return <NewAppointmentForm onClose={closeModal} onSuccess={handleSuccess} appointment={editingAppointment} user={user} />;
             case 'appointmentDetails':
                 if (!editingAppointment) return null;
-                return <AppointmentDetailsModal appointment={editingAppointment} onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} onEditClick={handleEditAppointment} user={user} />;
+                return <AppointmentDetailsModal appointment={editingAppointment} onClose={closeModal} onSuccess={handleSuccess} onEditClick={handleEditAppointment} user={user} />;
             case 'newClient':
-                return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+                return <NewClientForm onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'clientDetails':
                 if (!selectedClient) return null;
                 return <ClientDetailsModal client={selectedClient} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'newTransaction':
-                return <NewTransactionForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+                return <NewTransactionForm onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'newTeamMember':
-                return <NewTeamMemberForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+                return <NewTeamMemberForm onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'editTeamMember':
                 if (!editingMember) return null;
                 return <EditTeamMemberForm member={editingMember} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'newService':
-                return <NewServiceForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+                return <NewServiceForm onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'editProfile':
                 return <EditProfileForm user={user} session={session} onClose={closeModal} onSuccess={handleSuccess} />;
             case 'editHours':
-                return <EditWorkingHoursForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+                return <EditWorkingHoursForm onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'editCommission':
                 if (!editingMember) return null;
                 return <EditCommissionForm member={editingMember} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'editDailyGoal':
-                return <EditDailyGoalForm currentGoal={dailyGoal} onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+                return <EditDailyGoalForm currentGoal={shopSettings?.daily_goal || 0} onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             case 'editSettlementDay':
-                return <EditSettlementDayForm onClose={closeModal} onSuccess={handleSuccess} shopId={user.shopId} user={user} />;
+                return <EditSettlementDayForm onClose={closeModal} onSuccess={handleSuccess} user={user} />;
             default:
                 return null;
         }
@@ -201,11 +224,10 @@ const App: React.FC<AppProps> = ({ session, setSession }) => {
     }
     
     if (!user) {
-        // Se não há usuário, retorna a tela de autenticação/onboarding
-        return <AuthScreen setSession={setSession} />; // Passa setSession para AuthScreen
+        return <div className="flex justify-center items-center h-screen bg-background text-text-primary"><p>Não foi possível carregar os dados do seu negócio. Tente recarregar a página.</p></div>;
     }
     
-    const themeClass = user.shopType === 'barbearia' ? 'theme-barber' : 'theme-beauty';
+    const themeClass = user.business_type === 'barbearia' ? 'theme-barber' : 'theme-beauty';
 
     return (
         <div className={`flex min-h-screen w-full ${themeClass}`}>
@@ -230,13 +252,12 @@ const App: React.FC<AppProps> = ({ session, setSession }) => {
                     </Suspense>
                 </main>
                 
-                {/* FAB - Botão de Ação Rápida */}
                 <button
                     onClick={handleFabClick}
                     className={`fixed bottom-24 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform duration-300 hover:scale-105 md:hidden ${theme.bgPrimary}`}
                     aria-label="Adicionar Novo"
                 >
-                    <i className="fa-solid fa-plus text-2xl text-background"></i>
+                    <span className="material-symbols-outlined text-2xl text-background">add</span>
                 </button>
                 <BottomNav items={navItems} activeView={activeView} setActiveView={setActiveView} user={user} />
                 

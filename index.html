@@ -3,12 +3,11 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Painel de Controle - AlphaCore</title>
+    <title>FlowPro Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
     <style>
-        /* Chameleon Theme Engine Variables */
         :root {
             --font-primary: 'Manrope', sans-serif;
             --border-radius-base: 8px;
@@ -19,26 +18,24 @@
 
         .theme-barber {
             --color-primary: 234 179 8; /* Amarelo Ouro (EAB308) */
-            --color-background: #000000;
-            --color-card: #111827;
+            --color-background: #111827; /* Cinza 900 */
+            --color-card: #1F2937; /* Cinza 800 */
+            --color-background-dark: #000000;
+            --color-card-dark: #111827;
             --color-text-primary: #FFFFFF;
             --color-text-secondary: #9CA3AF;
             --font-primary: 'Manrope', sans-serif;
-            --border-radius-base: 8px;
-            --border-radius-lg: 12px;
-            --border-radius-xl: 16px;
         }
 
         .theme-beauty {
             --color-primary: 219 39 119; /* Rosa Pink (DB2777) */
             --color-background: #FDF2F8;
             --color-card: #FFFFFF;
+            --color-background-dark: #FDF2F8;
+            --color-card-dark: #FFFFFF;
             --color-text-primary: #111827;
             --color-text-secondary: #6B7280;
             --font-primary: 'Playfair Display', serif;
-            --border-radius-base: 24px;
-            --border-radius-lg: 32px;
-            --border-radius-xl: 48px;
         }
 
         .material-symbols-outlined {
@@ -61,6 +58,8 @@
                         primary: 'rgb(var(--color-primary) / <alpha-value>)',
                         background: 'var(--color-background)',
                         card: 'var(--color-card)',
+                        'background-dark': 'var(--color-background-dark)',
+                        'card-dark': 'var(--color-card-dark)',
                         'text-primary': 'var(--color-text-primary)',
                         'text-secondary': 'var(--color-text-secondary)',
                     },
