@@ -9,6 +9,7 @@ const AuthGate: React.FC = () => {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [publicShopId, setPublicShopId] = useState<string | null>(null);
+    const [authScreenThemeClass, setAuthScreenThemeClass] = useState<string | null>(null);
 
     useEffect(() => {
         // Verifica a URL para a rota pública
@@ -34,6 +35,17 @@ const AuthGate: React.FC = () => {
         }
     }, []);
 
+    // Effect to apply theme class to body for AuthScreen
+    useEffect(() => {
+        if (!session && !publicShopId && authScreenThemeClass) {
+            document.body.className = authScreenThemeClass;
+        } else if (session) {
+            // When authenticated, App.tsx will handle the theme
+            document.body.className = ''; 
+        }
+    }, [session, publicShopId, authScreenThemeClass]);
+
+
     if (loading) {
         return (
              <div className="flex justify-center items-center h-screen bg-background text-white">
@@ -46,7 +58,7 @@ const AuthGate: React.FC = () => {
         return <PublicBooking shopId={publicShopId} />;
     }
 
-    return session ? <App session={session} /> : <AuthScreen />;
+    return session ? <App session={session} /> : <AuthScreen onThemeChange={setAuthScreenThemeClass} />;
 };
 
 export default AuthGate;

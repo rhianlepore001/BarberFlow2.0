@@ -1,26 +1,106 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
 import AuthInput from '../components/AuthInput';
 
 type AuthMode = 'login' | 'signup';
 type BusinessType = 'barbearia' | 'salao';
+type Country = 'BR' | 'PT';
 
-const AuthScreen: React.FC = () => {
+interface AuthScreenProps {
+    onThemeChange: (themeClass: string) => void;
+}
+
+const AuthScreen: React.FC<AuthScreenProps> = ({ onThemeChange }) => {
     const [mode, setMode] = useState<AuthMode>('login');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
-    const [name, setName] = useState('');
+    // Signup states
+    const [country, setCountry] = useState<Country>('BR');
     const [tenantName, setTenantName] = useState('');
-    const [businessType, setBusinessType] = useState<BusinessType>('barbearia');
+    const [fullName, setFullName] = useState('');
+    const [phone, setPhone] = useState('');
     
+    // Auth states
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    
-    const themeClasses = businessType === 'barbearia' 
-        ? { primary: 'text-primary', bgPrimary: 'bg-primary', focusRing: 'focus:ring-primary focus:border-primary', themeClass: 'theme-barber' }
-        : { primary: 'text-primary', bgPrimary: 'bg-primary', focusRing: 'focus:ring-primary focus:border-primary', themeClass: 'theme-beauty' };
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    // Validation states
+    const [passwordMismatch, setPasswordMismatch] = useState(false);
+    const [passwordTooShort, setPasswordTooShort] = useState(false);
+
+    const { currencyCode, currencySymbol, locale, phoneMask, phonePlaceholder } = useMemo(() => {
+        if (country === 'BR') {
+            return {
+                currencyCode: 'BRL',
+                currencySymbol: 'R$',
+                locale: 'pt-BR',
+                phoneMask: '(99) 99999-9999',
+                phonePlaceholder: '(XX) XXXXX-XXXX'
+            };
+        } else { // PT
+            return {
+                currencyCode: 'EUR',
+                currencySymbol: '€',
+                locale: 'pt-PT',
+                phoneMask: '999 999 999',
+                phonePlaceholder: 'XXX XXX XXX'
+            };
+        }
+    }, [country]);
+
+    const themeClasses = useMemo(() => {
+        if (businessType === 'barbearia') {
+            return { 
+                primary: 'text-primary', bgPrimary: 'bg-primary', focusRing: 'focus:ring-primary focus:border-primary', 
+                themeClass: 'theme-barber',
+                buttonText: 'Criar meu Império'
+            };
+        } else { // 'salao'
+            return { 
+                primary: 'text-primary', bgPrimary: 'bg-primary', focusRing: 'focus:ring-primary focus:border-primary', 
+                themeClass: 'theme-beauty',
+                buttonText: 'Começar Transformação'
+            };
+        }
+    }, [businessType]);
+
+    // Communicate theme class to parent (AuthGate)
+    useEffect(() => {
+        onThemeChange(themeClasses.themeClass);
+    }, [themeClasses.themeClass, onThemeChange]);
+
+    // Password validation effect
+    useEffect(() => {
+        if (mode === 'signup') {
+            setPasswordTooShort(password.length > 0 && password.length < 6);
+            setPasswordMismatch(confirmPassword.length > 0 && password !== confirmPassword);
+        } else {
+            setPasswordMismatch(false);
+            setPasswordTooShort(false);
+        }
+    }, [password, confirmPassword, mode]);
+
+    // Phone masking effect
+    const applyPhoneMask = (value: string, mask: string) => {
+        let i = 0;
+        const v = value.replace(/\D/g, '');
+        return mask.replace(/9/g, () => v[i++] || '');
+    };
+
+    useEffect(() => {
+        setPhone(prevPhone => {
+            const unmasked = prevPhone.replace(/\D/g, '');
+            return applyPhoneMask(unmasked, phoneMask);
+        });
+    }, [phoneMask]);
+
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const unmasked = e.target.value.replace(/\D/g, '');
+        setPhone(applyPhoneMask(unmasked, phoneMask));
+    };
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,16 +108,28 @@ const AuthScreen: React.FC = () => {
         setError(null);
 
         if (mode === 'signup') {
+            if (password.length < 6) {
+                setError("A senha deve ter pelo menos 6 caracteres.");
+                setLoading(false);
+                return;
+            }
+            if (password !== confirmPassword) {
+                setError("As senhas não coincidem.");
+                setLoading(false);
+                return;
+            }
+
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     data: {
-                        full_name: name,
+                        full_name: fullName,
                         tenant_name: tenantName,
                         business_type: businessType,
-                        country: 'BR',
-                        currency: 'BRL',
+                        country: country,
+                        currency: currencyCode,
+                        phone: phone.replace(/\D/g, ''), // Save unmasked phone
                     }
                 }
             });
@@ -59,17 +151,17 @@ const AuthScreen: React.FC = () => {
     };
 
     return (
-        <div className={`flex flex-col items-center justify-center min-h-screen p-4 ${themeClasses.themeClass}`}>
+        <div className={`flex flex-col items-center justify-center min-h-screen p-4`}>
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, ease: "circOut" }}
-                className="w-full max-w-sm"
+                className="w-full max-w-sm bg-card rounded-2xl shadow-2xl p-6 space-y-6 backdrop-blur-lg bg-white/10 border border-white/20"
             >
-                <div className="text-center mb-8">
+                <div className="text-center mb-4">
                     <div className="flex justify-center items-center gap-3">
                         <span className={`material-symbols-outlined ${themeClasses.primary} text-4xl`}>auto_awesome</span>
-                        <h1 className="text-4xl font-extrabold text-text-primary">Flow<span className={themeClasses.primary}>Pro</span></h1>
+                        <h1 className="text-4xl font-extrabold text-text-primary">Alpha<span className={themeClasses.primary}>Core</span></h1>
                     </div>
                     <p className="text-text-secondary mt-2">A plataforma definitiva para o seu negócio.</p>
                 </div>
@@ -99,7 +191,33 @@ const AuthScreen: React.FC = () => {
                         {mode === 'signup' && (
                             <>
                                 <div className="text-text-primary text-center">
-                                    <label className="text-lg font-bold">Qual é o seu negócio?</label>
+                                    <label className="text-lg font-bold mb-2 block">Onde fica seu negócio?</label>
+                                    <div className="flex gap-4 mt-2">
+                                        <button type="button" onClick={() => setCountry('BR')} className={`flex-1 p-4 rounded-xl border-2 ${country === 'BR' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
+                                            <span className="text-4xl">🇧🇷</span>
+                                            <p className="font-bold mt-1">Brasil</p>
+                                        </button>
+                                        <button type="button" onClick={() => setCountry('PT')} className={`flex-1 p-4 rounded-xl border-2 ${country === 'PT' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
+                                            <span className="text-4xl">🇵🇹</span>
+                                            <p className="font-bold mt-1">Portugal</p>
+                                        </button>
+                                    </div>
+                                    <AnimatePresence>
+                                        {country === 'PT' && (
+                                            <motion.p 
+                                                initial={{ opacity: 0, y: -10 }} 
+                                                animate={{ opacity: 1, y: 0 }} 
+                                                exit={{ opacity: 0, y: -10 }}
+                                                className="text-sm text-text-secondary mt-2"
+                                            >
+                                                Moeda definida para Euro ({currencySymbol})
+                                            </motion.p>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                <div className="text-text-primary text-center">
+                                    <label className="text-lg font-bold mb-2 block">Qual é o seu negócio?</label>
                                     <div className="flex gap-4 mt-2">
                                         <button type="button" onClick={() => setBusinessType('barbearia')} className={`flex-1 p-4 rounded-xl border-2 ${businessType === 'barbearia' ? `border-primary bg-primary/10` : 'border-card hover:border-primary/50'}`}>
                                             <span className="material-symbols-outlined text-4xl">content_cut</span>
@@ -111,17 +229,47 @@ const AuthScreen: React.FC = () => {
                                         </button>
                                     </div>
                                 </div>
-                                <AuthInput icon="store" type="text" placeholder="Nome do Negócio" value={tenantName} onChange={e => setTenantName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
-                                <AuthInput icon="user" type="text" placeholder="Seu Nome" value={name} onChange={e => setName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                                <AuthInput id="tenant-name" label="Nome do Estabelecimento" icon="store" type="text" value={tenantName} onChange={e => setTenantName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                                <AuthInput id="full-name" label="Seu Nome Completo" icon="user" type="text" value={fullName} onChange={e => setFullName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                                <AuthInput id="phone" label="Telefone/WhatsApp" icon="phone" type="tel" value={phone} onChange={handlePhoneChange} required focusRingClass={themeClasses.focusRing} placeholder={phonePlaceholder} />
                             </>
                         )}
-                        <AuthInput icon="envelope" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={themeClasses.focusRing} />
-                        <AuthInput icon="lock" type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                        <AuthInput id="email" label="Email" icon="envelope" type="email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                        <AuthInput 
+                            id="password" 
+                            label="Senha" 
+                            icon="lock" 
+                            type="password" 
+                            value={password} 
+                            onChange={e => setPassword(e.target.value)} 
+                            required 
+                            focusRingClass={themeClasses.focusRing} 
+                            error={passwordTooShort}
+                        />
+                        {mode === 'signup' && (
+                            <AuthInput 
+                                id="confirm-password" 
+                                label="Confirmar Senha" 
+                                icon="lock" 
+                                type="password" 
+                                value={confirmPassword} 
+                                onChange={e => setConfirmPassword(e.target.value)} 
+                                required 
+                                focusRingClass={themeClasses.focusRing} 
+                                error={passwordMismatch}
+                            />
+                        )}
                         
+                        {passwordTooShort && <p className="text-red-500 text-xs text-center">A senha deve ter pelo menos 6 caracteres.</p>}
+                        {passwordMismatch && <p className="text-red-500 text-xs text-center">As senhas não coincidem.</p>}
                         {error && <p className="text-red-500 text-xs text-center">{error}</p>}
 
-                        <button type="submit" disabled={loading} className={`w-full ${themeClasses.bgPrimary} text-background font-bold py-3 rounded-full transition-colors disabled:opacity-50`}>
-                            {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar' : 'Criar Conta')}
+                        <button 
+                            type="submit" 
+                            disabled={loading || (mode === 'signup' && (passwordMismatch || passwordTooShort || !tenantName || !fullName || !phone))} 
+                            className={`w-full ${themeClasses.bgPrimary} text-background font-bold py-3 rounded-full transition-colors disabled:opacity-50`}
+                        >
+                            {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar' : themeClasses.buttonText)}
                         </button>
                     </motion.form>
                 </AnimatePresence>

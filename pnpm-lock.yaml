@@ -23,6 +23,9 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
+      react-input-mask:
+        specifier: ^2.0.4
+        version: 2.0.4(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -651,6 +654,9 @@ packages:
     resolution: {integrity: sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==}
     engines: {node: '>= 14'}
 
+  invariant@2.2.4:
+    resolution: {integrity: sha512-phJfQVBuaJM5raOpJjSfkiD6BpbCE4Ns//LaXl6wGYtUBY83nWS6Rf9tXm2e8VaK60JEjYldbPif/A2B1C2gNA==}
+
   is-fullwidth-code-point@3.0.0:
     resolution: {integrity: sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==}
     engines: {node: '>=8'}
@@ -682,6 +688,10 @@ packages:
 
   jws@4.0.0:
     resolution: {integrity: sha512-KDncfTmOZoOMTFG4mBlG0qUIOlc03fmzH+ru6RgYVZhPkyiy/92Owlt/8UEN+a4TXR1FQetfIpJE8ApdvdVxTg==}
+
+  loose-envify@1.4.0:
+    resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
+    hasBin: true
 
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
@@ -749,6 +759,12 @@ packages:
     resolution: {integrity: sha512-UlbRu4cAiGaIewkPyiRGJk0imDN2T3JjieT6spoL2UeSf5od4n5LB/mQ4ejmxhCFT1tYe8IvaFulzynWovsEFQ==}
     peerDependencies:
       react: ^19.2.0
+
+  react-input-mask@2.0.4:
+    resolution: {integrity: sha512-1hwzMr/aO9tXfiroiVCx5EtKohKwLk/NT8QlJXHQ4N+yJJFyUuMT+zfTpLBwX/lK3PkuMlievIffncpMZ3HGRQ==}
+    peerDependencies:
+      react: '>=0.14.0'
+      react-dom: '>=0.14.0'
 
   react-refresh@0.18.0:
     resolution: {integrity: sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw==}
@@ -869,6 +885,9 @@ packages:
         optional: true
       yaml:
         optional: true
+
+  warning@4.0.3:
+    resolution: {integrity: sha512-rpJyN222KWIvHJ/F53XSZv0Zl/accqHR8et1kpaMTD/fLCRxtV8iX8czMzY7sVZupTI3zcUTg8eycS2kNF9l6w==}
 
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
@@ -1471,6 +1490,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  invariant@2.2.4:
+    dependencies:
+      loose-envify: 1.4.0
+
   is-fullwidth-code-point@3.0.0: {}
 
   isexe@2.0.0: {}
@@ -1501,6 +1524,10 @@ snapshots:
     dependencies:
       jwa: 2.0.1
       safe-buffer: 5.2.1
+
+  loose-envify@1.4.0:
+    dependencies:
+      js-tokens: 4.0.0
 
   lru-cache@10.4.3: {}
 
@@ -1557,6 +1584,13 @@ snapshots:
     dependencies:
       react: 19.2.0
       scheduler: 0.27.0
+
+  react-input-mask@2.0.4(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+    dependencies:
+      invariant: 2.2.4
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
+      warning: 4.0.3
 
   react-refresh@0.18.0: {}
 
@@ -1658,6 +1692,10 @@ snapshots:
     optionalDependencies:
       '@types/node': 22.19.0
       fsevents: 2.3.3
+
+  warning@4.0.3:
+    dependencies:
+      loose-envify: 1.4.0
 
   web-streams-polyfill@3.3.3: {}
 
