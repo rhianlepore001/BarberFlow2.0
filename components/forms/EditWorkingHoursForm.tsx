@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../../lib/supabaseClient'; // Removido
+import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
-import { mockUpdateSettings } from '../../lib/mockData'; // Usaremos para simular
 
 interface EditWorkingHoursFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: string;
     user: User;
 }
 
 const ALL_DAYS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
 const DAY_LABELS: Record<string, string> = { seg: 'S', ter: 'T', qua: 'Q', qui: 'Q', sex: 'S', sab: 'S', dom: 'D' };
 
-const EditWorkingHoursForm: React.FC<EditWorkingHoursFormProps> = ({ onClose, onSuccess, shopId, user }) => {
-    const [openDays, setOpenDays] = useState<string[]>(['seg', 'ter', 'qua', 'qui', 'sex', 'sab']); // Mock inicial
+const EditWorkingHoursForm: React.FC<EditWorkingHoursFormProps> = ({ onClose, onSuccess, user }) => {
+    const [openDays, setOpenDays] = useState<string[]>([]);
     const [startTime, setStartTime] = useState('09:00');
     const [endTime, setEndTime] = useState('20:00');
     const [isSaving, setIsSaving] = useState(false);
@@ -25,18 +23,17 @@ const EditWorkingHoursForm: React.FC<EditWorkingHoursFormProps> = ({ onClose, on
     const theme = useTheme(user);
 
     useEffect(() => {
-        // Simulação de busca de configurações
-        // Em um protótipo, podemos ter valores fixos ou um mock mais elaborado
-        const mockSettings = {
-            open_days: ['seg', 'ter', 'qua', 'qui', 'sex', 'sab'],
-            start_time: '09:00',
-            end_time: '20:00'
+        const fetchSettings = async () => {
+            const { data } = await supabase.from('shop_settings').select('open_days, start_time, end_time').eq('tenant_id', user.tenant_id).single();
+            if (data) {
+                setOpenDays(data.open_days || []);
+                setStartTime(data.start_time || '09:00');
+                setEndTime(data.end_time || '20:00');
+            }
+            setLoading(false);
         };
-        setOpenDays(mockSettings.open_days);
-        setStartTime(mockSettings.start_time);
-        setEndTime(mockSettings.end_time);
-        setLoading(false);
-    }, [shopId]);
+        fetchSettings();
+    }, [user.tenant_id]);
     
     const handleDayToggle = (day: string) => {
         setOpenDays(prev => {
@@ -50,21 +47,21 @@ const EditWorkingHoursForm: React.FC<EditWorkingHoursFormProps> = ({ onClose, on
         setIsSaving(true);
         setError(null);
         
-        const settingsData = {
-            tenant_id: shopId,
-            open_days: openDays,
-            start_time: startTime,
-            end_time: endTime
-        };
-
-        // Simulação de salvamento
-        mockUpdateSettings(settingsData);
+        const { error } = await supabase
+            .from('shop_settings')
+            .upsert({
+                tenant_id: user.tenant_id,
+                open_days: openDays,
+                start_time: startTime,
+                end_time: endTime
+            }, { onConflict: 'tenant_id' });
         
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao salvar o horário.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
-        setIsSaving(false);
+        }
     };
 
     if (loading) {

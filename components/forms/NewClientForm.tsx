@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../../lib/supabaseClient'; // Removido
+import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
-import { mockCreateClient } from '../../lib/mockData';
 
 interface NewClientFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: string;
     user: User;
 }
 
-const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopId, user }) => {
+const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, user }) => {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [isSaving, setIsSaving] = useState(false);
@@ -25,13 +23,18 @@ const NewClientForm: React.FC<NewClientFormProps> = ({ onClose, onSuccess, shopI
         setIsSaving(true);
         setError(null);
         
-        // Simulação de salvamento
-        mockCreateClient({ name, phone });
+        const { error } = await supabase.from('clients').insert({
+            name,
+            phone,
+            tenant_id: user.tenant_id,
+        });
 
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao salvar o cliente.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
+        }
     };
 
     return (

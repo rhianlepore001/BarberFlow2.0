@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../../lib/supabaseClient'; // Removido
+import { supabase } from '../../lib/supabaseClient';
 import type { TeamMember, User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
-import { mockUpdateTeamMember } from '../../lib/mockData'; // Usaremos para simular
 
 interface EditCommissionFormProps {
     member: TeamMember;
@@ -13,7 +12,7 @@ interface EditCommissionFormProps {
 }
 
 const EditCommissionForm: React.FC<EditCommissionFormProps> = ({ member, onClose, onSuccess, user }) => {
-    const [commissionRate, setCommissionRate] = useState((member.commissionRate * 100).toString());
+    const [commissionRate, setCommissionRate] = useState((member.commission_rate * 100).toString());
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
@@ -32,14 +31,17 @@ const EditCommissionForm: React.FC<EditCommissionFormProps> = ({ member, onClose
         
         const rateDecimal = ratePercentage / 100;
 
-        // Simulação de atualização da taxa de comissão
-        mockUpdateTeamMember(member.id, { commission_rate: rateDecimal });
+        const { error } = await supabase
+            .from('team_members')
+            .update({ commission_rate: rateDecimal })
+            .eq('id', member.id);
             
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao salvar a comissão.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
-        setIsSaving(false);
+        }
     };
 
     return (

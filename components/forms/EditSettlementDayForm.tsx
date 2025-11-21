@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../../lib/supabaseClient'; // Removido
+import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
-import { mockUpdateSettings } from '../../lib/mockData'; // Usaremos para simular
 
 interface EditSettlementDayFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: string;
     user: User;
 }
 
-const EditSettlementDayForm: React.FC<EditSettlementDayFormProps> = ({ onClose, onSuccess, shopId, user }) => {
+const EditSettlementDayForm: React.FC<EditSettlementDayFormProps> = ({ onClose, onSuccess, user }) => {
     const [settlementDay, setSettlementDay] = useState('1');
     const [isSaving, setIsSaving] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -20,13 +18,15 @@ const EditSettlementDayForm: React.FC<EditSettlementDayFormProps> = ({ onClose, 
     const theme = useTheme(user);
 
     useEffect(() => {
-        // Simulação de busca de configurações
-        const mockSettings = { settlement_day: 1 }; // Valor mockado
-        if (mockSettings && mockSettings.settlement_day !== null) {
-            setSettlementDay(mockSettings.settlement_day.toString());
-        }
-        setLoading(false);
-    }, [shopId]);
+        const fetchSettings = async () => {
+            const { data } = await supabase.from('shop_settings').select('settlement_day').eq('tenant_id', user.tenant_id).single();
+            if (data && data.settlement_day !== null) {
+                setSettlementDay(data.settlement_day.toString());
+            }
+            setLoading(false);
+        };
+        fetchSettings();
+    }, [user.tenant_id]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -40,14 +40,16 @@ const EditSettlementDayForm: React.FC<EditSettlementDayFormProps> = ({ onClose, 
             return;
         }
         
-        // Simulação de salvamento de configurações
-        mockUpdateSettings({ tenant_id: shopId, settlement_day: dayValue });
+        const { error } = await supabase
+            .from('shop_settings')
+            .upsert({ tenant_id: user.tenant_id, settlement_day: dayValue }, { onConflict: 'tenant_id' });
         
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao salvar o dia de acerto.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
-        setIsSaving(false);
+        }
     };
 
     if (loading) {

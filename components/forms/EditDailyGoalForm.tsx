@@ -1,19 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../../lib/supabaseClient'; // Removido
+import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
-import { mockUpdateSettings } from '../../lib/mockData'; // Usaremos para simular
 
 interface EditDailyGoalFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: string;
     currentGoal: number;
     user: User;
 }
 
-const EditDailyGoalForm: React.FC<EditDailyGoalFormProps> = ({ onClose, onSuccess, shopId, currentGoal, user }) => {
+const EditDailyGoalForm: React.FC<EditDailyGoalFormProps> = ({ onClose, onSuccess, currentGoal, user }) => {
     const [dailyGoal, setDailyGoal] = useState(currentGoal.toString());
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -31,14 +29,16 @@ const EditDailyGoalForm: React.FC<EditDailyGoalFormProps> = ({ onClose, onSucces
             return;
         }
         
-        // Simulação de salvamento de configurações
-        mockUpdateSettings({ tenant_id: shopId, daily_goal: goalValue });
+        const { error } = await supabase
+            .from('shop_settings')
+            .upsert({ tenant_id: user.tenant_id, daily_goal: goalValue }, { onConflict: 'tenant_id' });
         
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao salvar a meta diária.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
-        setIsSaving(false);
+        }
     };
 
     return (
@@ -47,7 +47,7 @@ const EditDailyGoalForm: React.FC<EditDailyGoalFormProps> = ({ onClose, onSucces
             
             <form className="space-y-4" onSubmit={handleSubmit}>
                 <div>
-                    <label htmlFor="daily-goal" className="block text-sm font-medium text-text-secondary-dark mb-1">Valor da Meta (R$)</label>
+                    <label htmlFor="daily-goal" className="block text-sm font-medium text-text-secondary-dark mb-1">Valor da Meta ({user.currency})</label>
                     <input 
                         type="number" 
                         step="0.01"

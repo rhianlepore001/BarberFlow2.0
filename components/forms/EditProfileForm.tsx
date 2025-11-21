@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../../lib/supabaseClient'; // Removido
+import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { Session } from '@supabase/supabase-js';
 import { useTheme } from '../../hooks/useTheme';
-import { mockUpdateTeamMember } from '../../lib/mockData'; // Usaremos para simular
 
 interface EditProfileFormProps {
     user: User;
@@ -16,7 +15,7 @@ interface EditProfileFormProps {
 const EditProfileForm: React.FC<EditProfileFormProps> = ({ user, session, onClose, onSuccess }) => {
     const [name, setName] = useState(user.name);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(user.imageUrl);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(user.image_url);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
@@ -33,22 +32,46 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ user, session, onClos
         e.preventDefault();
         setIsSaving(true);
         setError(null);
-        let avatarUrl = user.imageUrl.split('?t=')[0]; // Remove o cache buster se não houver novo upload
+        let avatarUrl = user.image_url.split('?t=')[0];
         
         if (avatarFile) {
-            // Simulação de upload: apenas gera uma URL local
-            avatarUrl = URL.createObjectURL(avatarFile);
+            const filePath = `public/${user.id}/${Date.now()}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, avatarFile);
+
+            if (uploadError) {
+                setError("Erro ao enviar a imagem.");
+                setIsSaving(false);
+                return;
+            }
+            
+            const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(uploadData.path);
+            avatarUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
         }
 
-        // Simulação de atualização do membro da equipe
-        mockUpdateTeamMember(session.user.id, { name, image_url: avatarUrl });
-            
-        // Simulação de sucesso
-        setTimeout(() => {
-            onSuccess();
-        }, 500);
+        const { error: userUpdateError } = await supabase.auth.updateUser({
+            data: { full_name: name, avatar_url: avatarUrl }
+        });
+
+        if (userUpdateError) {
+            setError(userUpdateError.message);
+            setIsSaving(false);
+            return;
+        }
+
+        const { error: teamUpdateError } = await supabase
+            .from('team_members')
+            .update({ name, image_url: avatarUrl })
+            .eq('auth_user_id', session.user.id);
+
+        if (teamUpdateError) {
+            setError("Erro ao atualizar o perfil da equipe.");
+            setIsSaving(false);
+            return;
+        }
         
-        setIsSaving(false);
+        onSuccess();
     };
 
     return (
@@ -60,7 +83,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ user, session, onClos
                     <label htmlFor="avatar-upload" className="relative cursor-pointer group">
                         <img src={previewUrl || `https://ui-avatars.com/api/?name=${name}&background=${theme.themeColor.substring(1)}&color=101012`} alt="Avatar" className={`w-28 h-28 rounded-full object-cover border-2 border-card-dark group-hover:${theme.borderPrimary} transition-colors`} />
                         <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="fa-solid fa-edit text-white text-3xl"></span>
+                            <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
                         </div>
                     </label>
                     <input id="avatar-upload" type="file" accept="image/png, image/jpeg" onChange={handleFileChange} className="hidden" />

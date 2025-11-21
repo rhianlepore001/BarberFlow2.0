@@ -1,22 +1,21 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
 import { useShopLabels } from '../../hooks/useShopLabels';
-import { mockCreateTeamMember } from '../../lib/mockData';
 
 interface NewTeamMemberFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: string;
     user: User;
 }
 
-const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSuccess, shopId, user }) => {
+const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSuccess, user }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
-    const shopLabels = useShopLabels(user.shopType);
+    const shopLabels = useShopLabels(user.business_type);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -24,20 +23,20 @@ const NewTeamMemberForm: React.FC<NewTeamMemberFormProps> = ({ onClose, onSucces
         setError(null);
         const formData = new FormData(e.currentTarget);
         const name = formData.get('name') as string;
-        const memberData = {
+        
+        const { error } = await supabase.from('team_members').insert({
             name,
             role: formData.get('role') as string,
             image_url: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=${theme.themeColor.substring(1)}`,
-            tenant_id: shopId,
-        };
+            tenant_id: user.tenant_id,
+        });
 
-        // Simulação de salvamento
-        mockCreateTeamMember(memberData);
-        
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao salvar o membro da equipe.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
+        }
     };
 
     return (

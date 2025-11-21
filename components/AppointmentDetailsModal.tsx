@@ -1,39 +1,36 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { Appointment, Service, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils';
-import { mockCreateTransaction, mockDeleteAppointment } from '../lib/mockData'; // Usaremos para simular
 
 interface AppointmentDetailsModalProps {
     appointment: Appointment;
     onClose: () => void;
     onSuccess: () => void;
-    shopId: string;
     onEditClick: (appointment: Appointment) => void;
     user: User;
 }
 
-const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appointment, onClose, onSuccess, shopId, onEditClick, user }) => {
+const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appointment, onClose, onSuccess, onEditClick, user }) => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
 
     const clientName = appointment.clients?.name || 'Cliente Desconhecido';
     const barberName = appointment.team_members?.name || 'Profissional';
-    const startTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const startTime = new Date(appointment.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
     const services: Service[] = appointment.services_json || [];
     const totalAmount = services.reduce((sum, s) => sum + s.price, 0);
     const serviceNames = services.map(s => s.name).join(', ');
-    // const totalDuration = appointment.duration_minutes; // Não usado diretamente no display aqui
 
     const handleCompleteAppointment = async () => {
         setIsProcessing(true);
         setError(null);
 
-        if (!appointment.barberId) {
+        if (!appointment.professional_id) {
             setError("Dados do profissional ausentes.");
             setIsProcessing(false);
             return;
@@ -45,27 +42,30 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             return;
         }
         
-        const transactionData = {
+        const { error: transactionError } = await supabase.from('transactions').insert({
             description: serviceNames,
             amount: totalAmount,
             type: 'income',
             transaction_date: new Date().toISOString(),
-            tenant_id: shopId,
-            professional_id: appointment.barberId,
-            client_id: appointment.clientId,
-        };
+            tenant_id: user.tenant_id,
+            professional_id: appointment.professional_id,
+            client_id: appointment.client_id,
+        });
 
-        // Simulação de inserção de transação
-        mockCreateTransaction(transactionData);
+        if (transactionError) {
+            setError("Erro ao registrar a transação.");
+            setIsProcessing(false);
+            return;
+        }
 
-        // Simulação de exclusão de agendamento
-        mockDeleteAppointment(appointment.id);
+        const { error: deleteError } = await supabase.from('appointments').delete().eq('id', appointment.id);
 
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (deleteError) {
+            setError("Transação registrada, mas falha ao remover o agendamento.");
+            setIsProcessing(false);
+        } else {
             onSuccess();
-        }, 500);
-        setIsProcessing(false);
+        }
     };
     
     const handleCancelAppointment = async () => {
@@ -74,14 +74,14 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
         setIsProcessing(true);
         setError(null);
         
-        // Simulação de exclusão de agendamento
-        mockDeleteAppointment(appointment.id);
+        const { error } = await supabase.from('appointments').delete().eq('id', appointment.id);
 
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao cancelar o agendamento.");
+            setIsProcessing(false);
+        } else {
             onSuccess();
-        }, 500);
-        setIsProcessing(false);
+        }
     }
 
     return (
@@ -90,14 +90,14 @@ const AppointmentDetailsModal: React.FC<AppointmentDetailsModalProps> = ({ appoi
             
             <div className="bg-background-dark p-4 rounded-xl space-y-3">
                 <div className="flex items-center gap-3">
-                    <span className={`fa-solid fa-user ${theme.primary} text-3xl`}></span>
+                    <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>person</span>
                     <div>
                         <p className="font-bold text-white">{clientName}</p>
                         <p className="text-sm text-text-secondary-dark">Cliente</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className={`fa-solid fa-clock ${theme.primary} text-3xl`}></span>
+                    <span className={`material-symbols-outlined ${theme.primary} text-3xl`}>schedule</span>
                     <div>
                         <p className="font-bold text-white">{startTime}</p>
                         <p className="text-sm text-text-secondary-dark">Horário com {barberName}</p>

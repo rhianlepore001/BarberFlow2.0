@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { supabase } from '../../lib/supabaseClient';
 import type { Appointment, Client, Service, TeamMember, User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../lib/utils';
 import { useShopLabels } from '../../hooks/useShopLabels';
-import { getMockAppointments, getMockClients, getMockServices, getMockTeamMembers, mockCreateAppointment, mockUpdateAppointment } from '../../lib/mockData';
 
 interface NewAppointmentFormProps {
     onClose: () => void;
     onSuccess: () => void;
     appointment?: Appointment | null;
-    shopId: string;
     user: User;
 }
 
-const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSuccess, appointment, shopId, user }) => {
+const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSuccess, appointment, user }) => {
     const isEditing = !!appointment;
     const [clients, setClients] = useState<Pick<Client, 'id' | 'name'>[]>([]);
     const [allServices, setAllServices] = useState<Service[]>([]);
@@ -24,22 +23,29 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
         isEditing && appointment.services_json ? appointment.services_json.map(s => s.id) : []
     );
     
-    const [barberId, setBarberId] = useState(appointment?.barberId || '');
-    const [clientId, setClientId] = useState(appointment?.clientId || '');
-    const [date, setDate] = useState(appointment?.startTime ? appointment.startTime.split('T')[0] : new Date().toISOString().split('T')[0]);
-    const [time, setTime] = useState(appointment?.startTime ? new Date(appointment.startTime).toTimeString().substring(0,5) : "14:30");
+    const [barberId, setBarberId] = useState(appointment?.professional_id || '');
+    const [clientId, setClientId] = useState(appointment?.client_id || '');
+    const [date, setDate] = useState(appointment?.start_time ? appointment.start_time.split('T')[0] : new Date().toISOString().split('T')[0]);
+    const [time, setTime] = useState(appointment?.start_time ? new Date(appointment.start_time).toTimeString().substring(0,5) : "14:30");
 
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
-    const shopLabels = useShopLabels(user.shopType);
+    const shopLabels = useShopLabels(user.business_type);
 
     useEffect(() => {
-        // Simulação de busca de dados
-        setClients(getMockClients());
-        setAllServices(getMockServices());
-        setTeamMembers(getMockTeamMembers());
-    }, [shopId]);
+        const fetchData = async () => {
+            const [clientsRes, servicesRes, teamRes] = await Promise.all([
+                supabase.from('clients').select('id, name').eq('tenant_id', user.tenant_id),
+                supabase.from('services').select('*').eq('tenant_id', user.tenant_id),
+                supabase.from('team_members').select('*').eq('tenant_id', user.tenant_id)
+            ]);
+            setClients(clientsRes.data || []);
+            setAllServices(servicesRes.data || []);
+            setTeamMembers(teamRes.data || []);
+        };
+        fetchData();
+    }, [user.tenant_id]);
     
     const handleServiceToggle = (serviceId: string) => {
         setSelectedServiceIds(prev => prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId]);
@@ -69,20 +75,19 @@ const NewAppointmentForm: React.FC<NewAppointmentFormProps> = ({ onClose, onSucc
             client_id: clientId,
             duration_minutes: totalDuration, 
             services_json: servicesToSave,
-            tenant_id: shopId,
+            tenant_id: user.tenant_id,
         };
 
-        // Simulação de salvamento
-        if (isEditing) {
-            mockUpdateAppointment(appointment.id, appointmentData);
-        } else {
-            mockCreateAppointment(appointmentData);
-        }
+        const { error } = isEditing
+            ? await supabase.from('appointments').update(appointmentData).eq('id', appointment.id)
+            : await supabase.from('appointments').insert(appointmentData);
         
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao salvar o agendamento.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
+        }
     };
 
     return (

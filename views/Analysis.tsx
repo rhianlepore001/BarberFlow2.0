@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { PeriodData, User } from '../types';
 import PerformanceChart from '../components/PerformanceChart';
 import GeminiInsightCard from '../components/GeminiInsightCard';
 import GeminiForecastCard from '../components/GeminiForecastCard';
 import Tooltip from '../components/Tooltip';
 import { useTheme } from '../hooks/useTheme';
-import { formatCurrency } from '../lib/utils'; // Importa a nova função
-import { getMockAnalysisData } from '../lib/mockData'; // Importa dados mockados
+import { formatCurrency } from '../lib/utils';
 
 type Period = 'week' | 'month' | 'year';
 
@@ -80,49 +79,6 @@ const KPICard: React.FC<KPICardProps> = ({ label, value, percentageChange, toolt
     )
 }
 
-// Helper function to calculate date ranges
-const getDateRanges = (period: Period) => {
-    const now = new Date();
-    let startDate: Date, previousStartDate: Date, endDate: Date, previousEndDate: Date;
-
-    if (period === 'week') {
-        const currentDay = new Date(now);
-        const dayOfWeek = currentDay.getDay() === 0 ? 6 : currentDay.getDay() - 1; // 0=Mon, 6=Sun
-        startDate = new Date(currentDay);
-        startDate.setDate(currentDay.getDate() - dayOfWeek);
-        startDate.setHours(0, 0, 0, 0);
-
-        endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 6);
-        endDate.setHours(23, 59, 59, 999);
-
-        previousStartDate = new Date(startDate);
-        previousStartDate.setDate(startDate.getDate() - 7);
-        previousEndDate = new Date(startDate);
-        previousEndDate.setDate(startDate.getDate() - 1);
-        previousEndDate.setHours(23, 59, 59, 999);
-
-    } else if (period === 'month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        previousStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        previousEndDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-    } else { // year
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-        previousStartDate = new Date(now.getFullYear() - 1, 0, 1);
-        previousEndDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
-    }
-    
-    return { startDate, endDate, previousStartDate, previousEndDate };
-};
-
-// Interface para armazenar todos os dados calculados, incluindo os do período anterior
-interface FullAnalysisData extends PeriodData {
-    previousAvgTicket: number;
-    previousNewClients: number;
-}
-
 interface AnalysisProps {
     dataVersion: number;
     user: User; 
@@ -130,7 +86,7 @@ interface AnalysisProps {
 
 const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
     const [period, setPeriod] = useState<Period>('month');
-    const [data, setData] = useState<FullAnalysisData | null>(null);
+    const [data, setData] = useState<PeriodData | null>(null);
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const theme = useTheme(user);
@@ -141,22 +97,41 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
             setData(null);
             setFetchError(null);
 
-            // Simulação de dados de análise
-            const mockData = getMockAnalysisData();
+            // Lógica de cálculo de dados (simplificada para o exemplo)
+            // Em um app real, isso seria mais complexo, com queries e agregações
+            const { data: transactions, error } = await supabase
+                .from('transactions')
+                .select('amount, transaction_date, type')
+                .eq('tenant_id', user.tenant_id)
+                .eq('type', 'income');
+
+            if (error) {
+                setFetchError("Erro ao buscar dados de transações.");
+                setLoading(false);
+                return;
+            }
+
+            const totalRevenue = transactions.reduce((sum, t) => sum + t.amount, 0);
             
-            // Para o protótipo, vamos simular os dados do período anterior
-            const fullMockData: FullAnalysisData = {
-                ...mockData,
-                previousAvgTicket: mockData.avgTicket * 0.9, // Simula uma pequena variação
-                previousNewClients: Math.floor(mockData.newClients * 0.8), // Simula uma pequena variação
+            // Dados de exemplo para o restante
+            const mockData: PeriodData = {
+                totalRevenue: totalRevenue,
+                previousTotalRevenue: totalRevenue * 0.85, // Simulado
+                avgTicket: totalRevenue > 0 ? totalRevenue / (transactions.length || 1) : 0,
+                newClients: 15, // Simulado
+                retentionRate: 75, // Simulado
+                revenueTrend: [100, 200, 150, 300, 250, 400, 350], // Simulado
+                xAxisLabels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'], // Simulado
+                topServices: [{name: 'Corte', value: '50'}, {name: 'Barba', value: '30'}], // Simulado
+                topClients: [{name: 'João Silva', value: 'R$ 250'}, {name: 'Carlos Souza', value: 'R$ 180'}], // Simulado
             };
 
-            setData(fullMockData);
+            setData(mockData);
             setLoading(false);
         };
 
         fetchDataForPeriod();
-    }, [period, dataVersion, user.currency]);
+    }, [period, dataVersion, user.tenant_id]);
 
     if (loading) {
         return <div className="text-center p-10">Analisando dados...</div>;
@@ -176,9 +151,9 @@ const Analysis: React.FC<AnalysisProps> = ({ dataVersion, user }) => {
     }
 
     const revenueChange = calculateChange(data.totalRevenue, data.previousTotalRevenue);
-    const avgTicketChange = calculateChange(data.avgTicket, data.previousAvgTicket);
-    const newClientsChange = calculateChange(data.newClients, data.previousNewClients);
-    const retentionChange = 2.5; 
+    const avgTicketChange = 10.5; // Simulado
+    const newClientsChange = 5.2; // Simulado
+    const retentionChange = 2.5; // Simulado
     
     const kpiDescriptions = {
         faturamento: "O valor total de vendas e serviços realizados no período selecionado. Indica o volume de negócios.",

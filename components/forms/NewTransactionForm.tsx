@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../../lib/supabaseClient'; // Removido
+import { supabase } from '../../lib/supabaseClient';
 import type { TeamMember, User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
 import { formatCurrency } from '../../lib/utils';
-import { getMockTeamMembers, mockCreateTransaction } from '../../lib/mockData';
 
 interface NewTransactionFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: string;
     user: User;
 }
 
-const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSuccess, shopId, user }) => {
+const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSuccess, user }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [transactionType, setTransactionType] = useState<'income' | 'expense'>('income');
@@ -22,10 +20,13 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
     const theme = useTheme(user);
 
     useEffect(() => {
-        // Simulação de busca de membros da equipe
-        setTeamMembers(getMockTeamMembers());
-        setLoadingMembers(false);
-    }, [shopId]);
+        const fetchTeamMembers = async () => {
+            const { data } = await supabase.from('team_members').select('*').eq('tenant_id', user.tenant_id);
+            setTeamMembers(data || []);
+            setLoadingMembers(false);
+        };
+        fetchTeamMembers();
+    }, [user.tenant_id]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -42,22 +43,21 @@ const NewTransactionForm: React.FC<NewTransactionFormProps> = ({ onClose, onSucc
             return;
         }
 
-        const transactionData = {
+        const { error } = await supabase.from('transactions').insert({
             description: formData.get('description') as string,
             amount: parseFloat(formData.get('amount') as string),
             type: type,
             transaction_date: new Date().toISOString(),
-            tenant_id: shopId,
+            tenant_id: user.tenant_id,
             professional_id: professionalId,
-        };
+        });
 
-        // Simulação de salvamento
-        mockCreateTransaction(transactionData);
-        
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao salvar a transação.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
+        }
     };
 
     return (

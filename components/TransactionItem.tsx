@@ -1,10 +1,9 @@
 import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { Transaction, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils';
-import { mockDeleteTransaction } from '../lib/mockData'; // Importa a função mockada
 
 interface TransactionItemProps {
     transaction: Transaction;
@@ -18,8 +17,8 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
 
-    const description = transaction.type === 'income' && transaction.barberName
-        ? `${transaction.description} (${transaction.barberName.split(' ')[0]})`
+    const description = transaction.type === 'income' && transaction.team_members?.name
+        ? `${transaction.description} (${transaction.team_members.name.split(' ')[0]})`
         : transaction.description;
         
     const amountDisplay = transaction.type === 'income' 
@@ -40,13 +39,18 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
         setError(null);
         setIsMenuOpen(false);
 
-        // Simulação de exclusão
-        mockDeleteTransaction(transaction.id);
+        const { error } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', transaction.id);
 
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao remover a transação.");
+            console.error(error);
+            setIsDeleting(false);
+        } else {
             onDeleteSuccess();
-        }, 500);
+        }
     };
 
     return (
@@ -59,7 +63,7 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, onDelete
             </div>
             <div className="flex-1 min-w-0">
                 <p className="font-bold text-text-primary truncate">{description}</p>
-                <p className="text-sm text-text-secondary">{transaction.date}</p>
+                <p className="text-sm text-text-secondary">{new Date(transaction.transaction_date).toLocaleDateString('pt-BR')}</p>
             </div>
             
             <div className="flex items-center gap-2">

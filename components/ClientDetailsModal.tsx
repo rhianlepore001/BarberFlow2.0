@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { Client, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
 import { formatCurrency } from '../lib/utils';
-import { mockDeleteClient, mockUpdateClient } from '../lib/mockData'; // Usaremos para simular
 
 interface ClientDetailsModalProps {
     client: Client;
@@ -26,14 +25,17 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         setIsSaving(true);
         setError(null);
 
-        // Simulação de atualização de cliente
-        mockUpdateClient(client.id, { name, phone });
+        const { error } = await supabase
+            .from('clients')
+            .update({ name, phone })
+            .eq('id', client.id);
 
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao salvar as alterações.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
-        setIsSaving(false);
+        }
     };
     
     const handleDelete = async () => {
@@ -42,14 +44,17 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
         setIsSaving(true);
         setError(null);
         
-        // Simulação de exclusão de cliente
-        mockDeleteClient(client.id);
+        const { error } = await supabase
+            .from('clients')
+            .delete()
+            .eq('id', client.id);
         
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao excluir o cliente.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
-        setIsSaving(false);
+        }
     };
 
     return (
@@ -57,7 +62,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
             <h2 className="text-xl font-bold text-center text-white">{isEditing ? 'Editar Cliente' : 'Detalhes do Cliente'}</h2>
             
             <div className="flex justify-center my-4">
-                <img src={client.imageUrl || `https://ui-avatars.com/api/?name=${client.name}&background=${theme.themeColor}&color=101012`} alt={client.name} className="w-24 h-24 rounded-full object-cover border-2 border-card-dark" />
+                <img src={client.image_url || `https://ui-avatars.com/api/?name=${client.name}&background=${theme.themeColor}&color=101012`} alt={client.name} className="w-24 h-24 rounded-full object-cover border-2 border-card-dark" />
             </div>
 
             {isEditing ? (
@@ -82,11 +87,11 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, onClose
                 <div className="bg-background-dark p-4 rounded-xl space-y-3">
                     <div className="flex justify-between items-center">
                         <p className="text-sm font-medium text-text-secondary-dark">Última Visita</p>
-                        <p className="font-bold text-white">{client.lastVisit}</p>
+                        <p className="font-bold text-white">{client.last_visit}</p>
                     </div>
                     <div className="flex justify-between items-center">
                         <p className="text-sm font-medium text-text-secondary-dark">Total Gasto</p>
-                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(client.totalSpent || 0, user.currency)}</p>
+                        <p className={`font-bold ${theme.primary}`}>{formatCurrency(client.total_spent || 0, user.currency)}</p>
                     </div>
                     <div className="flex justify-between items-center">
                         <p className="text-sm font-medium text-text-secondary-dark">Telefone</p>

@@ -1,44 +1,42 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { supabase } from '../../lib/supabaseClient';
 import type { User } from '../../types';
 import { useTheme } from '../../hooks/useTheme';
 import { useShopLabels } from '../../hooks/useShopLabels';
 import { formatCurrency } from '../../lib/utils';
-import { mockCreateService } from '../../lib/mockData';
 
 interface NewServiceFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    shopId: string;
     user: User;
 }
 
-const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, shopId, user }) => {
+const NewServiceForm: React.FC<NewServiceFormProps> = ({ onClose, onSuccess, user }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const theme = useTheme(user);
-    const shopLabels = useShopLabels(user.shopType);
+    const shopLabels = useShopLabels(user.business_type);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSaving(true);
         setError(null);
         const formData = new FormData(e.currentTarget);
-        const serviceData = {
+        
+        const { error } = await supabase.from('services').insert({
             name: formData.get('service-name') as string,
             price: parseFloat(formData.get('price') as string),
             duration_minutes: parseInt(formData.get('duration') as string),
-            tenant_id: shopId,
-            currency: user.currency,
-        };
+            tenant_id: user.tenant_id,
+        });
 
-        // Simulação de salvamento
-        mockCreateService(serviceData);
-        
-        // Simulação de sucesso
-        setTimeout(() => {
+        if (error) {
+            setError("Erro ao salvar o serviço.");
+            setIsSaving(false);
+        } else {
             onSuccess();
-        }, 500);
+        }
     };
 
     return (
