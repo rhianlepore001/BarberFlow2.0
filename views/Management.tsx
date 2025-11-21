@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { User, Service, TeamMember, BarberFinancials } from '../types';
 import FinancialSettlement from '../components/FinancialSettlement';
 import { useTheme } from '../hooks/useTheme';
-import { formatCurrency } from '../lib/utils'; // Importa a nova função
-import { getMockServices, getMockTeamMembers } from '../lib/mockData'; // Importa dados mockados
+import { formatCurrency } from '../lib/utils';
 
 interface ManagementProps {
     user: User;
@@ -55,74 +54,69 @@ const getSettlementPeriod = (settlementDay: number) => {
     return { periodStart, periodEnd };
 };
 
-
 const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, refreshData }) => {
     const [team, setTeam] = useState<TeamMember[]>([]);
     const [services, setServices] = useState<Service[]>([]);
     const [financials, setFinancials] = useState<BarberFinancials[]>([]);
     const [settings, setSettings] = useState<ShopSettings | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeMenu, setActiveMenu] = useState<number | null>(null);
+    const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const [copyMessage, setCopyMessage] = useState<string | null>(null);
     const theme = useTheme(user);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            
-            // Simulação de dados
-            const fetchedTeam = getMockTeamMembers();
-            const fetchedServices = getMockServices();
-            
-            // Simulação de configurações da loja
-            const currentSettings: ShopSettings = {
-                open_days: ['seg', 'ter', 'qua', 'qui', 'sex', 'sab'],
-                start_time: '09:00',
-                end_time: '20:00',
-                settlement_day: 1, // Mocked value
-            };
-            setSettings(currentSettings);
+            if (!user) return;
 
+            const [teamRes, servicesRes, settingsRes] = await Promise.all([
+                supabase.from('team_members').select('*').eq('tenant_id', user.tenant_id),
+                supabase.from('services').select('*').eq('tenant_id', user.tenant_id),
+                supabase.from('shop_settings').select('*').eq('tenant_id', user.tenant_id).single()
+            ]);
+
+            const fetchedTeam = teamRes.data || [];
             setTeam(fetchedTeam);
-            setServices(fetchedServices);
+            setServices(servicesRes.data || []);
+            setSettings(settingsRes.data);
 
-            const settlementDay = currentSettings?.settlement_day || 1;
+            const settlementDay = settingsRes.data?.settlement_day || 1;
             const { periodStart, periodEnd } = getSettlementPeriod(settlementDay);
             
-            // Simulação de transações para cálculo de financials
-            // Para o protótipo, vamos criar dados financeiros mockados
-            const barberRevenues: { [key: string]: number } = {}; // Usar string para IDs
-            fetchedTeam.forEach(member => {
-                barberRevenues[member.id] = Math.floor(Math.random() * 1000) + 500; // Receita aleatória
-            });
-            
-            const barberFinancials: BarberFinancials[] = fetchedTeam
-                .filter(member => member.id in barberRevenues)
-                .map(member => {
+            const { data: revenueData, error: revenueError } = await supabase
+                .rpc('calculate_revenue_by_professional', {
+                    p_tenant_id: user.tenant_id,
+                    p_start_date: periodStart.toISOString(),
+                    p_end_date: periodEnd.toISOString()
+                });
+
+            if (!revenueError) {
+                const barberFinancials: BarberFinancials[] = fetchedTeam.map(member => {
+                    const revenue = revenueData.find((r: any) => r.professional_id === member.id)?.total_revenue || 0;
                     return {
-                        barberId: member.id,
-                        monthRevenue: barberRevenues[member.id] || 0,
-                        commissionRate: member.commissionRate || 0.5
+                        professional_id: member.id,
+                        monthRevenue: revenue,
+                        commission_rate: member.commission_rate || 0.5
                     };
                 });
-            setFinancials(barberFinancials);
+                setFinancials(barberFinancials);
+            }
 
             setLoading(false);
         };
         fetchData();
-    }, [dataVersion]);
+    }, [dataVersion, user]);
     
-    const handleDeleteMember = async (memberId: string) => { // Alterado para string
+    const handleDeleteMember = async (memberId: string) => {
         if (window.confirm('Tem certeza que deseja remover este membro da equipe? Essa ação não pode ser desfeita.')) {
-            // Simulação de exclusão
-            console.log(`Simulando exclusão do membro: ${memberId}`);
-            refreshData(); // Força a atualização da lista
+            const { error } = await supabase.from('team_members').delete().eq('id', memberId);
+            if (!error) refreshData();
         }
     };
     
     const handleCopyGeneralLink = () => {
         const baseUrl = window.location.origin;
-        const link = `${baseUrl}/public-booking/${user.shopId}`;
+        const link = `${baseUrl}/public-booking/${user.tenant_id}`;
         
         navigator.clipboard.writeText(link).then(() => {
             setCopyMessage('Link de agendamento geral copiado!');
@@ -137,36 +131,18 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
     const dayMap: { [key: string]: string } = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
 
     const formatOpenDays = (days: string[]): string => {
+        if (!days || days.length === 0) return "Não definido";
         const orderedDays = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
         const sortedDays = [...days].sort((a, b) => orderedDays.indexOf(a) - orderedDays.indexOf(b));
-
-        if (sortedDays.length === 0) return "Fechado";
-        if (sortedDays.length === 1) return dayMap[sortedDays[0]];
-        
-        let isSequence = true;
-        for (let i = 0; i < sortedDays.length - 1; i++) {
-            if (orderedDays.indexOf(sortedDays[i+1]) - orderedDays.indexOf(sortedDays[i]) !== 1) {
-                isSequence = false;
-                break;
-            }
-        }
-
-        if (isSequence) return `${dayMap[sortedDays[0]]} à ${dayMap[sortedDays[sortedDays.length - 1]]}`;
-
         return sortedDays.map(d => dayMap[d]).join(', ');
     };
     
     const formatSettlementPeriod = () => {
         if (!settings) return "Mês Atual";
         const { periodStart, periodEnd } = getSettlementPeriod(settings.settlement_day);
-        
-        const startDay = periodStart.getDate().toString().padStart(2, '0');
-        const startMonth = (periodStart.getMonth() + 1).toString().padStart(2, '0');
-        
-        const endDay = periodEnd.getDate().toString().padStart(2, '0');
-        const endMonth = (periodEnd.getMonth() + 1).toString().padStart(2, '0');
-        
-        return `${startDay}/${startMonth} - ${endDay}/${endMonth}`;
+        const start = periodStart.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        const end = periodEnd.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        return `${start} - ${end}`;
     }
 
     if(loading) {
@@ -181,7 +157,7 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
             className="px-4 pt-4 pb-6 space-y-8"
         >
             <motion.div variants={itemVariants} className="flex items-center gap-4 rounded-xl bg-card p-4">
-                <img src={user.imageUrl || `https://ui-avatars.com/api/?name=${user.name}&background=E5A00D&color=101012`} alt={user.name} className="w-16 h-16 rounded-full object-cover"/>
+                <img src={user.image_url || `https://ui-avatars.com/api/?name=${user.name}`} alt={user.name} className="w-16 h-16 rounded-full object-cover"/>
                 <div>
                     <h3 className="text-xl font-bold text-text-primary">{user.name}</h3>
                     <button onClick={() => openModal('editProfile')} className={`text-sm font-semibold ${theme.primary} hover:text-yellow-400 transition-colors`}>Editar perfil</button>
@@ -212,13 +188,13 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                 </div>
                 <div className="rounded-xl bg-card p-4">
                     <p className="text-sm text-text-secondary mb-3">
-                        Compartilhe este link com seus clientes para que eles possam agendar online e escolher o profissional.
+                        Compartilhe este link com seus clientes para que eles possam agendar online.
                     </p>
                     <div className="flex items-center gap-2">
                         <input 
                             type="text" 
                             readOnly 
-                            value={`${window.location.origin}/public-booking/${user.shopId}`} 
+                            value={`${window.location.origin}/public-booking/${user.tenant_id}`} 
                             className="flex-grow bg-background border border-gray-700 rounded-lg py-2 px-3 text-text-primary text-sm truncate"
                         />
                         <button 
@@ -262,10 +238,10 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                             variants={itemVariants}
                             className="flex items-center gap-3 rounded-lg bg-card p-3"
                         >
-                            <img src={member.imageUrl} alt={member.name} className="w-10 h-10 rounded-full object-cover" />
+                            <img src={member.image_url} alt={member.name} className="w-10 h-10 rounded-full object-cover" />
                             <div className="flex-grow">
                                 <p className="font-semibold text-text-primary">{member.name}</p>
-                                <p className="text-sm text-text-secondary">{member.role} (ID: {member.id}) ({Math.round(member.commissionRate * 100)}%)</p>
+                                <p className="text-sm text-text-secondary">{member.role} ({Math.round(member.commission_rate * 100)}%)</p>
                             </div>
                             <div className="relative">
                                 <button
@@ -283,33 +259,15 @@ const Management: React.FC<ManagementProps> = ({ user, openModal, dataVersion, r
                                             transition={{ duration: 0.15, ease: 'easeOut' }}
                                             className="absolute top-full right-0 mt-1 w-48 bg-background rounded-lg shadow-lg border border-white/10 z-20"
                                         >
-                                            <button
-                                                onClick={() => {
-                                                    openModal('editCommission', member);
-                                                    setActiveMenu(null);
-                                                }}
-                                                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
-                                            >
+                                            <button onClick={() => { openModal('editCommission', member); setActiveMenu(null); }} className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 flex items-center gap-2 transition-colors">
                                                 <span className="material-symbols-outlined text-base">percent</span>
                                                 Editar Comissão
                                             </button>
-                                            <button
-                                                onClick={() => {
-                                                    openModal('editTeamMember', member);
-                                                    setActiveMenu(null);
-                                                }}
-                                                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 flex items-center gap-2 transition-colors"
-                                            >
+                                            <button onClick={() => { openModal('editTeamMember', member); setActiveMenu(null); }} className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/5 flex items-center gap-2 transition-colors">
                                                 <span className="material-symbols-outlined text-base">edit</span>
                                                 Editar Perfil
                                             </button>
-                                            <button
-                                                onClick={() => {
-                                                    handleDeleteMember(member.id);
-                                                    setActiveMenu(null);
-                                                }}
-                                                className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors"
-                                            >
+                                            <button onClick={() => { handleDeleteMember(member.id); setActiveMenu(null); }} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors">
                                                 <span className="material-symbols-outlined text-base">delete</span>
                                                 Remover
                                             </button>

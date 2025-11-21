@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { Client, User } from '../types';
 import Tooltip from '../components/Tooltip';
 import { useTheme } from '../hooks/useTheme';
-import { getMockClients } from '../lib/mockData'; // Importa dados mockados
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -25,18 +24,18 @@ type ClientFilter = 'all' | 'vips' | 'recent' | 'at_risk';
 
 interface ClientsProps {
     dataVersion: number;
-    onClientSelect: (client: Client) => void; // Nova prop para selecionar cliente
-    user: User; // Adiciona user para obter o tema
+    onClientSelect: (client: Client) => void;
+    user: User;
 }
 
 const getFilterTooltipContent = (filter: ClientFilter) => {
     switch (filter) {
         case 'vips':
-            return "Clientes VIPs: Aqueles com gasto total acumulado igual ou superior a R$ 1000,00. Foco na fidelização e ofertas exclusivas.";
+            return "Clientes VIPs: Aqueles com gasto total acumulado superior a um valor definido. Foco na fidelização.";
         case 'recent':
-            return "Clientes Recentes: Clientes que visitaram a barbearia nos últimos 7 dias. Mantenha o contato para garantir o retorno.";
+            return "Clientes Recentes: Clientes que visitaram nos últimos 30 dias.";
         case 'at_risk':
-            return "Clientes em Risco: Clientes que não visitam a barbearia há mais de 30 dias. Recomenda-se contato para reengajamento.";
+            return "Clientes em Risco: Clientes que não visitam há mais de 60 dias.";
         default:
             return "";
     }
@@ -77,7 +76,6 @@ const FilterButtons: React.FC<{ activeFilter: ClientFilter; setFilter: (filter: 
     );
 }
 
-
 const getRelativeDate = (dateString: string | null): string => {
     if (!dateString) return "Nunca";
     const date = new Date(dateString);
@@ -100,73 +98,43 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect, user }) 
     const [loading, setLoading] = useState(true);
     const theme = useTheme(user);
 
-    // Lógica para determinar o status do cliente
-    const getClientStatus = (client: Client): 'vip' | 'at_risk' | 'recent' | null => {
-        // Mantemos a lógica de status para exibir os ícones na lista
-        
-        // VIP: Gasto total >= R$ 1000
-        if ((client.totalSpent ?? 0) >= 1000) return 'vip';
-        
-        if (client.lastVisitRaw) {
-            const lastVisitDate = new Date(client.lastVisitRaw);
-            const now = new Date();
-            const diffTime = now.getTime() - lastVisitDate.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            // Recente: visitou nos últimos 7 dias
-            if (diffDays <= 7) return 'recent';
-            
-            // Em Risco: Última visita há mais de 30 dias
-            if (diffDays > 30) return 'at_risk';
-        }
-        return null;
-    }
-
     useEffect(() => {
         const fetchClients = async () => {
             setLoading(true);
-            // Simulação de busca de clientes
-            const mockClientsData = getMockClients();
-            setClients(mockClientsData.map(c => ({
-                id: c.id,
-                name: c.name,
-                imageUrl: c.imageUrl,
-                lastVisitRaw: c.lastVisitRaw, // Data bruta para cálculo
-                lastVisit: getRelativeDate(c.lastVisitRaw), // Data formatada para exibição
-                totalSpent: c.totalSpent,
-                phone: c.phone,
-            })));
+            if (!user) return;
+
+            let query = supabase.from('clients').select('*').eq('tenant_id', user.tenant_id);
+            
+            const now = new Date();
+            if (activeFilter === 'recent') {
+                const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30)).toISOString();
+                query = query.gte('last_visit', thirtyDaysAgo);
+            } else if (activeFilter === 'at_risk') {
+                const sixtyDaysAgo = new Date(now.setDate(now.getDate() - 60)).toISOString();
+                query = query.lt('last_visit', sixtyDaysAgo);
+            } else if (activeFilter === 'vips') {
+                query = query.gte('total_spent', 500); // Exemplo de valor VIP
+            }
+
+            const { data, error } = await query.order('name');
+            
+            if (!error) {
+                setClients(data.map(c => ({ ...c, last_visit: getRelativeDate(c.last_visit) })));
+            }
             setLoading(false);
         };
         fetchClients();
-    }, [dataVersion]);
+    }, [dataVersion, user, activeFilter]);
 
     const filteredClients = useMemo(() => {
-        let intermediateClients = clients;
-        const now = new Date();
-
-        switch (activeFilter) {
-            case 'vips':
-                intermediateClients = clients.filter(c => getClientStatus(c) === 'vip');
-                break;
-            case 'recent':
-                intermediateClients = clients.filter(c => getClientStatus(c) === 'recent');
-                break;
-            case 'at_risk':
-                intermediateClients = clients.filter(c => getClientStatus(c) === 'at_risk');
-                break;
-        }
-
-        return intermediateClients.filter(client =>
+        return clients.filter(client =>
             client.name.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [searchTerm, activeFilter, clients]);
+    }, [searchTerm, clients]);
 
     if (loading) {
         return <div className="text-center p-10">Carregando clientes...</div>;
     }
-    
-    // Removemos a função getStatusTooltip daqui, pois ela não é mais necessária para os ícones da lista.
 
     return (
         <div className="px-4 pt-4 pb-6">
@@ -192,36 +160,21 @@ const Clients: React.FC<ClientsProps> = ({ dataVersion, onClientSelect, user }) 
                 animate="visible"
                 className="mt-6 space-y-3"
             >
-                {filteredClients.length > 0 ? filteredClients.map(client => {
-                    const status = getClientStatus(client);
-                    return (
-                        <motion.div key={client.id} variants={itemVariants} className="flex items-center gap-4 rounded-xl bg-card p-3">
-                            <img src={client.imageUrl || `https://ui-avatars.com/api/?name=${client.name}&background=E5A00D&color=101012`} alt={client.name} className="w-12 h-12 rounded-full object-cover"/>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <p className="font-bold text-text-primary truncate">{client.name}</p>
-                                    {/* Ícones de status na lista (sem tooltip, apenas visual) */}
-                                    {status === 'vip' && (
-                                        <span title="Cliente VIP" className={`material-symbols-outlined ${theme.primary} text-base`}>workspace_premium</span>
-                                    )}
-                                    {status === 'recent' && (
-                                        <span title="Cliente Recente" className="material-symbols-outlined text-green-400 text-base">schedule</span>
-                                    )}
-                                    {status === 'at_risk' && (
-                                        <span title="Cliente em Risco" className="material-symbols-outlined text-red-400 text-base">hourglass_empty</span>
-                                    )}
-                                </div>
-                                <p className="text-sm text-text-secondary">Última visita: {client.lastVisit}</p>
-                            </div>
-                            <button 
-                                onClick={() => onClientSelect(client)}
-                                className="text-text-secondary hover:text-white transition-colors"
-                            >
-                                 <span className="material-symbols-outlined">more_vert</span>
-                            </button>
-                        </motion.div>
-                    )
-                }) : (
+                {filteredClients.length > 0 ? filteredClients.map(client => (
+                    <motion.div key={client.id} variants={itemVariants} className="flex items-center gap-4 rounded-xl bg-card p-3">
+                        <img src={client.image_url || `https://ui-avatars.com/api/?name=${client.name}&background=E5A00D&color=101012`} alt={client.name} className="w-12 h-12 rounded-full object-cover"/>
+                        <div className="flex-1 min-w-0">
+                            <p className="font-bold text-text-primary truncate">{client.name}</p>
+                            <p className="text-sm text-text-secondary">Última visita: {client.last_visit}</p>
+                        </div>
+                        <button 
+                            onClick={() => onClientSelect(client)}
+                            className="text-text-secondary hover:text-white transition-colors"
+                        >
+                             <span className="material-symbols-outlined">more_vert</span>
+                        </button>
+                    </motion.div>
+                )) : (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-text-secondary pt-10">
                         <p>Nenhum cliente encontrado.</p>
                     </motion.div>

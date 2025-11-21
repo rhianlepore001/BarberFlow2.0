@@ -1,9 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { Appointment, TeamMember, User } from '../types';
 import { useTheme } from '../hooks/useTheme';
-import { getMockAppointments, getMockTeamMembers } from '../lib/mockData'; // Importa dados mockados
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -89,9 +88,9 @@ const AppointmentCard: React.FC<AppointmentCardProps> = ({ appointment, onClick,
     const clientName = appointment.clients?.name || 'Cliente';
     const services = appointment.services_json || [];
     const serviceNames = services.map(s => s.name).join(', ');
-    const displayTime = new Date(appointment.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const displayTime = new Date(appointment.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     
-    const startMinutes = new Date(appointment.startTime).getHours() * 60 + new Date(appointment.startTime).getMinutes();
+    const startMinutes = new Date(appointment.start_time).getHours() * 60 + new Date(appointment.start_time).getMinutes();
     const top = (startMinutes - startHour * 60) * MINUTE_HEIGHT;
     const height = appointment.duration_minutes * MINUTE_HEIGHT - 2;
     
@@ -149,7 +148,7 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
     
     useEffect(() => {
         if (initialAppointment && !initialScrollDone.current) {
-            const apptDate = new Date(initialAppointment.startTime);
+            const apptDate = new Date(initialAppointment.start_time);
             const startOfApptWeek = getStartOfWeek(apptDate);
             const startOfTodayWeek = getStartOfWeek(new Date());
             const diffWeeks = Math.round((startOfApptWeek.getTime() - startOfTodayWeek.getTime()) / (1000 * 60 * 60 * 24 * 7));
@@ -163,30 +162,36 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            
-            // Simulação de configurações da loja
-            const settingsData = { start_time: '08:00', end_time: '20:00' }; // Mocked values
-            setStartHour(settingsData.start_time ? parseInt(settingsData.start_time.split(':')[0]) : 8);
-            setEndHour(settingsData.end_time ? parseInt(settingsData.end_time.split(':')[0]) : 20);
+            if (!user) return;
 
-            // Simulação de membros da equipe
-            const teamMembersData = getMockTeamMembers();
-            setTeamMembers(teamMembersData as TeamMember[]);
+            const { data: settingsData } = await supabase.from('shop_settings').select('start_time, end_time').eq('tenant_id', user.tenant_id).single();
+            setStartHour(settingsData?.start_time ? parseInt(settingsData.start_time.split(':')[0]) : 8);
+            setEndHour(settingsData?.end_time ? parseInt(settingsData.end_time.split(':')[0]) : 20);
 
-            // Simulação de agendamentos
-            const appointmentsData = getMockAppointments();
-            setAppointments(appointmentsData as unknown as Appointment[]);
+            const { data: teamMembersData } = await supabase.from('team_members').select('*').eq('tenant_id', user.tenant_id);
+            setTeamMembers(teamMembersData || []);
+
+            const weekEnd = new Date(startOfSelectedWeek);
+            weekEnd.setDate(startOfSelectedWeek.getDate() + 7);
+
+            const { data: appointmentsData } = await supabase
+                .from('appointments')
+                .select('*, clients(id, name, image_url)')
+                .eq('tenant_id', user.tenant_id)
+                .gte('start_time', startOfSelectedWeek.toISOString())
+                .lt('start_time', weekEnd.toISOString());
+            setAppointments(appointmentsData as any || []);
 
             setLoading(false);
         };
         fetchData();
-    }, [dataVersion, startOfSelectedWeek, user.shopId]);
+    }, [dataVersion, startOfSelectedWeek, user]);
     
     useEffect(() => {
         if (scrollContainerRef.current && !loading) {
             let targetScroll = 0;
             if (initialAppointment && initialScrollDone.current) {
-                const apptDate = new Date(initialAppointment.startTime);
+                const apptDate = new Date(initialAppointment.start_time);
                 const minutesFromStart = (apptDate.getHours() - startHour) * 60 + apptDate.getMinutes();
                 targetScroll = Math.max(0, (minutesFromStart * MINUTE_HEIGHT) - HOUR_HEIGHT);
                 initialScrollDone.current = false;
@@ -211,10 +216,10 @@ const Agenda: React.FC<AgendaProps> = ({ onAppointmentSelect, dataVersion, initi
 
     const appointmentsByBarber = useMemo(() => {
         const selectedDayDate = getDateForDayIndex(selectedDay, startOfSelectedWeek).fullDate;
-        const selectedDateStr = selectedDayDate.toISOString().split('T')[0];
-        const filteredAppointments = appointments.filter(a => a.startTime.split('T')[0] === selectedDateStr);
+        const selectedDateStr = selectedDayDate.toDateString();
+        const filteredAppointments = appointments.filter(a => new Date(a.start_time).toDateString() === selectedDateStr);
         return teamMembers.reduce((acc, member) => {
-            acc[member.id] = filteredAppointments.filter(a => a.barberId === member.id);
+            acc[member.id] = filteredAppointments.filter(a => a.professional_id === member.id);
             return acc;
         }, {} as Record<string, Appointment[]>);
     }, [selectedDay, appointments, teamMembers, startOfSelectedWeek]);

@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// import { supabase } from '../lib/supabaseClient'; // Removido
+import { supabase } from '../lib/supabaseClient';
 import type { Transaction, User } from '../types';
 import TransactionItem from '../components/TransactionItem';
 import { useTheme } from '../hooks/useTheme';
-import { formatCurrency } from '../lib/utils'; // Importa a nova função
-import { getMockCashFlow } from '../lib/mockData'; // Importa dados mockados
+import { formatCurrency } from '../lib/utils';
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -24,7 +23,7 @@ const itemVariants = {
 };
 
 type FilterType = 'all' | 'income' | 'expense';
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 15;
 
 interface CashFlowProps {
     dataVersion: number;
@@ -59,59 +58,65 @@ const FilterButtons: React.FC<{ activeFilter: FilterType; setFilter: (filter: Fi
     );
 }
 
-
 const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) => {
     const [filter, setFilter] = useState<FilterType>('all');
-    const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+    const [page, setPage] = useState(0);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [hasMore, setHasMore] = useState(true);
     const [loading, setLoading] = useState(true);
     const theme = useTheme(user);
     
     useEffect(() => {
-        const fetchTransactions = async () => {
-            setLoading(true);
-            // Simulação de busca de transações
-            const mockCashFlowData = getMockCashFlow();
-            
-            // Transformar mockCashFlowData em um formato de Transaction[]
-            const mockTransactions: Transaction[] = mockCashFlowData.map((day, index) => ({
-                id: `t${index}-${Date.now()}`,
-                description: `Faturamento ${day.day}`,
-                amount: day.revenue,
-                type: 'income',
-                date: new Date().toLocaleDateString('pt-BR'), // Data atual para o mock
-                barberName: null, // Mock simples, sem barbeiro
-            }));
+        setTransactions([]);
+        setPage(0);
+        setHasMore(true);
+        fetchTransactions(0, true);
+    }, [dataVersion, filter, user]);
 
-            setTransactions(mockTransactions);
-            setLoading(false);
-        };
-        fetchTransactions();
-    }, [dataVersion]);
+    const fetchTransactions = async (currentPage: number, reset = false) => {
+        setLoading(true);
+        if (!user) return;
+
+        const from = currentPage * ITEMS_PER_PAGE;
+        const to = from + ITEMS_PER_PAGE - 1;
+
+        let query = supabase
+            .from('transactions')
+            .select('*, team_members(name)')
+            .eq('tenant_id', user.tenant_id)
+            .order('transaction_date', { ascending: false })
+            .range(from, to);
+
+        if (filter !== 'all') {
+            query = query.eq('type', filter);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error("Error fetching transactions:", error);
+        } else {
+            const formattedData = data.map(t => ({ ...t, date: new Date(t.transaction_date).toLocaleDateString('pt-BR') })) as Transaction[];
+            setTransactions(prev => reset ? formattedData : [...prev, ...formattedData]);
+            if (data.length < ITEMS_PER_PAGE) {
+                setHasMore(false);
+            }
+        }
+        setLoading(false);
+    };
+
+    const loadMore = () => {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchTransactions(nextPage);
+    };
     
     const balance = useMemo(() => transactions.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0), [transactions]);
-
-    const filteredTransactions = useMemo(() => {
-        if (filter === 'all') return transactions;
-        return transactions.filter(t => t.type === filter);
-    }, [filter, transactions]);
-
-    const visibleTransactions = useMemo(() => {
-        return filteredTransactions.slice(0, visibleCount);
-    }, [filteredTransactions, visibleCount]);
-
-    useEffect(() => {
-        setVisibleCount(ITEMS_PER_PAGE);
-    }, [filter]);
-
-    if (loading) {
-        return <div className="text-center p-10">Carregando transações...</div>;
-    }
 
     return (
         <div className="px-4 pt-4 pb-6">
             <motion.div initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} className={`mt-4 rounded-xl bg-gradient-to-br ${theme.gradientPrimary} p-5 text-background shadow-lg ${theme.shadowPrimary}`}>
-                <p className="text-sm font-medium text-black/70">Saldo Atual</p>
+                <p className="text-sm font-medium text-black/70">Saldo (Carregado)</p>
                 <p className="text-4xl font-extrabold">{formatCurrency(balance, user.currency)}</p>
             </motion.div>
             
@@ -126,10 +131,11 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) =
                 className="space-y-3"
             >
                 <AnimatePresence>
-                {visibleTransactions.map(t => (
+                {transactions.map(t => (
                     <motion.div 
                         key={t.id} 
                         variants={itemVariants} 
+                        layout
                         initial="hidden"
                         animate="visible"
                         exit="exit"
@@ -144,10 +150,12 @@ const CashFlow: React.FC<CashFlowProps> = ({ dataVersion, refreshData, user }) =
                 </AnimatePresence>
             </motion.div>
             
-            {visibleCount < filteredTransactions.length && (
+            {loading && <p className="text-center text-text-secondary mt-4">Carregando...</p>}
+
+            {!loading && hasMore && (
                 <motion.div layout className="mt-6">
                     <button 
-                        onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
+                        onClick={loadMore}
                         className={`w-full rounded-full bg-card py-3 text-center font-bold ${theme.primary} transition-colors hover:${theme.bgPrimary}/20`}
                     >
                         Carregar Mais

@@ -7,15 +7,7 @@ import WeekSelector from '../components/WeekSelector';
 import type { User, Appointment, CashFlowDay, TeamMember, View } from '../types';
 import { useShopLabels } from '../hooks/useShopLabels';
 import { useTheme } from '../hooks/useTheme';
-import { getMockAppointments, getMockCashFlow, getMockTeamMembers } from '../lib/mockData';
-
-interface HomeProps {
-    user: User;
-    dataVersion: number;
-    setActiveView: (view: View) => void;
-    openModal: (content: 'editDailyGoal') => void;
-    onAppointmentSelect: (appointment: Appointment) => void;
-}
+import { supabase } from '../lib/supabaseClient';
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -32,17 +24,15 @@ const itemVariants = {
     visible: { opacity: 1, y: 0 },
 };
 
-// Helper function to get the start of the current calendar week (Monday)
 const getStartOfWeek = (date: Date): Date => {
     const d = new Date(date);
-    const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     d.setDate(diff);
     d.setHours(0, 0, 0, 0);
     return d;
 };
 
-// Helper function to get the start of the week based on offset
 const getStartOfWeekByOffset = (offset: number): Date => {
     const today = new Date();
     const date = new Date(today);
@@ -50,54 +40,95 @@ const getStartOfWeekByOffset = (offset: number): Date => {
     return getStartOfWeek(date);
 };
 
+interface HomeProps {
+    user: User;
+    dataVersion: number;
+    setActiveView: (view: View) => void;
+    openModal: (content: 'editDailyGoal') => void;
+    onAppointmentSelect: (appointment: Appointment) => void;
+}
+
 const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal, onAppointmentSelect }) => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [cashFlowData, setCashFlowData] = useState<CashFlowDay[]>([]);
     const [financials, setFinancials] = useState({
-        dailyRevenue: 450, // Mocked
-        dailyGoal: 500,
-        completedAppointments: 3,
-        totalAppointments: 5,
+        dailyRevenue: 0,
+        dailyGoal: 0,
+        completedAppointments: 0,
+        totalAppointments: 0,
     });
     const [loading, setLoading] = useState(true);
     const [weekOffset, setWeekOffset] = useState(0);
-    const shopLabels = useShopLabels(user.shopType);
+    const shopLabels = useShopLabels(user.business_type);
     const theme = useTheme(user);
 
     useEffect(() => {
-        // Simulação de busca de dados
-        setLoading(true);
-        
-        // Mock Data
-        const mockAppts = getMockAppointments();
-        const mockTeam = getMockTeamMembers();
-        const mockCash = getMockCashFlow();
-        
-        setAppointments(mockAppts);
-        setTeamMembers(mockTeam);
-        
-        // Simulação de fluxo de caixa semanal (ajustando o isCurrent com base no offset)
-        const today = new Date();
-        const updatedCashFlow = mockCash.map((day, index) => ({
-            ...day,
-            isCurrent: weekOffset === 0 && (today.getDay() + 6) % 7 === index
-        }));
-        setCashFlowData(updatedCashFlow);
-        
-        // Simulação de faturamento diário
-        const currentDayRevenue = updatedCashFlow.find(d => d.isCurrent)?.revenue || 450;
-        
-        setFinancials(prev => ({
-            ...prev,
-            dailyRevenue: currentDayRevenue,
-            dailyGoal: 500, // Mantendo mockado por enquanto
-            completedAppointments: 3,
-            totalAppointments: 5,
-        }));
+        const fetchData = async () => {
+            setLoading(true);
+            if (!user) return;
 
-        setLoading(false);
-    }, [dataVersion, weekOffset]);
+            const today = new Date();
+            const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+            const todayEnd = new Date(new Date().setHours(23, 59, 59, 999));
+
+            const [settingsRes, appointmentsRes, teamMembersRes] = await Promise.all([
+                supabase.from('shop_settings').select('daily_goal').eq('tenant_id', user.tenant_id).single(),
+                supabase.from('appointments').select('*, clients(id, name, image_url)').eq('tenant_id', user.tenant_id).gte('start_time', new Date().toISOString()).order('start_time', { ascending: true }).limit(10),
+                supabase.from('team_members').select('*').eq('tenant_id', user.tenant_id)
+            ]);
+
+            setAppointments(appointmentsRes.data as any || []);
+            setTeamMembers(teamMembersRes.data || []);
+
+            const startOfSelectedWeek = getStartOfWeekByOffset(weekOffset);
+            const endOfSelectedWeek = new Date(startOfSelectedWeek);
+            endOfSelectedWeek.setDate(startOfSelectedWeek.getDate() + 6);
+            endOfSelectedWeek.setHours(23, 59, 59, 999);
+
+            const { data: transactionsData } = await supabase
+                .from('transactions')
+                .select('amount, transaction_date, type')
+                .eq('tenant_id', user.tenant_id)
+                .gte('transaction_date', startOfSelectedWeek.toISOString())
+                .lte('transaction_date', endOfSelectedWeek.toISOString());
+
+            const daysOfWeek = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
+            const weeklyCashFlow: CashFlowDay[] = daysOfWeek.map((day, index) => {
+                const dateForDay = new Date(startOfSelectedWeek);
+                dateForDay.setDate(startOfSelectedWeek.getDate() + index);
+                
+                const revenueForDay = (transactionsData || [])
+                    .filter(t => new Date(t.transaction_date).toDateString() === dateForDay.toDateString() && t.type === 'income')
+                    .reduce((sum, t) => sum + t.amount, 0);
+
+                return { day, revenue: revenueForDay, isCurrent: weekOffset === 0 && (new Date().getDay() + 6) % 7 === index };
+            });
+            setCashFlowData(weeklyCashFlow);
+
+            const dailyRevenue = weeklyCashFlow.find(d => d.isCurrent)?.revenue || 0;
+            
+            const { data: todayAppointments, count: totalAppointments } = await supabase
+                .from('appointments')
+                .select('id, status', { count: 'exact' })
+                .eq('tenant_id', user.tenant_id)
+                .gte('start_time', todayStart.toISOString())
+                .lt('start_time', todayEnd.toISOString());
+
+            const completedAppointments = todayAppointments?.filter(a => a.status === 'completed').length || 0;
+
+            setFinancials({
+                dailyRevenue,
+                dailyGoal: settingsRes.data?.daily_goal || 0,
+                completedAppointments,
+                totalAppointments: totalAppointments || 0,
+            });
+
+            setLoading(false);
+        };
+
+        fetchData();
+    }, [user, dataVersion, weekOffset]);
 
     if (loading) {
         return <div className="text-center p-10">Carregando...</div>;
@@ -119,15 +150,15 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
     };
     
     const handleGamificationClick = () => {
-        if (user.shopType === 'barbearia') {
+        if (user.business_type === 'barbearia') {
             alert("Simulação: Enviando mensagens de 'Encher Cadeira Agora' via WhatsApp!");
         } else {
             alert("Simulação: Disparando campanha de 'Recall de Clientes' para clientes em risco!");
         }
     };
 
-    const gamificationButtonText = user.shopType === 'barbearia' ? 'ENCHER CADEIRA AGORA' : 'RECALL DE CLIENTES';
-    const gamificationButtonIcon = user.shopType === 'barbearia' ? 'fa-bolt' : 'fa-rotate-right';
+    const gamificationButtonText = user.business_type === 'barbearia' ? 'ENCHER CADEIRA AGORA' : 'RECALL DE CLIENTES';
+    const gamificationButtonIcon = user.business_type === 'barbearia' ? 'fa-bolt' : 'fa-rotate-right';
 
     return (
         <motion.div
@@ -138,12 +169,11 @@ const Home: React.FC<HomeProps> = ({ user, dataVersion, setActiveView, openModal
         >
             <motion.div variants={itemVariants} className="px-4 pb-4 pt-4">
                 <h2 className="text-3xl font-extrabold tracking-tight text-text-primary flex items-center gap-2">
-                    {user.shopName} {shopLabels.shopTypeEmoji}
+                    {user.tenant_name} {shopLabels.shopTypeEmoji}
                 </h2>
                 <p className="text-base text-text-secondary">Bem-vindo(a) ao seu painel de gestão. Foco total nos resultados de hoje!</p>
             </motion.div>
 
-            {/* Botão de Gamificação (Destaque Total) */}
             <motion.div variants={itemVariants} className="px-4 pb-4">
                 <button
                     onClick={handleGamificationClick}
