@@ -12,17 +12,19 @@ interface AuthScreenProps {
 }
 
 const AuthScreen: React.FC<AuthScreenProps> = ({ onThemeChange }) => {
+    // --- State Declarations ---
     const [mode, setMode] = useState<AuthMode>('login');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
-    // Signup states
+    // Signup specific states
     const [country, setCountry] = useState<Country>('BR');
     const [tenantName, setTenantName] = useState('');
+    const [businessType, setBusinessType] = useState<BusinessType>('barbearia'); // Explicitly declared here
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState('');
     
-    // Auth states
+    // Auth credentials states
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -31,6 +33,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onThemeChange }) => {
     const [passwordMismatch, setPasswordMismatch] = useState(false);
     const [passwordTooShort, setPasswordTooShort] = useState(false);
 
+    // --- Memoized Values (derived from state) ---
     const { currencyCode, currencySymbol, locale, phoneMask, phonePlaceholder } = useMemo(() => {
         if (country === 'BR') {
             return {
@@ -52,6 +55,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onThemeChange }) => {
     }, [country]);
 
     const themeClasses = useMemo(() => {
+        // console.log('Evaluating themeClasses useMemo, businessType:', businessType); // Debugging line
         if (businessType === 'barbearia') {
             return { 
                 primary: 'text-primary', bgPrimary: 'bg-primary', focusRing: 'focus:ring-primary focus:border-primary', 
@@ -67,6 +71,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onThemeChange }) => {
         }
     }, [businessType]);
 
+    // --- Effects ---
     // Communicate theme class to parent (AuthGate)
     useEffect(() => {
         onThemeChange(themeClasses.themeClass);
@@ -97,6 +102,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onThemeChange }) => {
         });
     }, [phoneMask]);
 
+    // --- Handlers ---
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const unmasked = e.target.value.replace(/\D/g, '');
         setPhone(applyPhoneMask(unmasked, phoneMask));
@@ -144,14 +150,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onThemeChange }) => {
         setLoading(false);
     };
     
+    // --- Animation Variants ---
     const formVariants = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0 },
         exit: { opacity: 0, y: -20 },
     };
 
+    // --- Render ---
     return (
-        <div className={`flex flex-col items-center justify-center min-h-screen p-4`}>
+        <div className={`flex flex-col items-center justify-center min-h-screen p-4 ${themeClasses.themeClass}`}>
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -229,16 +237,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onThemeChange }) => {
                                         </button>
                                     </div>
                                 </div>
-                                <AuthInput id="tenant-name" label="Nome do Estabelecimento" icon="store" type="text" value={tenantName} onChange={e => setTenantName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
-                                <AuthInput id="full-name" label="Seu Nome Completo" icon="user" type="text" value={fullName} onChange={e => setFullName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
-                                <AuthInput id="phone" label="Telefone/WhatsApp" icon="phone" type="tel" value={phone} onChange={handlePhoneChange} required focusRingClass={themeClasses.focusRing} placeholder={phonePlaceholder} />
+                                <AuthInput id="tenant-name" icon="store" label="Nome do Estabelecimento" type="text" value={tenantName} onChange={e => setTenantName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                                <AuthInput id="full-name" icon="user" label="Seu Nome Completo" type="text" value={fullName} onChange={e => setFullName(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                                <AuthInput id="phone" icon="phone" label="Telefone/WhatsApp" type="tel" value={phone} onChange={handlePhoneChange} required focusRingClass={themeClasses.focusRing} placeholder={phonePlaceholder} />
                             </>
                         )}
-                        <AuthInput id="email" label="Email" icon="envelope" type="email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={themeClasses.focusRing} />
+                        <AuthInput id="email" icon="envelope" label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} required focusRingClass={themeClasses.focusRing} />
                         <AuthInput 
                             id="password" 
-                            label="Senha" 
                             icon="lock" 
+                            label="Senha" 
                             type="password" 
                             value={password} 
                             onChange={e => setPassword(e.target.value)} 
@@ -249,8 +257,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onThemeChange }) => {
                         {mode === 'signup' && (
                             <AuthInput 
                                 id="confirm-password" 
-                                label="Confirmar Senha" 
                                 icon="lock" 
+                                label="Confirmar Senha" 
                                 type="password" 
                                 value={confirmPassword} 
                                 onChange={e => setConfirmPassword(e.target.value)} 
